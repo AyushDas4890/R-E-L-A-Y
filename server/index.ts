@@ -11,6 +11,7 @@ import type {
   ClientEvent,
   Flag,
   HuddleState,
+  Invite,
   ListItem,
   Message,
   Scheduled,
@@ -35,6 +36,8 @@ import {
   workflowReply,
 } from '../src/premium.ts';
 import { parseSlash } from './slash.ts';
+import { createStore } from './store.ts';
+import { createClient } from '@supabase/supabase-js';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -63,6 +66,7 @@ interface DB {
   audit: AuditEntry[];
   legalHolds: string[];
   preserved: Message[];
+  invites: Invite[];
 }
 
 const DEFAULT_SETTINGS: Settings = { retentionDays: 0, terms: '', termsVersion: 0, barriers: [] };
@@ -128,6 +132,7 @@ function seed(): DB {
     audit: [],
     legalHolds: [],
     preserved: [],
+    invites: [],
   };
   db.messages.push({
     id: randomUUID(),
@@ -140,11 +145,10 @@ function seed(): DB {
   return db;
 }
 
-function load(): DB {
-  if (!fs.existsSync(dataFile)) return seed();
-  const raw = fs.readFileSync(dataFile, 'utf8');
-  const stored = JSON.parse(raw) as Partial<DB> & Pick<DB, 'users' | 'channels' | 'messages'>;
-  // Databases written before the premium features lack these fields.
+const store = createStore<DB>(seed, dataFile);
+
+function normalize(stored: Partial<DB> & Pick<DB, 'users' | 'channels' | 'messages'>): DB {
+  // Databases written before newer features lack some fields; fill defaults.
   return {
     canvases: {},
     workflows: [],
@@ -158,20 +162,19 @@ function load(): DB {
     audit: [],
     legalHolds: [],
     preserved: [],
+    invites: [],
     ...stored,
     settings: { ...DEFAULT_SETTINGS, ...stored.settings },
   };
 }
 
-const db = load();
+const db = normalize((await store.load()) as Partial<DB> & Pick<DB, 'users' | 'channels' | 'messages'>);
+
 let saveTimer: NodeJS.Timeout | undefined;
 function persist(): void {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFile(dataFile, JSON.stringify(db), (err) => {
-      if (err) console.error('persist failed:', err.message);
-    });
+    store.save(db).catch((err) => console.error('persist failed:', err instanceof Error ? err.message : err));
   }, 250);
 }
 
@@ -197,7 +200,13 @@ function canSee(ch: Channel, userId: string): boolean {
 }
 
 function adminData(): AdminData {
-  return { flags: db.flags, audit: db.audit.slice(-200), legalHolds: db.legalHolds, preservedCount: db.preserved.length };
+  return {
+    flags: db.flags,
+    audit: db.audit.slice(-200),
+    legalHolds: db.legalHolds,
+    preservedCount: db.preserved.length,
+    invites: db.invites,
+  };
 }
 
 function broadcastAdmin(): void {
