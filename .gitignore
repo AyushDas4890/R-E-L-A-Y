@@ -4,3 +4,4 @@ data
 .claude-flow
 .swarm
 ruvector.db
+.env
