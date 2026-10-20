@@ -21,11 +21,18 @@ const pages = {
 fs.mkdirSync('docs/slack', { recursive: true });
 
 for (const [name, url] of Object.entries(pages)) {
-  const res = await fetch('https://api.firecrawl.dev/v1/scrape', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-    body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
-  });
+  let res;
+  try {
+    res = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+      body: JSON.stringify({ url, formats: ['markdown'], onlyMainContent: true }),
+    });
+  } catch (err) {
+    console.error(`${name}: cannot reach Firecrawl (${err.cause?.code ?? err.message})`);
+    process.exitCode = 1;
+    break;
+  }
   if (!res.ok) {
     console.error(`${name}: HTTP ${res.status} ${await res.text()}`);
     continue;
