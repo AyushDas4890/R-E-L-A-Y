@@ -1,0 +1,16 @@
+# Render blueprint for the Relay API + WebSocket server.
+# Chat state lives in DATA_DIR; the persistent disk needs a paid instance.
+services:
+  - type: web
+    name: relay-server
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: relay-data
+      mountPath: /var/data
+      sizeGB: 1

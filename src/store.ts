@@ -120,7 +120,8 @@ export function useRelay(identity: { userId: string; name: string } | null) {
 
     const connect = () => {
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      const ws = new WebSocket(`${proto}://${location.host}/ws`);
+      // Set VITE_WS_URL when the UI is hosted apart from the server (e.g. UI on Vercel).
+      const ws = new WebSocket(import.meta.env.VITE_WS_URL || `${proto}://${location.host}/ws`);
       wsRef.current = ws;
       ws.onopen = () => {
         retry = 0;

@@ -16,6 +16,15 @@ npm test
 
 State persists to `data/db.json`.
 
+## Deploy (UI on Vercel, server elsewhere)
+
+Relay needs a long-running server for WebSockets and a disk for state, so it can't run on Vercel functions. Host the server on a WebSocket-capable host and the UI on Vercel.
+
+1. **Server:** on Render, create a Blueprint from this repo (`render.yaml`). It builds, starts `npm start`, health-checks `/healthz`, and stores state in `DATA_DIR` on a persistent disk. Any Node host works: build with `npm run build`, run `npm start`, set `PORT` and `DATA_DIR`.
+2. **UI:** in Vercel, import the repo (framework Vite, `vercel.json` is included) and set `VITE_WS_URL=wss://<your-server-host>/ws`. Redeploy after changing it, since it is baked in at build time.
+
+The server also serves the built UI itself, so you can skip Vercel and use the server URL directly.
+
 ## Features (all unlocked)
 
 Channels (public/private), DMs, threads, reactions, edit/delete, pins, saved items, mentions, rich text, file attachments, presence and typing, unread badges, Cmd/Ctrl+K search, huddles with mic meter, canvases, Workflow Builder, scheduled messages, `/remind` `/topic` `/me` `/shrug` `/huddle` `/summarize`, four themes.
