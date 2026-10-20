@@ -13,6 +13,15 @@ export interface User {
   status: UserStatus;
   bot?: boolean;
   role?: Role;
+  avatarUrl?: string;
+  email?: string;
+}
+
+export interface Invite {
+  code: string;
+  createdBy: string;
+  createdAt: number;
+  revoked: boolean;
 }
 
 export type ChannelKind = 'public' | 'private' | 'dm';
@@ -108,6 +117,7 @@ export interface AdminData {
   audit: AuditEntry[];
   legalHolds: string[];
   preservedCount: number;
+  invites: Invite[];
 }
 
 export interface Scheduled {
@@ -165,7 +175,9 @@ export interface Snapshot {
 }
 
 export type ClientEvent =
-  | { t: 'hello'; userId: string; name: string }
+  | { t: 'auth'; token: string; invite?: string }
+  | { t: 'inviteCreate' }
+  | { t: 'inviteRevoke'; code: string }
   | { t: 'send'; channelId: string; text: string; threadId?: string; files?: FileAttachment[] }
   | { t: 'edit'; id: string; text: string }
   | { t: 'delete'; id: string }
@@ -219,7 +231,7 @@ export type ServerEvent =
   | { t: 'admin'; admin: AdminData }
   | { t: 'analytics'; data: Analytics }
   | { t: 'export'; data: unknown }
-  | { t: 'error'; message: string };
+  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' };
 
 export interface Analytics {
   totalMessages: number;
