@@ -56,11 +56,41 @@ export function plainText(text: string, users: Snapshot['users']): string {
     .trim();
 }
 
+export type ChannelLevel = 'all' | 'mentions' | 'mute';
+
+// Per-device notification level for each channel, kept per workspace.
+export function useChannelLevels(workspaceId: string | undefined) {
+  const key = `relay.levels.${workspaceId ?? ''}`;
+  const [levels, setLevels] = useState<Record<string, ChannelLevel>>({});
+  useEffect(() => {
+    try {
+      setLevels(JSON.parse(localStorage.getItem(key) ?? '{}'));
+    } catch {
+      setLevels({});
+    }
+  }, [key]);
+  const setLevel = useCallback((channelId: string, level: ChannelLevel) => {
+    setLevels((prev) => {
+      const next = { ...prev, [channelId]: level };
+      try {
+        localStorage.setItem(key, JSON.stringify(next));
+      } catch {
+        /* private mode: lasts for this tab */
+      }
+      return next;
+    });
+  }, [key]);
+  const levelOf = useCallback((channelId: string): ChannelLevel => levels[channelId] ?? 'mentions', [levels]);
+  return { levelOf, setLevel };
+}
+
 // Slack's default: notify for DMs, mentions, and replies in threads you started.
-export function shouldNotify(m: Message, snap: Snapshot): boolean {
-  if (m.userId === snap.me || m.system) return false;
+// A channel set to 'all' notifies for every message; 'mute' never does.
+export function shouldNotify(m: Message, snap: Snapshot, level: ChannelLevel = 'mentions'): boolean {
+  if (m.userId === snap.me || m.system || level === 'mute') return false;
   const ch = snap.channels[m.channelId];
   if (!ch) return false;
+  if (level === 'all') return true;
   if (ch.kind === 'dm') return true;
   if (mentionsUser(m.text, snap.me, snap.groups)) return true;
   if (m.threadId) return snap.messages.some((x) => x.id === m.threadId && x.userId === snap.me);
@@ -76,8 +106,10 @@ export function useMessageAlerts(
   activeChannel: string,
   dndActive: boolean,
   open: (channelId: string, threadId?: string) => void,
+  levelOf: (channelId: string) => ChannelLevel = () => 'mentions',
 ) {
   const seen = useRef<Set<string> | null>(null);
+  const seenWs = useRef<string | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
     notificationsSupported() ? Notification.permission : 'unsupported',
   );
@@ -85,8 +117,9 @@ export function useMessageAlerts(
   useEffect(() => {
     if (!snap) return;
     // The first snapshot is history, not news.
-    if (!seen.current) {
+    if (!seen.current || seenWs.current !== snap.workspace.id) {
       seen.current = new Set(snap.messages.map((m) => m.id));
+      seenWs.current = snap.workspace.id;
       return;
     }
     const fresh = snap.messages.filter((m) => !seen.current!.has(m.id));
@@ -94,7 +127,7 @@ export function useMessageAlerts(
     if (dndActive || permission !== 'granted') return;
     for (const m of fresh) {
       const looking = !document.hidden && m.channelId === activeChannel && !m.threadId;
-      if (looking || !shouldNotify(m, snap)) continue;
+      if (looking || !shouldNotify(m, snap, levelOf(m.channelId))) continue;
       const author = snap.users[m.userId]?.name ?? 'Someone';
       const ch = snap.channels[m.channelId];
       const where = ch.kind === 'dm' ? author : `${author} in #${ch.name}`;

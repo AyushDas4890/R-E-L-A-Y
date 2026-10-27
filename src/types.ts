@@ -146,6 +146,21 @@ export interface HuddleState {
   participants: string[];
 }
 
+// Huddle media is a WebRTC mesh: every browser in a huddle connects to every other one.
+export const MAX_HUDDLE = 6;
+
+// One browser tab in a huddle. A user with two tabs open has two peers.
+export interface HuddlePeer {
+  id: string;
+  userId: string;
+}
+
+// WebRTC signaling, relayed by the server between two peers in the same huddle.
+export type RtcSignal =
+  | { kind: 'description'; description: { type: 'offer' | 'answer' | 'pranswer' | 'rollback'; sdp?: string } }
+  | { kind: 'candidate'; candidate: { candidate?: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string | null } }
+  | { kind: 'state'; muted: boolean; sharing: boolean };
+
 export const PLAN_FEATURES = [
   'Unlimited message history',
   'Unlimited huddles with screen share',
@@ -167,9 +182,18 @@ export const PLAN_FEATURES = [
   'Information barriers and custom terms of service',
 ] as const;
 
+// One row in the workspace switcher.
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  color: string;
+  members: number;
+  inviteOnly: boolean;
+}
+
 export interface Snapshot {
   me: string;
-  workspace: { name: string; plan: string };
+  workspace: { id: string; name: string; plan: string; color: string };
   users: Record<string, User>;
   online: string[];
   channels: Record<string, Channel>;
@@ -181,6 +205,7 @@ export interface Snapshot {
   saved: string[];
   lists: Record<string, ListItem[]>;
   sections: Section[];
+  starred: string[];
   groups: UserGroup[];
   settings: Settings;
   termsAccepted: number;
@@ -188,7 +213,10 @@ export interface Snapshot {
 }
 
 export type ClientEvent =
-  | { t: 'auth'; token: string; invite?: string }
+  | { t: 'auth'; token: string; invite?: string; workspace?: string }
+  | { t: 'createWorkspace'; name: string }
+  | { t: 'renameWorkspace'; name: string }
+  | { t: 'star'; channelId: string }
   | { t: 'inviteCreate' }
   | { t: 'inviteRevoke'; code: string }
   | { t: 'send'; channelId: string; text: string; threadId?: string; files?: FileAttachment[] }
@@ -208,6 +236,7 @@ export type ClientEvent =
   | { t: 'schedule'; channelId: string; text: string; at: number }
   | { t: 'unschedule'; id: string }
   | { t: 'huddle'; channelId: string; action: 'join' | 'leave' }
+  | { t: 'rtc'; to: string; signal: RtcSignal }
   | { t: 'list'; channelId: string; items: ListItem[] }
   | { t: 'sections'; sections: Section[] }
   | { t: 'groups'; groups: UserGroup[] }
@@ -235,6 +264,9 @@ export type ServerEvent =
   | { t: 'scheduled'; list: Scheduled[] }
   | { t: 'typing'; channelId: string; userId: string }
   | { t: 'huddles'; huddles: HuddleState[] }
+  // Sent to each tab in a huddle when its membership changes; channelId null means this tab is out.
+  | { t: 'huddleCall'; channelId: string | null; self: string; peers: HuddlePeer[] }
+  | { t: 'rtc'; from: string; signal: RtcSignal }
   | { t: 'saved'; saved: string[] }
   | { t: 'lists'; channelId: string; items: ListItem[] }
   | { t: 'sections'; sections: Section[] }
@@ -244,7 +276,11 @@ export type ServerEvent =
   | { t: 'admin'; admin: AdminData }
   | { t: 'analytics'; data: Analytics }
   | { t: 'export'; data: unknown }
-  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' };
+  | { t: 'workspaces'; mine: WorkspaceSummary[]; discover: WorkspaceSummary[] }
+  | { t: 'workspaceCreated'; id: string }
+  | { t: 'workspace'; workspace: Snapshot['workspace'] }
+  | { t: 'starred'; list: string[] }
+  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' };
 
 export interface Analytics {
   totalMessages: number;

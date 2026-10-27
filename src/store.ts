@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { mentionsUser } from './premium.ts';
 import { supabase, authEnabled } from './supabase.ts';
-import type { Analytics, ClientEvent, ServerEvent, Snapshot } from './types.ts';
+import type { Analytics, ClientEvent, ServerEvent, Snapshot, WorkspaceSummary } from './types.ts';
 
 interface State {
   snap: Snapshot | null;
   typing: Record<string, Record<string, number>>;
   error: string | null;
-  authError: { message: string; code: 'auth-required' | 'invite-required' } | null;
+  authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' } | null;
   analytics: Analytics | null;
+  workspaces: { mine: WorkspaceSummary[]; discover: WorkspaceSummary[] };
 }
 
 type Action = { ev: ServerEvent } | { clearError: true } | { expireTyping: number };
@@ -28,6 +29,7 @@ function reduce(state: State, action: Action): State {
   // Auth/invite rejections block the session, so they are kept apart from transient errors.
   if (ev.t === 'error') return ev.code ? { ...state, authError: { message: ev.message, code: ev.code } } : { ...state, error: ev.message };
   if (ev.t === 'analytics') return { ...state, analytics: ev.data };
+  if (ev.t === 'workspaces') return { ...state, workspaces: { mine: ev.mine, discover: ev.discover } };
   const snap = state.snap;
   if (!snap) return state;
   switch (ev.t) {
@@ -69,6 +71,10 @@ function reduce(state: State, action: Action): State {
       return { ...state, snap: { ...snap, settings: ev.settings } };
     case 'termsAccepted':
       return { ...state, snap: { ...snap, termsAccepted: ev.version } };
+    case 'workspace':
+      return { ...state, snap: { ...snap, workspace: ev.workspace } };
+    case 'starred':
+      return { ...state, snap: { ...snap, starred: ev.list } };
     case 'admin':
       return { ...state, snap: { ...snap, admin: ev.admin } };
     case 'typing':
@@ -91,6 +97,22 @@ function downloadJson(data: unknown): void {
   a.download = `relay-export-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function readWorkspace(): string | undefined {
+  try {
+    return localStorage.getItem('relay.workspace') ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function saveWorkspace(id: string): void {
+  try {
+    localStorage.setItem('relay.workspace', id);
+  } catch {
+    /* private mode: reopen the default workspace next time */
+  }
 }
 
 export interface Session {
@@ -153,9 +175,20 @@ export function useAuthToken(): { token: string | null; ready: boolean; signOut:
 }
 
 export function useRelay(session: Session | null) {
-  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null });
+  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null, workspaces: { mine: [], discover: [] } });
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  // Huddle signaling isn't app state, so it goes to listeners instead of the reducer.
+  const listeners = useRef(new Set<(ev: ServerEvent) => void>());
+  // The workspace to open on (re)connect; remembered across reloads.
+  const target = useRef<string | undefined>(readWorkspace());
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
+  const authenticate = (ws: WebSocket, invite?: string) => {
+    const s = sessionRef.current;
+    if (s && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'auth', token: s.token, invite: invite || undefined, workspace: target.current } satisfies ClientEvent));
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -171,12 +204,22 @@ export function useRelay(session: Session | null) {
       ws.onopen = () => {
         retry = 0;
         setConnected(true);
-        ws.send(JSON.stringify({ t: 'auth', token: session.token, invite: session.invite || undefined } satisfies ClientEvent));
+        authenticate(ws, session.invite);
       };
       ws.onmessage = (e) => {
         const ev = JSON.parse(e.data as string) as ServerEvent;
-        if (ev.t === 'export') downloadJson(ev.data);
-        else dispatch({ ev });
+        if (ev.t === 'rtc' || ev.t === 'huddleCall') listeners.current.forEach((fn) => fn(ev));
+        else if (ev.t === 'export') downloadJson(ev.data);
+        else if (ev.t === 'workspaceCreated') {
+          target.current = ev.id;
+          authenticate(ws);
+        } else {
+          if (ev.t === 'init') {
+            target.current = ev.snapshot.workspace.id;
+            saveWorkspace(ev.snapshot.workspace.id);
+          }
+          dispatch({ ev });
+        }
       };
       ws.onclose = () => {
         setConnected(false);
@@ -203,8 +246,23 @@ export function useRelay(session: Session | null) {
 
   const clearError = useCallback(() => dispatch({ clearError: true }), []);
 
-  return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, connected, send, clearError };
+  const listen = useCallback((fn: (ev: ServerEvent) => void) => {
+    listeners.current.add(fn);
+    return () => void listeners.current.delete(fn);
+  }, []);
+
+  // Switching re-authenticates on the open socket; the server moves it to the other workspace.
+  const switchWorkspace = useCallback((id: string) => {
+    target.current = id;
+    if (wsRef.current) authenticate(wsRef.current);
+  }, []);
+
+  return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, workspaces: state.workspaces, connected, send, listen, clearError, switchWorkspace };
 }
+
+// Channel ids repeat across workspaces (#general everywhere), so read state is keyed by both.
+// The original workspace keeps bare channel ids so existing read state still applies.
+export const readKey = (workspaceId: string, channelId: string) => (workspaceId === 'hq' ? channelId : `${workspaceId}/${channelId}`);
 
 export function useLastRead() {
   const [lastRead, setLastRead] = useState<Record<string, number>>(() => {
@@ -231,7 +289,7 @@ export function useUnread(snap: Snapshot | null, lastRead: Record<string, number
     if (!snap) return out;
     for (const m of snap.messages) {
       if (m.userId === snap.me || m.threadId || m.system) continue;
-      const seen = lastRead[m.channelId] ?? 0;
+      const seen = lastRead[readKey(snap.workspace.id, m.channelId)] ?? 0;
       if (m.ts <= seen) continue;
       const entry = (out[m.channelId] ??= { count: 0, mentions: 0 });
       entry.count += 1;

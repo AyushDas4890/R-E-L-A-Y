@@ -4,6 +4,8 @@ import type { Workflow } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { channelLabel, timeLabel } from '../format.tsx';
 import { searchAnswer, WORKFLOW_TEMPLATES } from '../premium.ts';
+import type { Appearance } from '../appearance.ts';
+import { AppearanceSettings } from './Appearance.tsx';
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -102,7 +104,7 @@ export function NewChannelModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function ProfileModal({ onClose, theme, setTheme }: { onClose: () => void; theme: string; setTheme: (t: string) => void }) {
+export function ProfileModal({ onClose, appearance }: { onClose: () => void; appearance: Appearance }) {
   const { snap, send } = useRelayCtx();
   const me = snap.users[snap.me];
   const [name, setName] = useState(me.name);
@@ -117,15 +119,7 @@ export function ProfileModal({ onClose, theme, setTheme }: { onClose: () => void
         <label style={{ width: 80 }}>Status<input value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="🌴" /></label>
         <label className="grow">&nbsp;<input value={text} onChange={(e) => setText(e.target.value)} placeholder="On vacation" /></label>
       </div>
-      <label>Theme
-        <select value={theme} onChange={(e) => setTheme(e.target.value)}>
-          <option value="switchboard">Switchboard</option>
-          <option value="midnight">Midnight</option>
-          <option value="daylight">Daylight</option>
-          <option value="aurora">Aurora</option>
-          <option value="sunset">Sunset</option>
-        </select>
-      </label>
+      <AppearanceSettings a={appearance} />
       <button className="send-btn" onClick={() => { send({ t: 'profile', name, title, status: { emoji, text } }); onClose(); }}>Save</button>
     </Modal>
   );

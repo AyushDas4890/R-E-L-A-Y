@@ -26,9 +26,30 @@ Relay needs a long-running server for WebSockets and a disk for state, so it can
 
 The server also serves the built UI itself, so you can skip Vercel and use the server URL directly.
 
+## Huddles (voice and screen share)
+
+Huddle audio and screen sharing run peer to peer over WebRTC. Every browser in a huddle connects directly to every other one (a mesh), and the Relay server only relays the connection setup (offers, answers, ICE candidates) between tabs in the same huddle. Media never passes through the server. A mesh suits small teams, so a huddle holds up to 6 people (`MAX_HUDDLE` in `src/types.ts`): each person uploads their mic and screen once per other person, so bandwidth and CPU grow with every extra participant.
+
+Browsers find each other with Google's public STUN servers. That works on most home networks, but strict NATs and firewalls (some office, campus and mobile networks) block direct connections, and then the huddle shows people stuck on "connecting". Fix that with a TURN relay (for example coturn, or a hosted one such as Cloudflare Calls, Twilio or Metered) and set these in the UI build:
+
+- `VITE_TURN_URL`: one or more comma-separated URLs, e.g. `turn:turn.example.com:3478,turns:turn.example.com:5349`
+- `VITE_TURN_USERNAME` and `VITE_TURN_CREDENTIAL`
+
+They are baked into the UI bundle, so anyone using the app can read them. Use a TURN service with short-lived or usage-capped credentials. For bigger calls (more than about 6 people), the next step is an SFU such as LiveKit, where each browser uploads once and the server forwards the media.
+
+In the console, `await relayHuddle.stats()` shows the bytes and frames sent and received per peer.
+
+## Backgrounds and themes
+
+Preferences → Appearance picks a workspace background, a colour theme and an accent colour. Each bundled background has a theme matched to it (switch off "Match colours to the background" to mix freely), and a strength slider sets how much of it shows through. You can also upload your own image (kept in your browser, up to 3 MB).
+
+To add a background, put a looping 1080p H.264 `.mp4` (no audio) and a `.jpg` poster in `public/bg/`, then add an entry to `BACKGROUNDS` in `src/appearance.ts`.
+
+Moon Walk, Material Hills, Purple Desert and Metal Human backgrounds © GetLayers (getlayers.ai), re-encoded to 1080p for the web.
+
 ## Features (all unlocked)
 
-Channels (public/private), DMs, threads, reactions, edit/delete, pins, saved items, mentions, rich text, file attachments, presence and typing, unread badges, Cmd/Ctrl+K search, huddles with mic meter, canvases, Workflow Builder, scheduled messages, `/remind` `/topic` `/me` `/shrug` `/huddle` `/summarize`, four themes.
+Channels (public/private), DMs, threads, reactions, edit/delete, pins, saved items, mentions, rich text, file attachments, presence and typing, unread badges, Cmd/Ctrl+K search, huddles with voice, screen sharing and speaking indicators, canvases, Workflow Builder, scheduled messages, `/remind` `/topic` `/me` `/shrug` `/huddle` `/summarize`, four themes.
 
 ## Premium feature coverage
 
@@ -47,5 +68,5 @@ Not built because they need external services or a multi-org backend: Slack Conn
 ## Notes
 
 - Identity is a name stored in localStorage. No auth: run behind a trusted network.
-- Huddles share presence and use the local mic for a level meter. No audio is relayed between users yet.
+- Huddles are peer to peer with up to 6 people. Strict NATs need a TURN relay (see Huddles above).
 - `/summarize` is a local heuristic recap, not an LLM.
