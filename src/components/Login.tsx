@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { GlowAscii } from './GlowAscii.tsx';
+import { LogoMark } from './LogoIntro.tsx';
+import '../nexus.css';
 import BlurText from '../react-bits/BlurText.tsx';
 import '../landing.css';
 import { supabase, authEnabled } from '../supabase.ts';
@@ -46,7 +48,7 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
         <GlowAscii />
       </div>
       <section className="auth-brand">
-        <div className="lp-brand" onClick={onBack}><span className="logo small">R</span><span>Relay</span></div>
+        <div className="lp-brand" onClick={onBack}><LogoMark size={30} /><span>Relay</span></div>
         <div className="auth-pitch">
           <h2><BlurText text="Welcome back to your workspace" delay={80} animateBy="words" direction="top" /></h2>
           <p>Pick up where your team left off. Channels, threads, huddles and canvases are one sign-in away.</p>
@@ -56,7 +58,7 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
             <li>Sign in with GitHub or Google</li>
           </ul>
         </div>
-        <div className="auth-foot">Relay. Built from public product behavior only.</div>
+        <div className="auth-foot">Relay. Powered by <b className="nx-powered-b">Flo Studios</b>.</div>
       </section>
       <section className="auth-panel">
         <div className="auth-card">

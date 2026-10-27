@@ -157,12 +157,15 @@ interface Props {
   className?: string;
   /** Optional photo or video element; defaults to a procedural plasma. */
   source?: HTMLImageElement | HTMLVideoElement | null;
+  /** Five ink colours, darkest to brightest. Read once on mount. */
+  palette?: string[];
 }
 
-export function GlowAscii({ className, source }: Props) {
+export function GlowAscii({ className, source, palette = PALETTE }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const sourceRef = useRef(source);
   sourceRef.current = source;
+  const paletteRef = useRef(palette);
 
   useEffect(() => {
     const host = box.current!;
@@ -261,7 +264,7 @@ export function GlowAscii({ className, source }: Props) {
     };
 
     const u = (p: WebGLProgram, n: string) => gl.getUniformLocation(p, n);
-    const pal = new Float32Array(PALETTE.flatMap(hex));
+    const pal = new Float32Array(paletteRef.current.flatMap(hex));
 
     const draw = (t: number) => {
       if (!W) return;
