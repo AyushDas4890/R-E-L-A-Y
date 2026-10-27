@@ -40,6 +40,8 @@ import { createStore } from './store.ts';
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
+import { createFiles } from './files.ts';
+import { firstUrl, unfurl } from './unfurl.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -148,6 +150,7 @@ function seed(): DB {
 }
 
 const store = createStore<DB>(seed, dataFile);
+const files = createFiles();
 
 // Admin client used only to verify access tokens. Null when auth is not configured,
 // in which case the server runs in no-auth dev mode (token treated as the identity).
@@ -178,6 +181,21 @@ function normalize(stored: Partial<DB> & Pick<DB, 'users' | 'channels' | 'messag
 }
 
 const db = normalize((await store.load()) as Partial<DB> & Pick<DB, 'users' | 'channels' | 'messages'>);
+
+// Moves files saved inline before Storage existed out of the state row, one message at a time.
+async function migrateInlineFiles(): Promise<void> {
+  let moved = 0;
+  for (const m of db.messages) {
+    if (!m.files?.some((f) => f.dataUrl)) continue;
+    m.files = await Promise.all(m.files.map((f) => files.offload(f)));
+    moved += 1;
+  }
+  if (moved) {
+    console.log(`moved files from ${moved} messages to storage`);
+    persist();
+  }
+}
+void migrateInlineFiles().catch((err) => console.error('file migration failed:', err instanceof Error ? err.message : err));
 
 let saveTimer: NodeJS.Timeout | undefined;
 function persist(): void {
@@ -331,6 +349,18 @@ function summarize(channelId: string, threadId?: string): string {
   return `**Recap** — ${msgs.length} messages from ${people.join(', ')}${links ? `, ${links} with links` : ''}.\n${last.join('\n')}`;
 }
 
+// Fetches a preview for the first link and pushes the updated message. Failures just mean no card.
+async function addPreview(m: Message): Promise<void> {
+  const url = firstUrl(m.text);
+  if (!url) return;
+  const preview = await unfurl(url).catch(() => null);
+  const ch = db.channels[m.channelId];
+  if (!preview || !ch || !db.messages.includes(m)) return;
+  m.preview = preview;
+  broadcastChannel(ch, { t: 'message', message: m });
+  persist();
+}
+
 function ensureMember(ch: Channel, userId: string): void {
   if (!ch.members.includes(userId)) ch.members.push(userId);
 }
@@ -455,7 +485,9 @@ async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
         return;
       }
       if (!ev.text.trim() && !ev.files?.length) return;
-      postMessage(ev.channelId, userId, ev.text, { threadId: ev.threadId, files: ev.files?.slice(0, 5) });
+      const stored = ev.files?.length ? await Promise.all(ev.files.slice(0, 5).map((f) => files.offload(f))) : undefined;
+      const posted = postMessage(ev.channelId, userId, ev.text, { threadId: ev.threadId, files: stored });
+      if (posted) void addPreview(posted);
       return;
     }
     case 'edit': {
@@ -464,9 +496,11 @@ async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
       preserve(m);
       m.text = ev.text.slice(0, MAX_TEXT);
       m.edited = true;
+      if (m.preview && firstUrl(m.text) !== m.preview.url) delete m.preview;
       const ch = db.channels[m.channelId];
       if (ch) broadcastChannel(ch, { t: 'message', message: m });
       persist();
+      if (!m.preview) void addPreview(m);
       return;
     }
     case 'delete': {
@@ -784,8 +818,7 @@ async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
         send(ws, { t: 'error', message: `Can't summarize ${file.name}: only text files are supported.` });
         return;
       }
-      const base64 = file.dataUrl.slice(file.dataUrl.indexOf(',') + 1);
-      const text = Buffer.from(base64, 'base64').toString('utf8');
+      const text = (await files.read(file)).toString('utf8');
       postMessage(m.channelId, BOT_ID, `**Summary of ${file.name}**\n${summarizeText(text)}`, { threadId: m.threadId ?? m.id });
       return;
     }

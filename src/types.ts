@@ -40,7 +40,17 @@ export interface FileAttachment {
   name: string;
   type: string;
   size: number;
-  dataUrl: string;
+  // Uploads arrive as dataUrl; with Supabase Storage the server swaps it for a stored url.
+  url?: string;
+  dataUrl?: string;
+}
+
+export interface LinkPreview {
+  url: string;
+  title: string;
+  description?: string;
+  image?: string;
+  site?: string;
 }
 
 export interface Message {
@@ -54,6 +64,7 @@ export interface Message {
   edited?: boolean;
   pinned?: boolean;
   files?: FileAttachment[];
+  preview?: LinkPreview;
   system?: boolean;
 }
 
