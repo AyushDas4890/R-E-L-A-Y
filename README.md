@@ -22,6 +22,7 @@ Relay needs a long-running server for WebSockets and a disk for state, so it can
 
 1. **Server:** on Render, create a Blueprint from this repo (`render.yaml`). It builds, starts `npm start`, health-checks `/healthz`, and stores state in `DATA_DIR` on a persistent disk. Any Node host works: build with `npm run build`, run `npm start`, set `PORT` and `DATA_DIR`.
 2. **UI:** in Vercel, import the repo (framework Vite, `vercel.json` is included) and set `VITE_WS_URL=wss://<your-server-host>/ws`. Redeploy after changing it, since it is baked in at build time.
+3. **Auth + persistence:** follow [docs/supabase-setup.md](docs/supabase-setup.md) to create the Supabase project, state table and OAuth providers, then set `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` (server) and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (UI). Without them the app runs in dev mode: file storage and name-only sign-in.
 
 The server also serves the built UI itself, so you can skip Vercel and use the server URL directly.
 
