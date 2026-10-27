@@ -12,6 +12,12 @@
 
 **A Slack-style team chat with every premium feature unlocked, a bot teammate and a brand-new look.**
 
+### 🌐 Try it live: **[slack-reverse.vercel.app](https://slack-reverse.vercel.app)**
+
+<a href="https://slack-reverse.vercel.app"><img alt="Open Relay" src="https://img.shields.io/badge/%E2%96%B6%20%20Open%20Relay-slack--reverse.vercel.app-f0b07a?style=for-the-badge&labelColor=120806"></a>
+
+<sub>Sign in with Google or GitHub. The server sleeps when idle, so the first visit can take up to a minute to connect.</sub>
+
 [Tour](#-take-the-tour) · [Inside the app](#-inside-the-app) · [Themes](#-make-it-yours) · [Features](#-everything-thats-unlocked) · [Architecture](#-how-it-works) · [Run it](#-run-it-locally) · [Deploy](#-deploy)
 
 </div>
@@ -19,6 +25,8 @@
 ---
 
 ## 🎬 Take the tour
+
+> Everything below is from the live site. Open **[slack-reverse.vercel.app](https://slack-reverse.vercel.app)** to try it yourself.
 
 <table>
 <tr>
@@ -251,6 +259,8 @@ Without Supabase settings, state persists to `data/db.json` and sign-in is name-
 </details>
 
 ## 🚀 Deploy
+
+The live instance runs this setup: the UI at **[slack-reverse.vercel.app](https://slack-reverse.vercel.app)** (Vercel) and the server at **[relay-server-m7b5.onrender.com](https://relay-server-m7b5.onrender.com/healthz)** (Render).
 
 Relay needs a long-running server for WebSockets, so the server runs on a WebSocket-capable host and the UI on Vercel.
 
