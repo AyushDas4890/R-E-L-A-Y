@@ -117,12 +117,30 @@
 .rl-credit { margin: 0; color: rgba(255,255,255,.65); font: 600 13px var(--font); letter-spacing: .14em; text-transform: uppercase; }
 .rl-credit b, .nx-powered b { color: #9df5c5; background: linear-gradient(#9df5c5, #9df5c5) 0 100% / 100% 2px no-repeat; padding-bottom: 2px; }
 
-/* Feature marquee */
-.nx-marquee { overflow: hidden; padding: 18px 0; background: #9df5c5; color: #120806; transform-origin: center; position: relative; z-index: 2; }
-.nx-marquee-track { display: flex; width: max-content; }
-.nx-marquee-track > span { display: flex; }
-.nx-marquee em { font: 400 clamp(22px, 3vw, 34px)/1 'Audiowide', var(--display); font-style: normal; text-transform: uppercase; white-space: nowrap; display: inline-flex; align-items: center; }
-.nx-marquee i { font-style: normal; margin: 0 28px; font-size: .7em; }
+/* Signal band: a pulse runs down the line and wakes each feature, which "says" a little message. */
+.nx-signal { --bub: 38px; --orb: 58px; --pad: 34px; --edge: 4vw; position: relative; z-index: 2; padding: var(--pad) 0 calc(var(--pad) - 4px); color: #fff;
+  background: radial-gradient(60% 120% at 50% 0%, rgba(157,245,197,.10), transparent 70%), repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 1px, transparent 1px 48px), #120806;
+  border-block: 1px solid rgba(157,245,197,.28); overflow: hidden; }
+.nx-sig-line { position: absolute; left: calc(var(--edge) + 48px); right: calc(var(--edge) + 48px); top: calc(var(--pad) + var(--bub) + var(--orb) / 2 - 1px); height: 2px; background: rgba(157,245,197,.18); }
+.nx-sig-fill { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(157,245,197,.2), #9df5c5); transform: scaleX(0); transform-origin: left; }
+.nx-sig-dot { position: absolute; left: 0; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(157,245,197,.35), 0 0 24px 6px #9df5c5; }
+.nx-sig-nodes { position: relative; display: flex; justify-content: space-between; margin: 0; padding: 0 var(--edge); list-style: none; }
+.nx-sig-node { width: 96px; display: flex; flex-direction: column; align-items: center; }
+.nx-sig-bubble { height: var(--bub); padding: 0 12px; display: inline-flex; align-items: center; margin-bottom: 0; border-radius: 12px 12px 12px 3px; background: #9df5c5; color: #120806; font: 700 12px/1 var(--font); white-space: nowrap;
+  opacity: 0; transform: translateY(10px) scale(.85); transform-origin: 20% 100%; transition: opacity .3s, transform .45s cubic-bezier(.34,1.56,.64,1); }
+.nx-sig-orb { position: relative; width: var(--orb); height: var(--orb); display: grid; place-items: center; border-radius: 50%; border: 2px solid rgba(157,245,197,.3); background: #1b0f0b; color: rgba(157,245,197,.55);
+  font: 400 24px/1 'Audiowide', var(--display); transition: background .25s, color .25s, border-color .25s, box-shadow .35s; }
+.nx-sig-orb u { position: absolute; inset: -2px; border-radius: 50%; border: 2px solid #9df5c5; opacity: 0; pointer-events: none; }
+.nx-sig-node em { margin-top: 12px; font: 400 13px/1 'Audiowide', var(--display); font-style: normal; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,.5); transition: color .25s; }
+.nx-sig-node.lit .nx-sig-bubble { opacity: 1; transform: none; }
+.nx-sig-node.lit .nx-sig-orb { background: #9df5c5; border-color: #9df5c5; color: #120806; box-shadow: 0 0 28px 4px rgba(157,245,197,.55); }
+.nx-sig-node.lit em { color: #9df5c5; }
+@media (max-width: 960px) {
+  .nx-signal { --edge: 18px; }
+  .nx-sig-line { display: none; }
+  .nx-sig-nodes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px 8px; }
+  .nx-sig-node { width: auto; }
+}
 .lp-foot { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
 .lp-h2 { perspective: 600px; }
 

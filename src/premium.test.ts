@@ -7,6 +7,7 @@ import {
   explainTerm,
   mentionsUser,
   pruneRetention,
+  scheduleDue,
   searchAnswer,
   summarizeText,
   workflowReply,
@@ -49,6 +50,18 @@ test('workflow branch overrides the reply only when its condition matches', () =
   };
   assert.equal(workflowReply(wf, '!it forgot PASSWORD'), 'reset it');
   assert.equal(workflowReply(wf, '!it printer'), 'default');
+});
+
+test('schedule fires once inside its window, skips weekends when asked, and ignores stale restarts', () => {
+  const t = { type: 'schedule' as const, channelId: 'general', time: '09:30', weekdaysOnly: true };
+  const wed = (h: number, m: number) => new Date(2026, 9, 28, h, m); // Wednesday
+  assert.equal(scheduleDue(t, wed(9, 29)), null);
+  assert.equal(scheduleDue(t, wed(9, 30)), '2026-10-28');
+  assert.equal(scheduleDue(t, wed(9, 34)), '2026-10-28');
+  assert.equal(scheduleDue(t, wed(15, 0)), null);
+  assert.equal(scheduleDue(t, new Date(2026, 9, 31, 9, 30)), null); // Saturday
+  assert.equal(scheduleDue({ ...t, weekdaysOnly: false }, new Date(2026, 9, 31, 9, 30)), '2026-10-31');
+  assert.equal(scheduleDue({ ...t, time: 'nope' }, wed(9, 30)), null);
 });
 
 test('retention deletes old messages but keeps those under legal hold', () => {

@@ -16,6 +16,19 @@ gsap.registerPlugin(ScrollTrigger, ScrollSmoother, SplitText);
 // Warm "voxel terrain" palette for the hero glyph field.
 const TERRAIN = ['#1a0906', '#4a1c12', '#8a3a22', '#c8693c', '#f0b07a'];
 
+// Feature, glyph, and the little message it "says" when the pulse reaches it.
+const SIGNAL: [string, string, string][] = [
+  ['Channels', '#', '#launch'],
+  ['Threads', '↳', '3 replies'],
+  ['Huddles', '◉', 'live now'],
+  ['Canvases', '▤', 'draft v2'],
+  ['Lists', '✓', '4 of 5 done'],
+  ['Workflows', '⚡', 'ran 9:30'],
+  ['Search', '⌕', '⌘K'],
+  ['Clips', '▶', '0:12'],
+  ['Reminders', '◔', 'in 10m'],
+];
+
 const NAV = [
   { label: 'How it works', href: '#tour' },
   { label: 'Huddles', href: '#huddles' },
@@ -103,7 +116,28 @@ export function Landing({ onGetStarted }: Props) {
       gsap.fromTo('.nx-hero .nx-bot-scroll', { y: 0, scale: 1 }, { y: () => -window.innerHeight * 0.1, scale: 0.94, ease: 'none', immediateRender: false, scrollTrigger: { ...scrub, invalidateOnRefresh: true } });
       gsap.fromTo('.nx-ghost', { yPercent: 0 }, { yPercent: 30, ease: 'none', immediateRender: false, scrollTrigger: scrub });
 
-      gsap.to('.nx-marquee-track', { xPercent: -50, duration: 28, ease: 'none', repeat: -1 });
+      // Signal band: a pulse runs down the line and wakes each feature in turn, then the row flashes together.
+      const nodes = gsap.utils.toArray<HTMLElement>('.nx-sig-node');
+      const clear = () => nodes.forEach((n) => n.classList.remove('lit'));
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        nodes.forEach((n) => n.classList.add('lit'));
+      } else {
+        const gap = 0.55;
+        const run = gap * (nodes.length - 1);
+        const tl = gsap.timeline({
+          repeat: -1,
+          repeatDelay: 1.2,
+          onRepeat: clear,
+          scrollTrigger: { trigger: '.nx-signal', start: 'top 95%', toggleActions: 'play pause resume pause' },
+        });
+        tl.fromTo('.nx-sig-dot', { left: '0%' }, { left: '100%', duration: run, ease: 'none' }, 0)
+          .fromTo('.nx-sig-fill', { scaleX: 0 }, { scaleX: 1, duration: run, ease: 'none' }, 0);
+        nodes.forEach((n, i) => {
+          tl.call(() => n.classList.add('lit'), [], i * gap)
+            .fromTo(n.querySelector('.nx-sig-orb u'), { scale: 1, opacity: 0.85 }, { scale: 2.5, opacity: 0, duration: 0.9, ease: 'power2.out' }, i * gap);
+        });
+        tl.to('.nx-sig-orb', { scale: 1.14, duration: 0.22, ease: 'power2.out', yoyo: true, repeat: 1, stagger: 0.05 }, run + 0.5);
+      }
 
       gsap.utils.toArray<HTMLElement>('.nx-split').forEach((h) => {
         const split = SplitText.create(h, { type: 'chars,words', mask: 'words' });
@@ -191,14 +225,17 @@ export function Landing({ onGetStarted }: Props) {
           </div>
         </section>
 
-        <div className="nx-marquee" aria-hidden>
-          <div className="nx-marquee-track">
-            {[0, 1].map((k) => (
-              <span key={k}>
-                {['Channels', 'Threads', 'Huddles', 'Canvases', 'Lists', 'Workflows', 'Search', 'Clips', 'Reminders'].map((w) => <em key={w}>{w}<i>✦</i></em>)}
-              </span>
+        <div className="nx-signal" aria-hidden>
+          <div className="nx-sig-line"><i className="nx-sig-fill" /><i className="nx-sig-dot" /></div>
+          <ul className="nx-sig-nodes">
+            {SIGNAL.map(([name, glyph, bubble]) => (
+              <li key={name} className="nx-sig-node">
+                <span className="nx-sig-bubble">{bubble}</span>
+                <b className="nx-sig-orb"><u />{glyph}</b>
+                <em>{name}</em>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
         <section id="tour" className="nx-tour">
