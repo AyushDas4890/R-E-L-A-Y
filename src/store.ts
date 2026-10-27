@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { mentionsUser } from './premium.ts';
+import { supabase, authEnabled } from './supabase.ts';
 import type { Analytics, ClientEvent, ServerEvent, Snapshot } from './types.ts';
 
 interface State {
   snap: Snapshot | null;
   typing: Record<string, Record<string, number>>;
   error: string | null;
+  authError: { message: string; code: 'auth-required' | 'invite-required' } | null;
   analytics: Analytics | null;
 }
 
@@ -22,8 +24,9 @@ function reduce(state: State, action: Action): State {
     return { ...state, typing };
   }
   const ev = action.ev;
-  if (ev.t === 'init') return { ...state, snap: ev.snapshot };
-  if (ev.t === 'error') return { ...state, error: ev.message };
+  if (ev.t === 'init') return { ...state, snap: ev.snapshot, authError: null };
+  // Auth/invite rejections block the session, so they are kept apart from transient errors.
+  if (ev.t === 'error') return ev.code ? { ...state, authError: { message: ev.message, code: ev.code } } : { ...state, error: ev.message };
   if (ev.t === 'analytics') return { ...state, analytics: ev.data };
   const snap = state.snap;
   if (!snap) return state;
@@ -90,30 +93,72 @@ function downloadJson(data: unknown): void {
   URL.revokeObjectURL(url);
 }
 
-export function getIdentity(): { userId: string; name: string } | null {
+export interface Session {
+  token: string;
+  invite: string;
+}
+
+// Dev mode (no Supabase): identity is a `uuid:name` token kept in localStorage.
+export function getDevSession(): Session | null {
+  if (authEnabled) return null;
   try {
-    const raw = localStorage.getItem('relay.identity');
-    return raw ? (JSON.parse(raw) as { userId: string; name: string }) : null;
+    const raw = localStorage.getItem('relay.dev-session');
+    if (raw) return JSON.parse(raw) as Session;
+    // Carry over identities saved before sign-in existed.
+    const old = localStorage.getItem('relay.identity');
+    if (!old) return null;
+    const { userId, name } = JSON.parse(old) as { userId: string; name: string };
+    return saveDevSession(`${userId}:${name}`, '');
   } catch (err) {
-    console.warn('identity unreadable', err);
+    console.warn('dev session unreadable', err);
     return null;
   }
 }
 
-export function saveIdentity(name: string): { userId: string; name: string } {
-  const existing = getIdentity();
-  const identity = { userId: existing?.userId ?? crypto.randomUUID(), name };
-  localStorage.setItem('relay.identity', JSON.stringify(identity));
-  return identity;
+export function saveDevSession(token: string, invite: string): Session {
+  const s = { token, invite };
+  localStorage.setItem('relay.dev-session', JSON.stringify(s));
+  return s;
 }
 
-export function useRelay(identity: { userId: string; name: string } | null) {
-  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, analytics: null });
+export function clearDevSession(): void {
+  localStorage.removeItem('relay.dev-session');
+  localStorage.removeItem('relay.identity');
+}
+
+// Tracks the Supabase access token; in dev mode it stays null and `ready` is true at once.
+export function useAuthToken(): { token: string | null; ready: boolean; signOut: () => Promise<void> } {
+  const [token, setToken] = useState<string | null>(null);
+  const [ready, setReady] = useState(!authEnabled);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => {
+      setToken(data.session?.access_token ?? null);
+      setReady(true);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setToken(session?.access_token ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const signOut = useCallback(async () => {
+    if (supabase) await supabase.auth.signOut();
+    else clearDevSession();
+    setToken(null);
+  }, []);
+
+  return { token, ready, signOut };
+}
+
+export function useRelay(session: Session | null) {
+  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null });
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!identity) return;
+    if (!session) return;
     let closed = false;
     let retry = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -126,7 +171,7 @@ export function useRelay(identity: { userId: string; name: string } | null) {
       ws.onopen = () => {
         retry = 0;
         setConnected(true);
-        ws.send(JSON.stringify({ t: 'hello', userId: identity.userId, name: identity.name } satisfies ClientEvent));
+        ws.send(JSON.stringify({ t: 'auth', token: session.token, invite: session.invite || undefined } satisfies ClientEvent));
       };
       ws.onmessage = (e) => {
         const ev = JSON.parse(e.data as string) as ServerEvent;
@@ -148,7 +193,7 @@ export function useRelay(identity: { userId: string; name: string } | null) {
       clearInterval(sweep);
       wsRef.current?.close();
     };
-  }, [identity?.userId]);
+  }, [session?.token, session?.invite]);
 
   const send = useCallback((ev: ClientEvent) => {
     const ws = wsRef.current;
@@ -158,7 +203,7 @@ export function useRelay(identity: { userId: string; name: string } | null) {
 
   const clearError = useCallback(() => dispatch({ clearError: true }), []);
 
-  return { snap: state.snap, typing: state.typing, error: state.error, analytics: state.analytics, connected, send, clearError };
+  return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, connected, send, clearError };
 }
 
 export function useLastRead() {
