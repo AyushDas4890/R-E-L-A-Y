@@ -27,6 +27,8 @@ import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './
 import { CreateWorkspaceModal, FindWorkspacesModal, InviteModal, WorkspacePicker, WorkspaceSwitcher, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
 import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, type ChannelLevel } from './notify.ts';
+import { useAppearance } from './appearance.ts';
+import { Backdrop } from './components/Appearance.tsx';
 
 type Modal = null | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'workflows' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
@@ -63,7 +65,7 @@ export default function App() {
   const [panel, setPanel] = useState<Panel>(null);
   const [modal, setModal] = useState<Modal>(null);
   const [menu, setMenu] = useState<Menu>(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('relay.theme') ?? 'plum');
+  const appearance = useAppearance();
   // Phone layout: the channel list is its own screen, opened from the header or tab bar.
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -86,11 +88,6 @@ export default function App() {
     go({ view: 'channel', channel: channelId });
     setPanel(threadId ? { kind: 'thread', id: threadId } : null);
   }, levels.levelOf);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    localStorage.setItem('relay.theme', theme);
-  }, [theme]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -421,9 +418,7 @@ export default function App() {
         <button className="nav-scrim" aria-label="Close channels" tabIndex={-1} onClick={() => setNavOpen(false)} />
 
         <main className="main">
-          <div className="main-bg" aria-hidden>
-            <video src="/bg/silver-line-waves.mp4" poster="/bg/silver-line-waves.jpg" autoPlay muted loop playsInline preload="metadata" />
-          </div>
+          <Backdrop bg={appearance.background} dim={appearance.dim} />
           {!connected && <div className="banner">Reconnecting…</div>}
           {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
           {view === 'activity' ? <ActivityView />
@@ -574,7 +569,7 @@ export default function App() {
         />
       )}
       {modal === 'new' && <NewChannelModal onClose={() => setModal(null)} />}
-      {modal === 'profile' && <ProfileModal onClose={() => setModal(null)} theme={theme} setTheme={setTheme} />}
+      {modal === 'profile' && <ProfileModal onClose={() => setModal(null)} appearance={appearance} />}
       {modal === 'plan' && <PlanModal onClose={() => setModal(null)} />}
       {modal === 'scheduled' && <ScheduledModal onClose={() => setModal(null)} />}
       {modal === 'workflows' && <WorkflowModal onClose={() => setModal(null)} />}

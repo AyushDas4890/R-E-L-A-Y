@@ -26,6 +26,14 @@ Relay needs a long-running server for WebSockets and a disk for state, so it can
 
 The server also serves the built UI itself, so you can skip Vercel and use the server URL directly.
 
+## Backgrounds and themes
+
+Preferences → Appearance picks a workspace background, a colour theme and an accent colour. Each bundled background has a theme matched to it (switch off "Match colours to the background" to mix freely), and a strength slider sets how much of it shows through. You can also upload your own image (kept in your browser, up to 3 MB).
+
+To add a background, put a looping 1080p H.264 `.mp4` (no audio) and a `.jpg` poster in `public/bg/`, then add an entry to `BACKGROUNDS` in `src/appearance.ts`.
+
+Moon Walk, Material Hills, Purple Desert and Metal Human backgrounds © GetLayers (getlayers.ai), re-encoded to 1080p for the web.
+
 ## Features (all unlocked)
 
 Channels (public/private), DMs, threads, reactions, edit/delete, pins, saved items, mentions, rich text, file attachments, presence and typing, unread badges, Cmd/Ctrl+K search, huddles with mic meter, canvases, Workflow Builder, scheduled messages, `/remind` `/topic` `/me` `/shrug` `/huddle` `/summarize`, four themes.
