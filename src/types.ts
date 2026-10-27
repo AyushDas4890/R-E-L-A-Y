@@ -167,9 +167,18 @@ export const PLAN_FEATURES = [
   'Information barriers and custom terms of service',
 ] as const;
 
+// One row in the workspace switcher.
+export interface WorkspaceSummary {
+  id: string;
+  name: string;
+  color: string;
+  members: number;
+  inviteOnly: boolean;
+}
+
 export interface Snapshot {
   me: string;
-  workspace: { name: string; plan: string };
+  workspace: { id: string; name: string; plan: string; color: string };
   users: Record<string, User>;
   online: string[];
   channels: Record<string, Channel>;
@@ -181,6 +190,7 @@ export interface Snapshot {
   saved: string[];
   lists: Record<string, ListItem[]>;
   sections: Section[];
+  starred: string[];
   groups: UserGroup[];
   settings: Settings;
   termsAccepted: number;
@@ -188,7 +198,10 @@ export interface Snapshot {
 }
 
 export type ClientEvent =
-  | { t: 'auth'; token: string; invite?: string }
+  | { t: 'auth'; token: string; invite?: string; workspace?: string }
+  | { t: 'createWorkspace'; name: string }
+  | { t: 'renameWorkspace'; name: string }
+  | { t: 'star'; channelId: string }
   | { t: 'inviteCreate' }
   | { t: 'inviteRevoke'; code: string }
   | { t: 'send'; channelId: string; text: string; threadId?: string; files?: FileAttachment[] }
@@ -244,7 +257,11 @@ export type ServerEvent =
   | { t: 'admin'; admin: AdminData }
   | { t: 'analytics'; data: Analytics }
   | { t: 'export'; data: unknown }
-  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' };
+  | { t: 'workspaces'; mine: WorkspaceSummary[]; discover: WorkspaceSummary[] }
+  | { t: 'workspaceCreated'; id: string }
+  | { t: 'workspace'; workspace: Snapshot['workspace'] }
+  | { t: 'starred'; list: string[] }
+  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' };
 
 export interface Analytics {
   totalMessages: number;
