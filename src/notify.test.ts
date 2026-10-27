@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dndPresets, shouldNotify } from './notify.ts';
+import { dndPresets, plainText, shouldNotify } from './notify.ts';
 import type { Message, Snapshot } from './types.ts';
 
 const msg = (over: Partial<Message>): Message => ({ id: 'x', channelId: 'general', userId: 'bob', text: 'hi', ts: 0, reactions: {}, ...over });
@@ -29,4 +29,10 @@ test('dndPresets ends "until tomorrow" at 9:00 the next day', () => {
   assert.equal(new Date(last.until).getDate(), 28);
   assert.equal(new Date(last.until).getHours(), 9);
   assert.equal(dndPresets(now)[0].until - now.getTime(), 30 * 60_000);
+});
+
+test('plainText drops formatting marks and names mentions', () => {
+  const users = { bob: { name: 'Bob' } } as unknown as Snapshot['users'];
+  assert.equal(plainText('**Daily recap** — see `#general`\n• _soon_ <@bob> ~~old~~', users), 'Daily recap — see #general • soon @Bob old');
+  assert.equal(plainText('> quoted\nsnake_case_name stays', users), 'quoted snake_case_name stays');
 });
