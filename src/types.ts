@@ -121,6 +121,8 @@ export interface Settings {
   terms: string;
   termsVersion: number;
   barriers: [string, string][];
+  // Off by default: anyone who signs in joins. On: new people need an invite code.
+  inviteOnly?: boolean;
 }
 
 export interface AdminData {
@@ -214,7 +216,7 @@ export type ClientEvent =
   | { t: 'role'; userId: string; role: Role }
   | { t: 'channelPolicy'; channelId: string; postingPolicy: 'everyone' | 'admins' }
   | { t: 'addMember'; channelId: string; userId: string }
-  | { t: 'settings'; settings: Omit<Settings, 'termsVersion'> }
+  | { t: 'settings'; settings: Partial<Omit<Settings, 'termsVersion'>> }
   | { t: 'legalHold'; userId: string; on: boolean }
   | { t: 'acceptTerms' }
   | { t: 'fileSummary'; id: string; index: number }

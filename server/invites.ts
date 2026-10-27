@@ -15,12 +15,13 @@ export function validateInvite(code: string | undefined, invites: Invite[]): boo
   return invites.some((i) => i.code === code && !i.revoked);
 }
 
-export type JoinInputs = { hasOwner: boolean; isMember: boolean; validInvite: boolean };
+export type JoinInputs = { hasOwner: boolean; isMember: boolean; validInvite: boolean; inviteOnly?: boolean };
 export type JoinResult = 'owner' | 'member' | 'reject';
 
-export function decideRole({ hasOwner, isMember, validInvite }: JoinInputs): JoinResult {
+// Open workspaces let anyone who signs in join; invite-only ones need a valid code.
+export function decideRole({ hasOwner, isMember, validInvite, inviteOnly = false }: JoinInputs): JoinResult {
   if (!hasOwner) return 'owner';
   if (isMember) return 'member';
-  if (validInvite) return 'member';
+  if (validInvite || !inviteOnly) return 'member';
   return 'reject';
 }

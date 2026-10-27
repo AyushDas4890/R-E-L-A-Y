@@ -191,7 +191,7 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
 
           <label className="si-field">
             <span>Invite code</span>
-            <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Not needed for the first person" maxLength={32} {...field} />
+            <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Optional" maxLength={32} {...field} />
           </label>
 
           {signedIn ? (

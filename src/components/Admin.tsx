@@ -228,14 +228,22 @@ function InvitesTab() {
   const { snap, send } = useRelayCtx();
   const [copied, setCopied] = useState<string | null>(null);
   const invites = (snap.admin?.invites ?? []).slice().reverse();
+  const inviteOnly = !!snap.settings.inviteOnly;
   const copy = (code: string) => {
     void navigator.clipboard?.writeText(`${window.location.origin}/?invite=${code}`);
     setCopied(code);
   };
   return (
     <div className="grid-gap">
+      <label className="check invite-mode">
+        <input type="checkbox" checked={inviteOnly} onChange={(e) => send({ t: 'settings', settings: { inviteOnly: e.target.checked } })} />
+        <span>
+          <strong>Require an invite to join</strong>
+          <small className="muted">{inviteOnly ? 'New people need an invite link. Current members can still sign in.' : 'Off: anyone who signs in with GitHub or Google joins this workspace.'}</small>
+        </span>
+      </label>
       <div className="row-between">
-        <p className="muted">New people need an invite link to join. Anyone already in the workspace can sign in again without one.</p>
+        <p className="muted">{inviteOnly ? 'Send these links to people you want to add.' : 'Invite links still work, and pre-fill the code if you turn invites on later.'}</p>
         <button className="send-btn" onClick={() => send({ t: 'inviteCreate' })}>Generate invite link</button>
       </div>
       {invites.length === 0 && <p className="muted">No invites yet.</p>}
