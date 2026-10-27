@@ -155,14 +155,24 @@ export function useAuthToken(): { token: string | null; ready: boolean; signOut:
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => {
-      setToken(data.session?.access_token ?? null);
-      setReady(true);
-    });
+    // getSession can stall (a slow network, or a refresh blocked on another tab's lock). Never
+    // leave the page stuck on the splash: after a few seconds show the landing page anyway;
+    // onAuthStateChange still signs the user in when the session does arrive.
+    const giveUp = setTimeout(() => setReady(true), 4000);
+    supabase.auth.getSession()
+      .then(({ data }) => setToken(data.session?.access_token ?? null))
+      .catch((err) => console.warn('session check failed', err))
+      .finally(() => {
+        clearTimeout(giveUp);
+        setReady(true);
+      });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       setToken(session?.access_token ?? null);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      clearTimeout(giveUp);
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -229,9 +239,22 @@ export function useRelay(session: Session | null) {
       };
     };
     connect();
+    // Coming back to the tab or back online: retry now instead of waiting out the backoff.
+    const retryNow = () => {
+      if (closed || document.visibilityState === 'hidden') return;
+      const state = wsRef.current?.readyState;
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+      clearTimeout(timer);
+      retry = 0;
+      connect();
+    };
+    window.addEventListener('online', retryNow);
+    document.addEventListener('visibilitychange', retryNow);
     const sweep = setInterval(() => dispatch({ expireTyping: Date.now() }), 1000);
     return () => {
       closed = true;
+      window.removeEventListener('online', retryNow);
+      document.removeEventListener('visibilitychange', retryNow);
       clearTimeout(timer);
       clearInterval(sweep);
       wsRef.current?.close();

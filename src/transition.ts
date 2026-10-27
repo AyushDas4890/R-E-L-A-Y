@@ -17,7 +17,9 @@ function overlay() {
 }
 
 export function pageTransition(swap: () => void) {
-  if (busy) return;
+  // A second request mid-sweep (a double click, or Back pressed during the animation) still has
+  // to land, or the view and the URL disagree; the swap just happens without its own sweep.
+  if (busy) { swap(); return; }
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { swap(); return; }
   busy = true;
   const el = overlay();

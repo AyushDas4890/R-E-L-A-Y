@@ -3,6 +3,12 @@ import type { Channel, User, UserGroup } from './types.ts';
 
 export const EMOJI = ['👍', '❤️', '😂', '🎉', '🙏', '👀', '🔥', '✅', '🚀', '😮', '😢', '💯'];
 
+// Message data comes from other people, so only web and inline-data links reach an href or src.
+// Anything else (javascript:, vbscript:, ...) is dropped.
+export function safeUrl(url: string | undefined): string | undefined {
+  return url && /^(https?:|data:(image|video|audio|text|application)\/|blob:)/i.test(url) ? url : undefined;
+}
+
 export function timeLabel(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }

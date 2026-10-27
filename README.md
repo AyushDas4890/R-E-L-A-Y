@@ -67,6 +67,6 @@ Not built because they need external services or a multi-org backend: Slack Conn
 
 ## Notes
 
-- Identity is a name stored in localStorage. No auth: run behind a trusted network.
+- Without Supabase, identity is a name stored in localStorage. No auth: run behind a trusted network. With `NODE_ENV=production` the server refuses this name-only sign-in unless `RELAY_ALLOW_DEV_AUTH=1` is set.
 - Huddles are peer to peer with up to 6 people. Strict NATs need a TURN relay (see Huddles above).
 - `/summarize` is a local heuristic recap, not an LLM.

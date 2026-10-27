@@ -1,12 +1,22 @@
 # Render blueprint for the Relay API + WebSocket server.
 # Free tier: no persistent disk, so chat state in DATA_DIR is ephemeral
-# and is wiped on each restart or redeploy. Upgrade to a paid instance
-# and add a `disk:` block if you need state to survive restarts.
+# and is wiped on each restart or redeploy. Set the Supabase variables so state
+# lives in Supabase instead, or upgrade to a paid instance and add a `disk:` block.
+# Free instances also sleep after ~15 idle minutes; the first visit then waits
+# up to a minute while the server wakes (the UI keeps retrying).
 services:
   - type: web
     name: relay-server
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    # NODE_ENV=production would make npm skip devDependencies, which the build needs.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false

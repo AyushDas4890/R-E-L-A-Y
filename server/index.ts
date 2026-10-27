@@ -43,7 +43,7 @@ import { createStore } from './store.ts';
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
-import { createFiles } from './files.ts';
+import { cleanUpload, createFiles } from './files.ts';
 import { firstUrl, unfurl } from './unfurl.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -198,11 +198,21 @@ function send(ws: WebSocket, ev: ServerEvent): void {
 
 // Resolve an identity from the auth payload. With Supabase configured, verify the JWT.
 // Without it (local dev), accept the token as a raw userId:name so the app still runs.
-async function resolveIdentity(token: string): Promise<Identity | null> {
+// Name-only sign-in lets anyone claim any user id, so a production server refuses it unless
+// RELAY_ALLOW_DEV_AUTH=1 says the deployment is deliberately unauthenticated.
+const devAuthAllowed = process.env.NODE_ENV !== 'production' || process.env.RELAY_ALLOW_DEV_AUTH === '1';
+if (!authAdmin) {
+  console.warn(devAuthAllowed
+    ? 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set: running with name-only dev sign-in. Anyone can sign in as anyone.'
+    : 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set in production: sign-in is disabled. Set them, or RELAY_ALLOW_DEV_AUTH=1.');
+}
+
+async function resolveIdentity(token: unknown): Promise<Identity | null> {
+  if (typeof token !== 'string' || !token || token.length > 8192) return null;
   if (authAdmin) return verifyToken(token, authAdmin as unknown as AuthClient);
-  if (!token) return null;
-  const [userId, name] = String(token).split(':');
-  if (!userId) return null;
+  if (!devAuthAllowed) return null;
+  const [userId, name] = token.split(':');
+  if (!userId || userId === BOT_ID) return null;
   return { userId: userId.slice(0, 64), name: (name || 'Member').trim().slice(0, 40) || 'Member', email: null };
 }
 
@@ -227,11 +237,22 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   void migrateInlineFiles().catch((err) => console.error('file migration failed:', err instanceof Error ? err.message : err));
 
   let saveTimer: NodeJS.Timeout | undefined;
+  let dirty = false;
   function persist(): void {
+    dirty = true;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      save(db).catch((err) => console.error('persist failed:', err instanceof Error ? err.message : err));
-    }, 250);
+    saveTimer = setTimeout(() => void flush(), 250);
+  }
+  // Writes any pending change now. Called by the debounce above and on shutdown, so a redeploy
+  // doesn't drop the last quarter-second of messages.
+  async function flush(): Promise<void> {
+    clearTimeout(saveTimer);
+    if (!dirty) return;
+    dirty = false;
+    await save(db).catch((err) => {
+      dirty = true;
+      console.error('persist failed:', err instanceof Error ? err.message : err);
+    });
   }
 
   const clients = new Map<WebSocket, string>();
@@ -308,7 +329,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       online: onlineIds(),
       channels: visibleChannels,
       messages: db.messages.filter((m) => visibleChannels[m.channelId]),
-      canvases: db.canvases,
+      canvases: Object.fromEntries(Object.entries(db.canvases).filter(([cid]) => visibleChannels[cid])),
       workflows: db.workflows,
       scheduled: db.scheduled.filter((s) => s.userId === userId),
       huddles: huddleList(),
@@ -389,8 +410,59 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
     persist();
   }
 
-  function ensureMember(ch: Channel, userId: string): void {
-    if (!ch.members.includes(userId)) ch.members.push(userId);
+  // Returns true when the user was added (so callers can announce it).
+  function ensureMember(ch: Channel, userId: string): boolean {
+    if (ch.members.includes(userId)) return false;
+    ch.members.push(userId);
+    return true;
+  }
+
+  // A reply's thread must be a top-level message in the same channel; anything else posts top-level.
+  function threadIn(channelId: string, threadId: unknown): string | undefined {
+    if (typeof threadId !== 'string') return undefined;
+    const parent = db.messages.find((m) => m.id === threadId);
+    return parent && parent.channelId === channelId && !parent.threadId ? parent.id : undefined;
+  }
+
+  // Can this user put a message in this channel right now (visibility, posting policy, barriers)?
+  function mayPost(ch: Channel, userId: string): boolean {
+    if (!canSee(ch, userId) || !canPost(ch, db.users[userId])) return false;
+    const other = ch.kind === 'dm' ? ch.members.find((u) => u !== userId) : undefined;
+    return !(other && barred(userId, other, db.groups, db.settings.barriers));
+  }
+
+  // Workflows arrive from the client as-is. Keep only well-formed ones, and only let a publisher
+  // point a workflow at a channel they could post in themselves (or leave an existing one as it was),
+  // so the bot can't be used to write into private or admins-only channels.
+  function cleanWorkflow(raw: unknown, userId: string): Workflow | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const w = raw as Partial<Workflow>;
+    const t = w.trigger as Partial<Record<string, unknown>> | undefined;
+    if (!t || typeof t.channelId !== 'string') return null;
+    const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
+    let trigger: Workflow['trigger'];
+    if (t.type === 'keyword') {
+      const keyword = str(t.keyword, 100).trim();
+      if (!keyword) return null;
+      trigger = { type: 'keyword', keyword, channelId: t.channelId };
+    } else if (t.type === 'join') {
+      trigger = { type: 'join', channelId: t.channelId };
+    } else if (t.type === 'schedule') {
+      trigger = { type: 'schedule', channelId: t.channelId, time: str(t.time, 5), weekdaysOnly: !!t.weekdaysOnly };
+    } else return null;
+    const id = str(w.id, 64) || randomUUID();
+    const prev = db.workflows.find((p) => p.id === id);
+    const target = db.channels[trigger.channelId];
+    const allowed =
+      (trigger.type === 'keyword' && trigger.channelId === 'any') ||
+      prev?.trigger.channelId === trigger.channelId ||
+      (!!target && mayPost(target, userId));
+    if (!allowed) return null;
+    const reply = str(w.reply, 4000);
+    const branch = w.branch && typeof w.branch.contains === 'string' && w.branch.contains.trim()
+      ? { contains: w.branch.contains.slice(0, 100), reply: str(w.branch.reply, 4000) }
+      : undefined;
+    return { id, name: str(w.name, 80) || 'Workflow', enabled: !!w.enabled, trigger, reply, branch };
   }
 
   function dmId(a: string, b: string): string {
@@ -403,7 +475,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       let user = db.users[userId];
       const isMember = !!user;
       const hasOwner = Object.values(db.users).some((u) => u.role === 'owner');
-      const role = decideRole({ hasOwner, isMember, validInvite: validateInvite(invite, db.invites), inviteOnly: db.settings.inviteOnly });
+      const reservedForOther = !!db.meta.createdBy && db.meta.createdBy !== userId;
+      const role = decideRole({ hasOwner, isMember, validInvite: validateInvite(invite, db.invites), inviteOnly: db.settings.inviteOnly, reservedForOther });
 
       if (role === 'reject') return 'invite-required';
 
@@ -448,7 +521,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
     switch (ev.t) {
       case 'send': {
         const ch = db.channels[ev.channelId];
-        if (!ch || !canSee(ch, userId)) return;
+        if (!ch || !canSee(ch, userId) || typeof ev.text !== 'string') return;
         if (!canPost(ch, db.users[userId])) {
           send(ws, { t: 'error', message: `Only admins can post in #${ch.name}` });
           return;
@@ -458,10 +531,16 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
           send(ws, { t: 'error', message: 'An information barrier blocks messages between you two.' });
           return;
         }
-        ensureMember(ch, userId);
+        // Posting in a public channel joins it; tell everyone so member lists stay right.
+        if (ensureMember(ch, userId)) broadcastChannel(ch, { t: 'channel', channel: ch });
+        const threadId = threadIn(ch.id, ev.threadId);
         const slash = parseSlash(ev.text);
         if (slash) {
           if (slash.kind === 'remind') {
+            if (db.scheduled.filter((s) => s.userId === userId).length >= 100) {
+              send(ws, { t: 'error', message: 'You can have up to 100 reminders and scheduled messages.' });
+              return;
+            }
             const sched: Scheduled = {
               id: randomUUID(),
               channelId: dmId(userId, BOT_ID),
@@ -474,36 +553,37 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
             sendScheduled(userId);
             postMessage(ev.channelId, BOT_ID, `Got it — I'll remind <@${userId}> to "${slash.text}" in ${slash.label}.`, { system: true });
           } else if (slash.kind === 'topic') {
-            ch.topic = slash.text;
+            ch.topic = slash.text.slice(0, 250);
             broadcastChannel(ch, { t: 'channel', channel: ch });
-            postMessage(ch.id, BOT_ID, `<@${userId}> set the topic to: ${slash.text}`, { system: true });
+            postMessage(ch.id, BOT_ID, `<@${userId}> set the topic to: ${ch.topic}`, { system: true });
           } else if (slash.kind === 'huddle') {
             joinHuddle(ws, ch.id);
           } else if (slash.kind === 'summarize') {
-            postMessage(ch.id, BOT_ID, summarize(ch.id, ev.threadId), { threadId: ev.threadId });
+            postMessage(ch.id, BOT_ID, summarize(ch.id, threadId), { threadId: threadId });
           } else if (slash.kind === 'recap') {
             const dm = openDM(userId, BOT_ID);
             const visible = db.messages.filter((m) => db.channels[m.channelId] && canSee(db.channels[m.channelId], userId));
             postMessage(dm.id, BOT_ID, dailyRecap(visible, db.channels, db.users, Date.now() - 86_400_000, BOT_ID));
           } else if (slash.kind === 'explain') {
             const visible = db.messages.filter((m) => db.channels[m.channelId] && canSee(db.channels[m.channelId], userId));
-            postMessage(ch.id, BOT_ID, explainTerm(slash.term, visible, db.users), { system: true, threadId: ev.threadId });
+            postMessage(ch.id, BOT_ID, explainTerm(slash.term, visible, db.users), { system: true, threadId: threadId });
           } else if (slash.kind === 'usage') {
-            postMessage(ev.channelId, BOT_ID, slash.text, { system: true, threadId: ev.threadId });
+            postMessage(ev.channelId, BOT_ID, slash.text, { system: true, threadId: threadId });
           } else {
-            postMessage(ev.channelId, userId, slash.text, { threadId: ev.threadId });
+            postMessage(ev.channelId, userId, slash.text, { threadId: threadId });
           }
           return;
         }
-        if (!ev.text.trim() && !ev.files?.length) return;
-        const stored = ev.files?.length ? await Promise.all(ev.files.slice(0, 5).map((f) => files.offload(f))) : undefined;
-        const posted = postMessage(ev.channelId, userId, ev.text, { threadId: ev.threadId, files: stored });
+        const uploads = Array.isArray(ev.files) ? ev.files.slice(0, 5).map(cleanUpload).filter((f) => f !== null) : [];
+        if (!ev.text.trim() && !uploads.length) return;
+        const stored = uploads.length ? await Promise.all(uploads.map((f) => files.offload(f))) : undefined;
+        const posted = postMessage(ev.channelId, userId, ev.text, { threadId: threadId, files: stored });
         if (posted) void addPreview(posted);
         return;
       }
       case 'edit': {
         const m = db.messages.find((x) => x.id === ev.id);
-        if (!m || m.userId !== userId) return;
+        if (!m || m.userId !== userId || typeof ev.text !== 'string' || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId)) return;
         preserve(m);
         m.text = ev.text.slice(0, MAX_TEXT);
         m.edited = true;
@@ -528,7 +608,9 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'react': {
         const m = db.messages.find((x) => x.id === ev.id);
-        if (!m) return;
+        if (!m || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId)) return;
+        if (typeof ev.emoji !== 'string' || !ev.emoji || ev.emoji.length > 16) return;
+        if (!m.reactions[ev.emoji] && Object.keys(m.reactions).length >= 50) return;
         const list = m.reactions[ev.emoji] ?? [];
         m.reactions[ev.emoji] = list.includes(userId) ? list.filter((u) => u !== userId) : [...list, userId];
         if (m.reactions[ev.emoji].length === 0) delete m.reactions[ev.emoji];
@@ -539,7 +621,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'pin': {
         const m = db.messages.find((x) => x.id === ev.id);
-        if (!m) return;
+        if (!m || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId)) return;
         m.pinned = !m.pinned;
         const ch = db.channels[m.channelId];
         if (ch) broadcastChannel(ch, { t: 'message', message: m });
@@ -580,17 +662,24 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       case 'join': {
         const ch = db.channels[ev.channelId];
         if (!ch || ch.kind !== 'public' || !canSee(ch, userId)) return;
-        ensureMember(ch, userId);
+        if (!ensureMember(ch, userId)) return;
         broadcastChannel(ch, { t: 'channel', channel: ch });
         postMessage(ch.id, BOT_ID, `<@${userId}> joined the channel.`, { system: true });
+        runJoinWorkflows(ch.id);
         persist();
         return;
       }
       case 'leave': {
         const ch = db.channels[ev.channelId];
-        if (!ch || ch.kind === 'dm') return;
+        if (!ch || ch.kind === 'dm' || !ch.members.includes(userId)) return;
         ch.members = ch.members.filter((u) => u !== userId);
         broadcastChannel(ch, { t: 'channel', channel: ch });
+        // Someone leaving a private channel can no longer see it, so the broadcast above skips
+        // them; resend their snapshot so it drops out of their sidebar.
+        if (!canSee(ch, userId)) {
+          leaveHuddle(userId, ch.id);
+          resendInit(userId);
+        }
         persist();
         return;
       }
@@ -627,8 +716,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
         return;
       }
       case 'workflows': {
-        if (db.users[userId]?.role === 'guest') return;
-        db.workflows = ev.list.slice(0, 50).map((w) => ({ ...w, id: w.id || randomUUID() }));
+        if (db.users[userId]?.role === 'guest' || !Array.isArray(ev.list)) return;
+        db.workflows = ev.list.slice(0, 50).map((w) => cleanWorkflow(w, userId)).filter((w) => w !== null);
         broadcast({ t: 'workflows', list: db.workflows });
         audit(userId, 'workflows.publish', `${db.workflows.length} workflows`);
         persist();
@@ -636,8 +725,16 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'schedule': {
         const ch = db.channels[ev.channelId];
-        if (!ch || !canSee(ch, userId) || !ev.text.trim() || ev.at < Date.now()) return;
-        db.scheduled.push({ id: randomUUID(), channelId: ch.id, userId, text: ev.text, at: ev.at });
+        if (!ch || typeof ev.text !== 'string' || !ev.text.trim() || typeof ev.at !== 'number' || ev.at < Date.now()) return;
+        if (!mayPost(ch, userId)) {
+          send(ws, { t: 'error', message: `You can't post in ${ch.kind === 'dm' ? 'this conversation' : `#${ch.name}`}.` });
+          return;
+        }
+        if (db.scheduled.filter((s) => s.userId === userId).length >= 100) {
+          send(ws, { t: 'error', message: 'You can have up to 100 scheduled messages.' });
+          return;
+        }
+        db.scheduled.push({ id: randomUUID(), channelId: ch.id, userId, text: ev.text.slice(0, MAX_TEXT), at: ev.at });
         sendScheduled(userId);
         persist();
         return;
@@ -673,9 +770,9 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'list': {
         const ch = db.channels[ev.channelId];
-        if (!ch || !canSee(ch, userId)) return;
+        if (!ch || !canSee(ch, userId) || !Array.isArray(ev.items)) return;
         db.lists[ch.id] = ev.items.slice(0, 500).map((it) => ({
-          id: it.id || randomUUID(),
+          id: String(it.id || randomUUID()).slice(0, 64),
           title: String(it.title).slice(0, 200),
           done: it.status === 'done',
           assignee: db.users[it.assignee] ? it.assignee : '',
@@ -687,22 +784,23 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
         return;
       }
       case 'sections': {
+        if (!Array.isArray(ev.sections)) return;
         db.sections[userId] = ev.sections.slice(0, 30).map((sec) => ({
-          id: sec.id || randomUUID(),
+          id: String(sec.id || randomUUID()).slice(0, 64),
           name: String(sec.name).slice(0, 40) || 'Section',
-          channelIds: sec.channelIds.filter((cid) => db.channels[cid]),
+          channelIds: (Array.isArray(sec.channelIds) ? sec.channelIds : []).filter((cid) => db.channels[cid] && canSee(db.channels[cid], userId)).slice(0, 500),
         }));
         send(ws, { t: 'sections', sections: db.sections[userId] });
         persist();
         return;
       }
       case 'groups': {
-        if (!isAdmin(db.users[userId])) return;
+        if (!isAdmin(db.users[userId]) || !Array.isArray(ev.groups)) return;
         db.groups = ev.groups.slice(0, 100).map((g) => ({
-          id: g.id || randomUUID(),
-          handle: g.handle.toLowerCase().replace(/[^a-z0-9-_]/g, '').slice(0, 30) || 'group',
+          id: String(g.id || randomUUID()).slice(0, 64),
+          handle: String(g.handle ?? '').toLowerCase().replace(/[^a-z0-9-_]/g, '').slice(0, 30) || 'group',
           name: String(g.name).slice(0, 60),
-          members: g.members.filter((u) => db.users[u]),
+          members: (Array.isArray(g.members) ? g.members : []).filter((u) => db.users[u]),
         }));
         broadcast({ t: 'groups', groups: db.groups });
         audit(userId, 'groups.update', `${db.groups.length} user groups`);
@@ -711,7 +809,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'flag': {
         const m = db.messages.find((x) => x.id === ev.id);
-        if (!m || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId)) return;
+        if (!m || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId) || typeof ev.reason !== 'string') return;
+        if (db.flags.length >= 1000 || db.flags.some((f) => f.messageId === m.id && f.by === userId)) return;
         db.flags.push({
           id: randomUUID(),
           messageId: m.id,
@@ -746,7 +845,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       case 'role': {
         const actor = db.users[userId];
         const target = db.users[ev.userId];
-        if (!isAdmin(actor) || !target || target.bot) return;
+        if (!isAdmin(actor) || !target || target.bot || !['owner', 'admin', 'member', 'guest'].includes(ev.role)) return;
         // Only owners can grant or revoke admin rights, and nobody can demote the last owner.
         if ((ev.role === 'owner' || target.role === 'owner' || target.role === 'admin' || ev.role === 'admin') && actor?.role !== 'owner') {
           send(ws, { t: 'error', message: 'Only an owner can change admin or owner roles.' });
@@ -797,7 +896,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
           retentionDays: Math.max(0, Math.min(3650, Math.floor(next.retentionDays) || 0)),
           terms,
           termsVersion: terms !== db.settings.terms ? db.settings.termsVersion + 1 : db.settings.termsVersion,
-          barriers: (next.barriers ?? []).filter(([a, b]) => a !== b && db.groups.some((g) => g.id === a) && db.groups.some((g) => g.id === b)),
+          barriers: (Array.isArray(next.barriers) ? next.barriers : []).filter((p) => Array.isArray(p) && p.length === 2).slice(0, 200).filter(([a, b]) => a !== b && db.groups.some((g) => g.id === a) && db.groups.some((g) => g.id === b)),
         };
         broadcast({ t: 'settings', settings: db.settings });
         audit(userId, 'settings.update', `${db.settings.inviteOnly ? 'invite-only' : 'open sign-up'}, retention ${db.settings.retentionDays || '∞'}d, ${db.settings.barriers.length} barriers, terms v${db.settings.termsVersion}`);
@@ -856,13 +955,13 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       case 'fileSummary': {
         const m = db.messages.find((x) => x.id === ev.id);
         const file = m?.files?.[ev.index];
-        if (!m || !file || !canSee(db.channels[m.channelId], userId)) return;
+        if (!m || !file || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId)) return;
         const isText = /^text\/|json|xml|csv|markdown|javascript/.test(file.type) || /\.(md|txt|csv|json|log|ts|js|py)$/i.test(file.name);
         if (!isText) {
           send(ws, { t: 'error', message: `Can't summarize ${file.name}: only text files are supported.` });
           return;
         }
-        const text = (await files.read(file)).toString('utf8');
+        const text = (await files.read(file)).subarray(0, 1_000_000).toString('utf8');
         postMessage(m.channelId, BOT_ID, `**Summary of ${file.name}**\n${summarizeText(text)}`, { threadId: m.threadId ?? m.id });
         return;
       }
@@ -993,6 +1092,12 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
     db.scheduled = db.scheduled.filter((s) => s.at > Date.now());
     for (const s of due) {
       const asBot = s.channelId === dmId(s.userId, BOT_ID);
+      const ch = db.channels[s.channelId];
+      // Rights can change between scheduling and sending (removed from a channel, made read-only).
+      if (!asBot && (!ch || !db.users[s.userId] || !mayPost(ch, s.userId))) {
+        sendScheduled(s.userId);
+        continue;
+      }
       postMessage(s.channelId, asBot ? BOT_ID : s.userId, s.text);
       sendScheduled(s.userId);
     }
@@ -1030,7 +1135,11 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
     return { id, name: db.meta.name, color: db.meta.color, members: Object.values(db.users).filter((u) => !u.bot).length, inviteOnly: !!db.settings.inviteOnly };
   }
 
-  return { id, db, join, handle, leave, summary, hasInvite: (code?: string) => validateInvite(code, db.invites) };
+  function stop(): void {
+    for (const t of timers) clearInterval(t);
+  }
+
+  return { id, db, join, handle, leave, summary, flush, stop, hasInvite: (code?: string) => validateInvite(code, db.invites) };
 }
 
 const mime: Record<string, string> = {
@@ -1057,7 +1166,12 @@ const server = http.createServer((req, res) => {
   const file = requested.startsWith(distDir) && fs.existsSync(requested) && fs.statSync(requested).isFile()
     ? requested
     : path.join(distDir, 'index.html');
-  res.writeHead(200, { 'content-type': mime[path.extname(file)] ?? 'application/octet-stream' });
+  res.writeHead(200, {
+    'content-type': mime[path.extname(file)] ?? 'application/octet-stream',
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  });
   fs.createReadStream(file).pipe(res);
 });
 
@@ -1166,8 +1280,35 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
 }
 
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 12 * 1024 * 1024 });
+// Per-socket token bucket: bursts of typing, signaling and reactions pass, floods are dropped.
+const RATE_BURST = 200;
+const RATE_PER_SEC = 50;
+// Heartbeat: a socket whose peer vanished (sleeping laptop, dropped mobile network) never sends a
+// close, so it would stay "online" and in huddles forever. Ping every 30s; drop what didn't answer.
+const alive = new WeakSet<WebSocket>();
+const heartbeat = setInterval(() => {
+  for (const ws of wss.clients) {
+    if (!alive.has(ws)) {
+      ws.terminate();
+      continue;
+    }
+    alive.delete(ws);
+    ws.ping();
+  }
+}, 30_000);
+
 wss.on('connection', (ws) => {
+  alive.add(ws);
+  ws.on('pong', () => alive.add(ws));
+  ws.on('error', (err) => console.warn('socket error:', err.message));
+  let tokens = RATE_BURST;
+  let refilled = Date.now();
   ws.on('message', (raw) => {
+    const now = Date.now();
+    tokens = Math.min(RATE_BURST, tokens + ((now - refilled) / 1000) * RATE_PER_SEC);
+    refilled = now;
+    if (tokens < 1) return;
+    tokens -= 1;
     let ev: ClientEvent;
     try {
       ev = JSON.parse(raw.toString()) as ClientEvent;
@@ -1175,6 +1316,7 @@ wss.on('connection', (ws) => {
       send(ws, { t: 'error', message: `Bad JSON: ${(err as Error).message}` });
       return;
     }
+    if (!ev || typeof ev !== 'object' || typeof ev.t !== 'string') return;
     route(ws, ev).catch((err) => {
       console.error('handler failed:', err);
       send(ws, { t: 'error', message: 'Server error' });
@@ -1187,3 +1329,20 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, () => console.log(`Relay server on http://localhost:${PORT}`));
+
+// Hosts send SIGTERM before a redeploy or restart: stop taking connections, save every workspace, exit.
+let shuttingDown = false;
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal}: saving and shutting down`);
+  clearInterval(heartbeat);
+  for (const ws of wss.clients) ws.close(1012, 'Server restarting');
+  server.close();
+  for (const rt of runtimes.values()) rt.stop();
+  await Promise.all([...runtimes.values()].map((rt) => rt.flush()));
+  process.exit(0);
+}
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('unhandledRejection', (err) => console.error('unhandled rejection:', err));
