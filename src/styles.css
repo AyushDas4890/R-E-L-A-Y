@@ -1,6 +1,7 @@
 :root {
   --font: 'Public Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --display: 'Schibsted Grotesk', var(--font);
+  /* One type pair across home, sign-in and workspace: Audiowide for display, Public Sans for text. */
+  --display: 'Audiowide', var(--font);
   --radius: 10px;
   --rail: 64px;
   --side: 264px;
@@ -51,7 +52,8 @@ a { color: var(--accent-2); }
 .row { display: flex; gap: 8px; align-items: center; }
 kbd { font: 11px var(--font); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; color: var(--muted); }
 
-h1, h2, h3 { font-family: var(--display); letter-spacing: -.015em; }
+/* Audiowide ships a single weight; synthetic bold smears it. */
+h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .welcome { height: 100%; display: grid; place-items: center; background: var(--side-bg); padding: 16px; }
@@ -59,7 +61,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.015em; }
 .welcome-card form { display: grid; gap: 12px; }
 .welcome-card h1 { margin: 4px 0 0; font-size: 26px; line-height: 1.15; }
 .welcome-card p { margin: 0; }
-.logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font: 800 22px var(--display); color: var(--side-bg); background: var(--signal); }
+.logo { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; font: 400 22px var(--display); color: var(--side-bg); background: var(--signal); }
 .welcome > .logo { animation: lamp 1.2s ease-in-out infinite alternate; }
 .logo.small { width: 38px; height: 38px; font-size: 18px; margin: 4px 0 12px; }
 @keyframes lamp { from { opacity: .4; } to { opacity: 1; } }
@@ -142,7 +144,7 @@ h1, h2, h3 { font-family: var(--display); letter-spacing: -.015em; }
 .meta time, .edited { font-size: 12px; color: var(--muted); }
 .text { overflow-wrap: anywhere; }
 .mention { background: color-mix(in srgb, var(--signal) 28%, transparent); color: inherit; border-radius: 4px; padding: 0 4px; font-weight: 650; }
-.meta strong { font-family: var(--display); }
+.meta strong { font-family: var(--font); font-weight: 700; }
 .chan-ref { color: var(--accent-2); }
 .quote { border-left: 3px solid var(--line); padding-left: 10px; color: var(--muted); }
 .reactions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
@@ -409,7 +411,7 @@ input[type='checkbox'].fit { width: auto; }
 .send-btn:active:not(:disabled) { transform: scale(.94); }
 .ghost-btn:active { transform: scale(.96); }
 
-.empty-mark { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; display: grid; place-items: center; font: 800 30px var(--display); background: var(--side-bg); color: var(--signal); animation: float-in .7s var(--spring); }
+.empty-mark { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 18px; display: grid; place-items: center; font: 400 30px var(--display); background: var(--side-bg); color: var(--signal); animation: float-in .7s var(--spring); }
 @keyframes float-in { from { opacity: 0; transform: translateY(12px) scale(.9); } }
 
 .panel { animation: slide-in .45s var(--spring); }
@@ -459,3 +461,7 @@ input[type='checkbox'].fit { width: auto; }
 .main-bg video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .main-bg::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 72%, transparent); }
 @media (prefers-reduced-motion: reduce) { .main-bg video { display: none; } }
+
+/* Profile photos from GitHub/Google fill the avatar tile. */
+.avatar.has-photo { overflow: visible; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }

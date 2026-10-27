@@ -27,11 +27,9 @@
 .nx-line-v.r { left: calc(50% + 230px); }
 .nx-line-v i { position: absolute; bottom: -3px; left: -3px; width: 7px; height: 7px; border-radius: 50%; background: #fff; }
 
-.nx-word { position: absolute; z-index: 1; font: 400 clamp(110px, 21vw, 360px)/.8 var(--nx-font); letter-spacing: -.02em; padding: 0 .04em .25em; -webkit-background-clip: text; background-clip: text; color: transparent; pointer-events: none; user-select: none; }
-.nx-word-a { top: calc(64px + 2.5vh); left: 1.5vw; background-image: linear-gradient(100deg, #3aa79b, #1f7f86 70%, #2a8f8a); }
-.nx-word-b { right: 1.5vw; bottom: 0; font-size: clamp(100px, 18vw, 300px); background-image: linear-gradient(100deg, #9fcf9a, #d9e2b0 55%, #efe2c0); }
-
-.nx-bot { position: absolute; z-index: 2; left: calc(50% - 40 * var(--u)); bottom: calc(4 * var(--u)); width: calc(80 * var(--u)); }
+/* One huge outlined wordmark sits behind the hero and drifts on scroll. */
+.nx-ghost { position: absolute; z-index: 1; left: 50%; top: 50%; transform: translate(-50%, -46%); font: 400 clamp(140px, 30vw, 520px)/.8 var(--nx-font); letter-spacing: -.03em; color: transparent; -webkit-text-stroke: 1.5px rgba(255,236,214,.14); white-space: nowrap; pointer-events: none; user-select: none; }
+.nx-bot { position: relative; z-index: 2; width: calc(80 * var(--u)); }
 .nx-bot-inner { position: relative; display: grid; justify-items: center; perspective: 900px; }
 .nx-bot-head { position: relative; z-index: 2; width: calc(66 * var(--u)); height: calc(58 * var(--u)); border-radius: calc(24 * var(--u)); transform-style: preserve-3d;
   background: radial-gradient(circle at 34% 22%, #ffffff 0%, #efe9f3 30%, #d7cddc 62%, #a996b2 100%);
@@ -62,9 +60,19 @@
 .nx-arm.l { left: calc(-9 * var(--u)); transform: rotate(14deg); }
 .nx-arm.r { right: calc(-9 * var(--u)); transform: rotate(-14deg); }
 
-.nx-copy { position: absolute; z-index: 3; left: 24px; bottom: 28px; max-width: min(780px, 62vw); }
-.nx-tag { margin: 0 0 14px; color: #fff; font-size: 13px; line-height: 1.45; }
-.nx-head { margin: 0; font: 400 clamp(28px, 4.4vw, 62px)/1 var(--nx-font); text-transform: uppercase; color: #fff; text-shadow: 0 2px 20px rgba(0,0,0,.35); }
+.nx-hero-grid { position: absolute; z-index: 3; inset: 64px 0 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center; gap: 2vw; padding: 0 clamp(20px, 5vw, 80px); }
+.nx-copy { max-width: 620px; }
+.nx-lede { margin: 22px 0 30px; max-width: 46ch; color: rgba(255,244,234,.86); font-size: clamp(15px, 1.2vw, 18px); line-height: 1.6; }
+.nx-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.nx-cta.big { padding: 15px 26px; font-size: 15px; }
+.nx-ghost-btn { color: #fff; font-weight: 600; text-decoration: none; padding: 14px 6px; border-bottom: 1px solid rgba(255,255,255,.4); transition: border-color .2s, color .2s; }
+.nx-ghost-btn:hover { color: var(--mint); border-color: var(--mint); }
+.nx-stage { position: relative; display: flex; align-items: flex-end; justify-content: flex-end; height: 100%; padding-bottom: 3vh; }
+.nx-stage .hc { position: relative; z-index: 3; margin-left: calc(-14 * var(--u)); margin-bottom: 8vh; flex: 0 1 380px; }
+.nx-bot-hit { all: unset; cursor: pointer; flex: none; z-index: 2; }
+.nx-bot-hit:focus-visible { outline: 2px solid var(--mint); outline-offset: 6px; border-radius: 24px; }
+.nx-hero:not(.is-live) .nx-nav, .nx-hero:not(.is-live) .nx-ghost, .nx-hero:not(.is-live) .nx-hero-grid { visibility: hidden; }
+.nx-head { margin: 0; font: 400 clamp(38px, 5.4vw, 86px)/.98 var(--nx-font); text-transform: uppercase; color: #fff; text-shadow: 0 2px 20px rgba(0,0,0,.35); }
 .nx-head-line { display: block; overflow: hidden; padding-bottom: .04em; }
 .nx-head-line > span { display: inline-block; }
 
@@ -80,11 +88,11 @@
   .nx-links-cta { display: block; padding: 10px 14px; border: 0; background: none; color: var(--mint); font: 400 15px var(--nx-font); text-align: left; cursor: pointer; }
   .nx-cta, .nx-line-v { display: none; }
   .nx-menu { display: inline-flex; }
-  .nx-word { font-size: 32vw; }
-  .nx-word-a { left: 16px; }
-  .nx-word-b { right: 12px; bottom: 150px; }
-  .nx-bot { bottom: calc(26vh); }
-  .nx-copy { left: 16px; right: 16px; bottom: 22px; max-width: none; }
+  .nx-hero { height: auto; min-height: 100svh; }
+  .nx-hero-grid { position: relative; inset: auto; padding: 96px 16px 32px; grid-template-columns: 1fr; gap: 28px; }
+  .nx-stage { flex-direction: column; align-items: center; padding-bottom: 0; }
+  .nx-stage .hc { margin: -40px 0 0; flex: none; }
+  .nx-ghost { top: 30%; }
   .nx-head { font-size: clamp(26px, 8vw, 40px); }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -97,7 +105,8 @@
 .rl-mark .rl-bubble { fill: #f0b07a; stroke: #f0b07a; }
 .rl-mark .rl-r { stroke: #160806; }
 .nx-brand { display: inline-flex; align-items: center; gap: 10px; }
-.rl-intro { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #3a170f, #120806 70%); }
+/* .lp > * makes children position: relative; the splash must still cover the viewport. */
+.rl-intro, .lp.nx > .rl-intro { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #3a170f, #120806 70%); }
 .rl-intro-inner { display: grid; justify-items: center; gap: 22px; }
 .rl-lockup { position: relative; display: flex; align-items: center; gap: 18px; color: #f0b07a; }
 .rl-intro .rl-bubble { fill: transparent; }
@@ -130,29 +139,9 @@
 .lp.nx { height: auto; overflow: visible; }
 .nx-statement { max-width: 1100px; margin: 0 auto; padding: 18vh 24px 14vh; }
 .nx-statement p { margin: 0; font: 400 clamp(28px, 4.2vw, 58px)/1.15 'Audiowide', var(--display); color: #f6e7da; letter-spacing: -.01em; }
-.nx-reel { height: 100vh; display: grid; grid-template-rows: auto 1fr; overflow: hidden; padding-top: 10vh; }
-.nx-reel-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding: 0 24px 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
-.nx-split { margin: 0; font: 400 clamp(36px, 6vw, 88px)/.95 'Audiowide', var(--display); color: #fff; }
-.nx-reel-progress { flex: 0 0 min(320px, 30vw); height: 3px; background: rgba(255,255,255,.12); border-radius: 3px; overflow: hidden; }
-.nx-reel-progress i { display: block; height: 100%; background: var(--mint); transform: scaleX(0); transform-origin: left; }
-.nx-reel-track { display: flex; gap: 24px; padding: 0 24px; align-items: center; width: max-content; }
-.nx-card { width: min(420px, 78vw); min-height: 340px; padding: 30px; display: flex; flex-direction: column; gap: 14px; border-radius: 22px; }
-.nx-card h3 { margin: 6px 0 0; font: 400 26px/1.1 'Audiowide', var(--display); color: #fff; }
-.nx-card p { margin: 0; color: rgba(246,231,218,.7); font-size: 16px; line-height: 1.6; }
-.nx-card-num { font: 400 64px/1 'Audiowide', var(--display); color: transparent; -webkit-text-stroke: 1px rgba(157,245,197,.6); }
-.nx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; max-width: 1200px; margin: 0 auto; padding: 16vh 24px; }
-.nx-stat { display: grid; gap: 10px; }
-.nx-stat-num { font: 400 clamp(56px, 9vw, 120px)/1 'Audiowide', var(--display); color: #f0b07a; }
-.nx-stat > span { color: rgba(246,231,218,.7); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 13px; }
-.nx-bar { height: 2px; background: rgba(255,255,255,.1); }
-.nx-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f0b07a, var(--mint)); transform-origin: left; }
 .nx-final { min-height: 90vh; display: grid; place-items: center; align-content: center; gap: 40px; text-align: center; padding: 10vh 24px; }
 .nx-final-big { margin: 0; font: 400 clamp(48px, 10vw, 160px)/.92 'Audiowide', var(--display); background: linear-gradient(100deg, #3aa79b, #d9e2b0 50%, #f0b07a); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .1em; }
-.nx-final .nx-cta { display: inline-flex; font-size: 18px; padding: 16px 30px; }
-@media (max-width: 760px) {
-  .nx-stats { grid-template-columns: 1fr; }
-  .nx-reel-head { flex-direction: column; align-items: start; }
-}
+.nx-final .nx-cta { justify-self: center; display: inline-flex; font-size: 18px; padding: 16px 30px; }
 
 /* Robot layers + moods */
 .nx-bot-scroll, .nx-bot-inner, .nx-bot-head { will-change: transform; }

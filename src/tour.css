@@ -1,0 +1,107 @@
+/* Hero chat demo: a glass #launch window the robot answers in. */
+.hc { width: min(400px, 100%); align-self: center; display: grid; grid-template-rows: auto 1fr auto; height: min(420px, 56vh); border-radius: 18px; overflow: hidden;
+  background: rgba(22, 9, 6, .62); backdrop-filter: blur(18px) saturate(150%); box-shadow: 0 30px 80px rgba(20, 6, 3, .55), inset 0 1px 0 rgba(255,255,255,.12); color: #f6e7da; transform-style: preserve-3d; }
+.hc-head { display: flex; align-items: center; gap: 6px; padding: 14px 16px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.08); }
+.hc-hash { color: rgba(246,231,218,.5); }
+.hc-live { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--mint); }
+.hc-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 0 rgba(157,245,197,.6); animation: hc-pulse 1.8s infinite; }
+@keyframes hc-pulse { 70% { box-shadow: 0 0 0 7px rgba(157,245,197,0); } 100% { box-shadow: 0 0 0 0 rgba(157,245,197,0); } }
+.hc-list { overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; scrollbar-width: none; }
+.hc-msg { max-width: 88%; padding: 9px 12px; border-radius: 4px 14px 14px 14px; background: rgba(255,255,255,.08); }
+.hc-msg b { display: block; font-size: 12px; color: rgba(246,231,218,.6); margin-bottom: 2px; }
+.hc-msg p { margin: 0; font-size: 14px; line-height: 1.45; }
+.hc-msg.bot { background: rgba(240,176,122,.16); box-shadow: inset 2px 0 #f0b07a; }
+.hc-msg.bot b { color: #f0b07a; }
+.hc-msg.me { align-self: flex-end; border-radius: 14px 4px 14px 14px; background: rgba(157,245,197,.16); }
+.hc-msg.me b { color: var(--mint); }
+.hc-typing { display: inline-flex; gap: 4px; padding: 12px; width: fit-content; border-radius: 14px; background: rgba(240,176,122,.16); }
+.hc-typing i { width: 6px; height: 6px; border-radius: 50%; background: #f0b07a; animation: hc-dot 1.1s infinite ease-in-out; }
+.hc-typing i:nth-child(2) { animation-delay: .15s; } .hc-typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes hc-dot { 40% { transform: translateY(-4px); opacity: 1; } 0%, 80%, 100% { opacity: .35; } }
+.hc-input { display: flex; gap: 8px; padding: 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.hc-input input { flex: 1; min-width: 0; border: 0; border-radius: 10px; padding: 11px 12px; background: rgba(255,255,255,.08); color: #fff; font: inherit; font-size: 14px; }
+.hc-input input:focus { outline: 2px solid rgba(157,245,197,.5); background: rgba(255,255,255,.12); box-shadow: none; }
+.hc-input button { width: 42px; border: 0; border-radius: 10px; background: var(--mint); color: #120806; font-size: 15px; cursor: pointer; transition: transform .2s; }
+.hc-input button:active:not(:disabled) { transform: scale(.92); }
+.hc-input button:disabled { opacity: .35; cursor: default; }
+
+/* How it works: robot pinned on the left, product scenes scroll on the right. */
+.nx-tour { max-width: 1240px; margin: 0 auto; padding: 16vh 24px 6vh; --u: min(0.42vh, 0.42vw); }
+.nx-tour-title { margin: 0 0 8vh; font: 400 clamp(36px, 5.4vw, 80px)/.95 'Audiowide', var(--display); color: #fff; }
+.nx-tour-grid { display: grid; grid-template-columns: minmax(220px, 0.8fr) 2fr; gap: 5vw; align-items: start; }
+.nx-tour-side { display: grid; justify-items: center; gap: 18px; }
+.nx-tour-say { position: relative; margin: 0; padding: 14px 16px; max-width: 260px; border-radius: 16px; background: #0b0b0c; color: var(--mint); font: 400 15px/1.4 'Audiowide', var(--display); text-align: center; }
+.nx-tour-say::after { content: ''; position: absolute; left: 50%; bottom: -8px; margin-left: -8px; border: 8px solid transparent; border-bottom: 0; border-top-color: #0b0b0c; }
+.nx-tour-dots { display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.nx-tour-dots li { width: 8px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.2); transition: width .4s, background .4s; }
+.nx-tour-dots li.on { width: 28px; background: var(--mint); }
+.nx-tour-steps { display: grid; gap: 14vh; padding-bottom: 10vh; }
+.nx-step { min-height: 62vh; display: grid; align-content: center; gap: 28px; scroll-margin-top: 12vh; }
+.nx-step-copy h3 { margin: 0 0 10px; font: 400 clamp(24px, 2.6vw, 38px)/1.1 'Audiowide', var(--display); color: #fff; }
+.nx-step-copy p { margin: 0; max-width: 52ch; color: rgba(246,231,218,.72); font-size: 17px; line-height: 1.6; }
+
+/* Mock product scenes share Relay's own UI vocabulary. */
+.ms { position: relative; overflow: hidden; border-radius: 16px; background: #f5f7fa; color: #14202e; font: 14px/1.4 var(--font); box-shadow: 0 30px 70px rgba(0,0,0,.45); min-height: 260px; }
+.ms-bar { padding: 10px 14px; font-weight: 700; border-bottom: 1px solid #dce2ea; background: #fff; }
+.ms-av { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; font: 700 13px var(--font); font-style: normal; }
+.ms-msg { display: flex; gap: 10px; padding: 8px 14px; }
+.ms-msg b { font-size: 13px; }
+.ms-msg p { margin: 0; }
+.ms-msg.sm { align-items: center; padding: 6px 12px; }
+.ms-msg.sm .ms-av { width: 24px; height: 24px; font-size: 11px; }
+.ms-replies { display: inline-block; margin-top: 4px; color: #1f5bd8; font-weight: 700; font-size: 13px; }
+.ms-chat { display: grid; grid-template-columns: 1fr 42%; }
+.ms-thread { border-left: 1px solid #dce2ea; background: #fff; }
+.ms-huddle { background: #10233f; color: #eef3fa; }
+.ms-huddle .ms-bar { background: #0a1830; border-color: #22406a; }
+.ms-people { display: flex; justify-content: center; gap: 28px; padding: 30px 14px 22px; }
+.ms-person { display: grid; justify-items: center; gap: 10px; }
+.ms-person .ms-av { width: 54px; height: 54px; border-radius: 50%; font-size: 20px; box-shadow: 0 0 0 3px #3ccf7c; }
+.ms-meter { display: flex; align-items: end; gap: 3px; height: 18px; }
+.ms-meter i { width: 4px; height: 100%; border-radius: 2px; background: #3ccf7c; transform-origin: bottom; transform: scaleY(.2); }
+.ms-notes { margin: 0 14px 14px; border-radius: 10px; background: rgba(255,255,255,.08); }
+.ms-canvas { display: grid; grid-template-columns: 1.2fr 1fr; }
+.ms-doc { background: #fff; }
+.ms-type { margin: 12px 16px 0; white-space: nowrap; clip-path: inset(0 100% 0 0); }
+.ms-type.t1 { font-weight: 800; font-size: 16px; }
+.ms-board { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; }
+.ms-lane { display: grid; align-content: start; gap: 8px; }
+.ms-lane b { font-size: 12px; color: #5b6878; }
+.ms-card { min-height: 38px; padding: 9px 10px; border-radius: 8px; background: #fff; box-shadow: 0 1px 2px rgba(10,25,50,.12); font-size: 13px; position: relative; z-index: 1; }
+.ms-card.mover { color: #14202e; }
+.ms-card.ghost { visibility: hidden; }
+.ms-flow { display: grid; justify-items: center; padding: 26px 18px 18px; background: radial-gradient(#dce2ea 1px, transparent 1px) 0 0 / 16px 16px, #f5f7fa; }
+.ms-node { padding: 12px 18px; border-radius: 12px; background: #fff; font-weight: 700; box-shadow: 0 6px 20px rgba(10,25,50,.12); }
+.ms-node.trig { box-shadow: inset 4px 0 #f5a400, 0 6px 20px rgba(10,25,50,.12); }
+.ms-node.act { box-shadow: inset 4px 0 #1f5bd8, 0 6px 20px rgba(10,25,50,.12); }
+.ms-wire { width: 10px; height: 44px; overflow: visible; }
+.ms-wire path { stroke: #1f5bd8; stroke-width: 2.5; stroke-dasharray: 60; fill: none; vector-effect: non-scaling-stroke; }
+.ms-welcome { margin-top: 20px; width: 100%; border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(10,25,50,.12); }
+.ms-search { padding: 18px; background: #10233f; }
+.ms-query { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #fff; font-size: 16px; }
+.ms-caret { width: 2px; height: 18px; background: #1f5bd8; animation: ms-blink 1s steps(1) infinite; }
+@keyframes ms-blink { 50% { opacity: 0; } }
+.ms-results { display: grid; gap: 6px; margin-top: 10px; }
+.ms-res { padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,.08); color: #eef3fa; }
+.ms-res small { color: #93a4bd; margin-left: 6px; }
+.ms-res.best { background: rgba(157,245,197,.14); color: #eaffef; }
+
+@media (max-width: 860px) {
+  .hc { height: 380px; }
+  .nx-tour-grid { grid-template-columns: 1fr; }
+  .nx-tour-side { position: sticky; top: 8px; z-index: 3; grid-template-columns: auto 1fr; justify-items: start; align-items: center; gap: 12px; padding: 10px; border-radius: 16px; background: rgba(18,8,6,.85); backdrop-filter: blur(10px); --u: 0.16vw; }
+  .nx-tour-side .nx-bot { width: 56px; }
+  .nx-tour-side .nx-bot-head { width: 52px; height: 46px; border-radius: 16px; }
+  .nx-tour-side .nx-bot-body, .nx-tour-dots { display: none; }
+  .nx-tour-say { font-size: 13px; text-align: left; }
+  .nx-tour-say::after { display: none; }
+  .ms-chat, .ms-canvas { grid-template-columns: 1fr; }
+  .ms-thread { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ms-type { clip-path: none; }
+  .hc-live i, .hc-typing i, .ms-caret { animation: none; }
+}
+
+/* Without the smooth scroller (reduced motion), plain sticky works. */
+@media (prefers-reduced-motion: reduce) and (min-width: 861px) { .nx-tour-side { position: sticky; top: 18vh; } }

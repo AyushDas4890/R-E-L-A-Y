@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import { SplitText } from 'gsap/SplitText';
 import { GlowAscii } from './GlowAscii.tsx';
+import { HeroChat } from './HeroChat.tsx';
 import { LogoIntro, LogoMark } from './LogoIntro.tsx';
 import { Robot } from './Robot.tsx';
-import SpotlightCard from '../react-bits/SpotlightCard.tsx';
 import '../landing.css';
 import '../nexus.css';
+import '../tour.css';
 
 gsap.registerPlugin(ScrollTrigger, ScrollSmoother, SplitText);
 
@@ -16,25 +17,21 @@ gsap.registerPlugin(ScrollTrigger, ScrollSmoother, SplitText);
 const TERRAIN = ['#1a0906', '#4a1c12', '#8a3a22', '#c8693c', '#f0b07a'];
 
 const NAV = [
-  { label: 'Features', href: '#features' },
-  { label: 'Huddles', href: '#features' },
-  { label: 'Workflows', href: '#features' },
-  { label: 'Why Relay', href: '#stats' },
+  { label: 'How it works', href: '#tour' },
+  { label: 'Huddles', href: '#huddles' },
+  { label: 'Workflows', href: '#workflows' },
+  { label: 'Search', href: '#search' },
 ];
 
-const FEATURES = [
-  { icon: '#', title: 'Channels & threads', text: 'Public and private channels, threaded replies, pins and saved items keep every conversation findable.' },
-  { icon: '◎', title: 'Huddles', text: 'Drop into live audio with a mic meter, then get notes posted to the channel when the huddle ends.' },
-  { icon: '▤', title: 'Canvases & lists', text: 'Write docs beside the chat and track work on boards by status, assignee and due date.' },
-  { icon: '⚡', title: 'Workflow Builder', text: 'Automate reminders, scheduled messages and slash commands without leaving the workspace.' },
-  { icon: '⌕', title: 'Instant search', text: 'Press Ctrl+K to jump to any message, person or channel across the whole workspace.' },
-  { icon: '✦', title: 'Everything unlocked', text: 'No seat limits and no paywalls. Every premium capability is on from the first message.' },
-];
+type Mood = 'happy' | 'focus' | 'sad';
 
-const STATS = [
-  { value: 30, suffix: '+', label: 'Premium features' },
-  { value: 4, suffix: '', label: 'Themes' },
-  { value: 0, suffix: '', label: 'Seat limits' },
+// What the robot says while each step of the tour is on screen.
+const STEPS = [
+  { id: 'channels', title: 'Talk in channels, branch into threads', text: 'Every team gets a channel. Side conversations become threads, so the main room stays readable.', say: 'Post in a channel. Replies fold into a thread.' },
+  { id: 'huddles', title: 'Jump on a huddle', text: 'Start a call from any channel. When it ends, the notes land back in the conversation.', say: 'One click and everyone’s talking. I take the notes.' },
+  { id: 'canvas', title: 'Write it down next to the chat', text: 'Each channel has a canvas for docs and a list for tracking work by status and owner.', say: 'Docs and to-dos live right beside the chat.' },
+  { id: 'workflows', title: 'Let the bot do the busywork', text: 'Workflows welcome new people, answer common questions and send reminders on a schedule.', say: 'Tell me when, I’ll handle the what.' },
+  { id: 'search', title: 'Find anything in a keystroke', text: 'Ctrl+K searches every message, person and channel at once, and suggests an answer.', say: 'Lost something? I’ll find it.' },
 ];
 
 interface Props {
@@ -45,202 +42,298 @@ export function Landing({ onGetStarted }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState(false);
   const [intro, setIntro] = useState(true);
+  // `live` flips as the splash starts lifting; the hero is hidden until then so nothing pops.
+  const [live, setLive] = useState(false);
+  const [mood, setMood] = useState<Mood>('happy');
+  const [poke, setPoke] = useState(0);
+  const [step, setStep] = useState(0);
   const endIntro = useCallback(() => setIntro(false), []);
+  const lift = useCallback(() => setLive(true), []);
 
-  useEffect(() => {
-    if (intro) return;
+  // Layout effect: start values are set before the browser paints the revealed hero.
+  useLayoutEffect(() => {
+    if (!live) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const scroller = root.current!;
-    let onMove: ((e: PointerEvent) => void) | null = null;
     const hero = scroller.querySelector<HTMLElement>('.nx-hero')!;
+    let onMove: ((e: PointerEvent) => void) | null = null;
 
     const ctx = gsap.context(() => {
-      if (reduce) {
-        gsap.utils.toArray<HTMLElement>('.lp-stat-num').forEach((el) => { el.textContent = el.dataset.value ?? '0'; });
-        return;
-      }
+      // Tour steps still need to update the robot's line without motion.
+      gsap.utils.toArray<HTMLElement>('.nx-step').forEach((el, i) => {
+        ScrollTrigger.create({ trigger: el, start: 'top 55%', end: 'bottom 55%', onToggle: (s) => s.isActive && setStep(i) });
+      });
+      if (reduce) return;
 
       // Smooth scrolling first: ScrollTriggers made before it measure the wrong scroller.
-      ScrollSmoother.create({ wrapper: scroller, content: '.nx-content', smooth: 1.2, effects: true, smoothTouch: 0.1 });
+      ScrollSmoother.create({ wrapper: scroller, content: '.nx-content', smooth: 1.1, effects: true, smoothTouch: 0.1 });
 
-      const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
-      tl.from('.nx-nav > *:not(.nx-line)', { y: -30, opacity: 0, duration: 0.8, stagger: 0.05, clearProps: 'transform' })
+      gsap.timeline({ defaults: { ease: 'power4.out' } })
+        .from('.nx-nav > *:not(.nx-line)', { y: -24, opacity: 0, duration: 0.8, stagger: 0.05, clearProps: 'transform' })
         .from('.nx-line-h', { scaleX: 0, duration: 1 }, '<')
         .from('.nx-line-v', { scaleY: 0, duration: 0.8 }, '<0.2')
-        .from('.nx-word-a', { xPercent: -60, opacity: 0, duration: 1.2 }, '-=0.6')
-        .from('.nx-word-b', { xPercent: 60, opacity: 0, duration: 1.2 }, '<')
-        .from('.nx-bot', { yPercent: 45, opacity: 0, duration: 1.4, ease: 'expo.out' }, '-=1.1')
-        .from('.nx-head-line > span', { yPercent: 110, duration: 0.9, stagger: 0.12 }, '-=0.8')
-        .from('.nx-tag', { opacity: 0, y: 12, duration: 0.6 }, '-=0.5');
+        .from('.nx-ghost', { yPercent: 18, opacity: 0, duration: 1.4, ease: 'expo.out' }, '<')
+        .from('.nx-hero .nx-bot', { yPercent: 40, opacity: 0, duration: 1.3, ease: 'expo.out' }, '<0.15')
+        .from('.nx-head-line > span', { yPercent: 110, duration: 0.9, stagger: 0.1 }, '<0.2')
+        .from('.nx-lede, .nx-actions', { y: 16, opacity: 0, duration: 0.7, stagger: 0.08 }, '-=0.5')
+        .from('.hc', { x: 40, opacity: 0, rotateY: -12, duration: 1, ease: 'expo.out' }, '-=0.8');
 
-      // Idle life: float, blink every few seconds, wave once, breathing screen glow.
-      gsap.to('.nx-bot-inner', { y: -14, duration: 2.4, ease: 'sine.inOut', yoyo: true, repeat: -1, force3D: true });
+      // Idle life for every robot: float, blink, one wave on arrival, breathing glow.
+      gsap.to('.nx-bot-inner', { y: -12, duration: 2.4, ease: 'sine.inOut', yoyo: true, repeat: -1, force3D: true });
       gsap.timeline({ repeat: -1, repeatDelay: 3.2, delay: 2 })
         .to('.nx-eye', { scaleY: 0.12, duration: 0.07, ease: 'none' })
         .to('.nx-eye', { scaleY: 1, duration: 0.1, ease: 'none' });
-      gsap.timeline({ delay: 1.8 })
-        .to('.nx-arm.r', { rotate: -140, duration: 0.45, ease: 'back.out(2)' })
-        .to('.nx-arm.r', { rotate: -110, duration: 0.25, yoyo: true, repeat: 3, ease: 'sine.inOut' })
-        .to('.nx-arm.r', { rotate: 0, duration: 0.6, ease: 'power2.inOut' });
       gsap.to('.nx-glow', { opacity: 0.55, duration: 1.6, ease: 'sine.inOut', yoyo: true, repeat: -1 });
 
-      // Pointer parallax: the head turns toward the cursor, the wordmark halves drift the other way.
-      const turn = gsap.quickTo('.nx-bot-head', 'rotationY', { duration: 0.8, ease: 'power3.out' });
-      const nod = gsap.quickTo('.nx-bot-head', 'rotationX', { duration: 0.8, ease: 'power3.out' });
-      const fx = gsap.quickTo('.nx-face', 'x', { duration: 0.6, ease: 'power3.out' });
-      const fy = gsap.quickTo('.nx-face', 'y', { duration: 0.6, ease: 'power3.out' });
-      const wa = gsap.quickTo('.nx-word-a', 'x', { duration: 1.2, ease: 'power3.out' });
-      const wb = gsap.quickTo('.nx-word-b', 'x', { duration: 1.2, ease: 'power3.out' });
+      // Pointer: the hero robot looks at the cursor; the ghost wordmark drifts the other way.
+      const turn = gsap.quickTo('.nx-hero .nx-bot-head', 'rotationY', { duration: 0.8, ease: 'power3.out' });
+      const nod = gsap.quickTo('.nx-hero .nx-bot-head', 'rotationX', { duration: 0.8, ease: 'power3.out' });
+      const fx = gsap.quickTo('.nx-hero .nx-face', 'x', { duration: 0.6, ease: 'power3.out' });
+      const fy = gsap.quickTo('.nx-hero .nx-face', 'y', { duration: 0.6, ease: 'power3.out' });
+      const gx = gsap.quickTo('.nx-ghost', 'x', { duration: 1.2, ease: 'power3.out' });
       onMove = (e: PointerEvent) => {
         const r = hero.getBoundingClientRect();
         const nx = (e.clientX - r.left) / r.width - 0.5;
         const ny = (e.clientY - r.top) / r.height - 0.5;
-        turn(nx * 30); nod(-ny * 16); fx(nx * 18); fy(ny * 10);
-        wa(-nx * 36); wb(-nx * 36);
+        turn(nx * 30); nod(-ny * 16); fx(nx * 18); fy(ny * 10); gx(-nx * 30);
       };
       hero.addEventListener('pointermove', onMove);
 
       const scrub = { trigger: '.nx-hero', start: 'top top', end: 'bottom top', scrub: 0.6 };
-      gsap.to('.nx-bot-scroll', { y: () => -window.innerHeight * 0.12, scale: 0.94, ease: 'none', scrollTrigger: { ...scrub, scrub: 0.6, invalidateOnRefresh: true } });
-      // Explicit start values: the intro also animates xPercent, and a plain to() would
-      // capture its mid-flight offset as the 'top of page' position.
-      gsap.fromTo('.nx-word-a', { xPercent: 0 }, { xPercent: -30, ease: 'none', immediateRender: false, scrollTrigger: scrub });
-      gsap.fromTo('.nx-word-b', { xPercent: 0 }, { xPercent: 30, ease: 'none', immediateRender: false, scrollTrigger: scrub });
-
+      gsap.fromTo('.nx-hero .nx-bot-scroll', { y: 0, scale: 1 }, { y: () => -window.innerHeight * 0.1, scale: 0.94, ease: 'none', immediateRender: false, scrollTrigger: { ...scrub, invalidateOnRefresh: true } });
+      gsap.fromTo('.nx-ghost', { yPercent: 0 }, { yPercent: 30, ease: 'none', immediateRender: false, scrollTrigger: scrub });
 
       gsap.to('.nx-marquee-track', { xPercent: -50, duration: 28, ease: 'none', repeat: -1 });
-      gsap.to('.nx-marquee', { skewY: -3, ease: 'none', scrollTrigger: { trigger: '.nx-marquee', start: 'top bottom', end: 'bottom top', scrub: true } });
 
-      // Headings: characters rise and settle as they scroll in.
       gsap.utils.toArray<HTMLElement>('.nx-split').forEach((h) => {
         const split = SplitText.create(h, { type: 'chars,words', mask: 'words' });
-        gsap.from(split.chars, { yPercent: 110, rotate: 8, duration: 0.9, stagger: 0.018, ease: 'power4.out', scrollTrigger: { trigger: h, start: 'top 85%', once: true } });
+        gsap.from(split.chars, { yPercent: 110, duration: 0.9, stagger: 0.018, ease: 'power4.out', scrollTrigger: { trigger: h, start: 'top 85%', once: true } });
       });
 
-      // Statement: words light up one by one as you scrub through.
-      const words = SplitText.create('.nx-statement p', { type: 'words' }).words;
-      gsap.fromTo(words, { opacity: 0.12 }, { opacity: 1, stagger: 0.1, ease: 'none', scrollTrigger: { trigger: '.nx-statement', start: 'top 70%', end: 'bottom 50%', scrub: 0.6 } });
-
-      // Feature reel: pinned, scrolls sideways; each card lifts and straightens as it enters.
-      const track = scroller.querySelector<HTMLElement>('.nx-reel-track')!;
-      const dist = () => track.scrollWidth - window.innerWidth + 48;
-      const reel = gsap.to(track, { x: () => -dist(), ease: 'none', scrollTrigger: { trigger: '.nx-reel', start: 'top top', end: () => `+=${dist()}`, pin: true, scrub: 1, invalidateOnRefresh: true } });
-      gsap.utils.toArray<HTMLElement>('.nx-card').forEach((card) => {
-        gsap.from(card, { y: 80, rotate: 6, opacity: 0.2, ease: 'power2.out', scrollTrigger: { trigger: card, containerAnimation: reel, start: 'left 95%', end: 'left 55%', scrub: true } });
-      });
-      gsap.to('.nx-reel-progress i', { scaleX: 1, ease: 'none', scrollTrigger: { trigger: '.nx-reel', start: 'top top', end: () => `+=${dist()}`, scrub: true } });
-
-      // Stats: count up with filling bars.
-      gsap.utils.toArray<HTMLElement>('.nx-stat').forEach((el, i) => {
-        const num = el.querySelector<HTMLElement>('.lp-stat-num')!;
-        const counter = { n: 0 };
-        gsap.timeline({ scrollTrigger: { trigger: el, start: 'top 85%', once: true }, delay: i * 0.12 })
-          .from(el, { y: 50, opacity: 0, duration: 0.8, ease: 'power3.out' })
-          .to(counter, { n: Number(num.dataset.value), duration: 1.6, ease: 'power2.out', onUpdate: () => { num.textContent = String(Math.round(counter.n)); } }, '<0.1')
-          .from(el.querySelector('.nx-bar i'), { scaleX: 0, duration: 1.4, ease: 'power3.inOut' }, '<');
+      // CSS sticky doesn't survive the smoother's transform, so pin the narrator robot on wide screens.
+      gsap.matchMedia().add('(min-width: 861px)', () => {
+        const side = scroller.querySelector<HTMLElement>('.nx-tour-side')!;
+        ScrollTrigger.create({ trigger: '.nx-tour-steps', pin: side, pinSpacing: false, start: 'top 18%', end: () => `bottom ${18 + (side.offsetHeight / window.innerHeight) * 100}%`, invalidateOnRefresh: true });
       });
 
-      // Finale: the giant line scales into place; the button has a magnetic pull.
-      gsap.fromTo('.nx-final-big', { scale: 0.55, opacity: 0.2 }, { scale: 1, opacity: 1, ease: 'none', scrollTrigger: { trigger: '.nx-final', start: 'top bottom', end: 'center center', scrub: 0.8 } });
-      const btn = scroller.querySelector<HTMLElement>('.nx-final .nx-cta')!;
-      const bx = gsap.quickTo(btn, 'x', { duration: 0.5, ease: 'power3.out' });
-      const by = gsap.quickTo(btn, 'y', { duration: 0.5, ease: 'power3.out' });
-      btn.addEventListener('pointermove', (e) => { const r = btn.getBoundingClientRect(); bx((e.clientX - r.left - r.width / 2) * 0.35); by((e.clientY - r.top - r.height / 2) * 0.35); });
-      btn.addEventListener('pointerleave', () => { bx(0); by(0); });
-      gsap.from('.lp-foot > *', { y: 16, opacity: 0, duration: 0.6, stagger: 0.15, scrollTrigger: { trigger: '.lp-foot', start: 'top 98%', once: true } });
+      // Tour: each scene is a short motion graphic of the real product, replayed when you return to it.
+      gsap.utils.toArray<HTMLElement>('.nx-step').forEach((el) => {
+        const tl = scene(el);
+        ScrollTrigger.create({ trigger: el, start: 'top 65%', onEnter: () => tl.restart(), onEnterBack: () => tl.restart() });
+        gsap.from(el.querySelector('.nx-step-copy'), { y: 30, opacity: 0, duration: 0.8, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 75%', once: true } });
+      });
+
+      gsap.fromTo('.nx-final-big', { scale: 0.7, opacity: 0.2 }, { scale: 1, opacity: 1, ease: 'none', scrollTrigger: { trigger: '.nx-final', start: 'top bottom', end: 'center center', scrub: 0.8 } });
     }, root);
+
     return () => {
       if (onMove) hero.removeEventListener('pointermove', onMove);
       ctx.revert();
       ScrollSmoother.get()?.kill();
     };
-  }, [intro]);
+  }, [live]);
+
+  // The tour robot reacts each time it gets a new line.
+  useLayoutEffect(() => {
+    if (!live || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.fromTo('.nx-tour-say', { y: 10, opacity: 0, scale: 0.94 }, { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(2)' });
+    gsap.fromTo('.nx-tour .nx-bot-head', { rotationZ: -7 }, { rotationZ: 0, duration: 0.9, ease: 'elastic.out(1, 0.35)' });
+  }, [step, live]);
+
+  const wave = () => {
+    setPoke((p) => p + 1);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    gsap.timeline()
+      .to('.nx-hero .nx-arm.r', { rotate: -140, duration: 0.4, ease: 'back.out(2)' })
+      .to('.nx-hero .nx-arm.r', { rotate: -110, duration: 0.22, yoyo: true, repeat: 3, ease: 'sine.inOut' })
+      .to('.nx-hero .nx-arm.r', { rotate: -14, duration: 0.5, ease: 'power2.inOut' });
+  };
 
   return (
     <div className="lp nx" ref={root}>
-      {intro && <LogoIntro onDone={endIntro} />}
+      {intro && <LogoIntro onDone={endIntro} onLift={lift} />}
       <div className="nx-content">
-      <section className="nx-hero">
-        <div className="nx-terrain" aria-hidden><GlowAscii palette={TERRAIN} /></div>
-        <div className="nx-sun" aria-hidden />
+        <section className={`nx-hero ${live ? 'is-live' : ''}`}>
+          <div className="nx-terrain" aria-hidden><GlowAscii palette={TERRAIN} /></div>
+          <div className="nx-sun" aria-hidden />
 
-        <header className="nx-nav">
-          <div className="nx-brand"><LogoMark size={26} />relay</div>
-          <nav className={`nx-links ${menu ? 'open' : ''}`}>
-            {NAV.map((n) => <a key={n.label} href={n.href} onClick={() => setMenu(false)}>{n.label}</a>)}
-            <button className="nx-links-cta" onClick={onGetStarted}>Sign in</button>
-          </nav>
-          <button className="nx-cta" onClick={onGetStarted}>Get started <b>—</b></button>
-          <button className="nx-menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>Menu <b>=</b></button>
-          <span className="nx-line nx-line-h" aria-hidden />
-          <span className="nx-line nx-line-v l" aria-hidden><i /></span>
-          <span className="nx-line nx-line-v r" aria-hidden><i /></span>
-        </header>
+          <header className="nx-nav">
+            <div className="nx-brand"><LogoMark size={26} />relay</div>
+            <nav className={`nx-links ${menu ? 'open' : ''}`}>
+              {NAV.map((n) => <a key={n.label} href={n.href} onClick={() => setMenu(false)}>{n.label}</a>)}
+              <button className="nx-links-cta" onClick={onGetStarted}>Sign in</button>
+            </nav>
+            <button className="nx-cta" onClick={onGetStarted}>Get started <b>—</b></button>
+            <button className="nx-menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>Menu <b>=</b></button>
+            <span className="nx-line nx-line-h" aria-hidden />
+            <span className="nx-line nx-line-v l" aria-hidden><i /></span>
+            <span className="nx-line nx-line-v r" aria-hidden><i /></span>
+          </header>
 
-        <div className="nx-word nx-word-a" aria-hidden>re</div>
-        <div className="nx-word nx-word-b" aria-hidden>lay</div>
+          <div className="nx-ghost" aria-hidden>relay</div>
 
-        <Robot />
-
-        <div className="nx-copy">
-          <p className="nx-tag">Every conversation starts as a question.<br />Relay turns it into an answer.</p>
-          <h1 className="nx-head">
-            <span className="nx-head-line"><span>Team chat</span></span>
-            <span className="nx-head-line"><span>that talks back</span></span>
-          </h1>
-        </div>
-      </section>
-
-      <div className="nx-marquee" aria-hidden>
-        <div className="nx-marquee-track">
-          {[0, 1].map((k) => (
-            <span key={k}>
-              {['Channels', 'Threads', 'Huddles', 'Canvases', 'Lists', 'Workflows', 'Search', 'Clips', 'Reminders'].map((w) => <em key={w}>{w}<i>✦</i></em>)}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <main>
-        <section className="nx-statement">
-          <p>One workspace for every conversation. Channels, threads, huddles and canvases, all moving at the speed of your team.</p>
+          <div className="nx-hero-grid">
+            <div className="nx-copy">
+              <h1 className="nx-head">
+                <span className="nx-head-line"><span>Team chat</span></span>
+                <span className="nx-head-line"><span>that talks back</span></span>
+              </h1>
+              <p className="nx-lede">Channels, threads, huddles and canvases, with a bot teammate that answers, reminds and recaps. Try it: ask it something.</p>
+              <div className="nx-actions">
+                <button className="nx-cta big" onClick={onGetStarted}>Get started <b>—</b></button>
+                <a className="nx-ghost-btn" href="#tour">See how it works</a>
+              </div>
+            </div>
+            <div className="nx-stage">
+              <button className="nx-bot-hit" onClick={wave} aria-label="Say hi to Relay Bot"><Robot mood={mood} /></button>
+              <HeroChat active={live} onMood={setMood} poke={poke} />
+            </div>
+          </div>
         </section>
 
-        <section id="features" className="nx-reel">
-          <div className="nx-reel-head">
-            <h2 className="nx-split">Everything, unlocked</h2>
-            <div className="nx-reel-progress"><i /></div>
-          </div>
-          <div className="nx-reel-track">
-            {FEATURES.map((f, i) => (
-              <SpotlightCard key={f.title} className="nx-card" spotlightColor="rgba(157, 245, 197, 0.22)">
-                <span className="nx-card-num">0{i + 1}</span>
-                <span className="lp-icon">{f.icon}</span>
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
-              </SpotlightCard>
+        <div className="nx-marquee" aria-hidden>
+          <div className="nx-marquee-track">
+            {[0, 1].map((k) => (
+              <span key={k}>
+                {['Channels', 'Threads', 'Huddles', 'Canvases', 'Lists', 'Workflows', 'Search', 'Clips', 'Reminders'].map((w) => <em key={w}>{w}<i>✦</i></em>)}
+              </span>
             ))}
           </div>
-        </section>
+        </div>
 
-        <section id="stats" className="nx-stats">
-          {STATS.map((s, i) => (
-            <div key={s.label} className="nx-stat">
-              <div className="nx-stat-num"><span className="lp-stat-num" data-value={s.value}>0</span>{s.suffix}</div>
-              <span>{s.label}</span>
-              <div className="nx-bar"><i style={{ width: `${[100, 70, 100][i]}%` }} /></div>
+        <section id="tour" className="nx-tour">
+          <h2 className="nx-split nx-tour-title">How Relay works</h2>
+          <div className="nx-tour-grid">
+            <aside className="nx-tour-side" aria-hidden>
+              <p className="nx-tour-say" key={step}>{STEPS[step].say}</p>
+              <Robot mood={step === 4 ? 'focus' : 'happy'} />
+              <ol className="nx-tour-dots">{STEPS.map((s, i) => <li key={s.id} className={i === step ? 'on' : ''} />)}</ol>
+            </aside>
+            <div className="nx-tour-steps">
+              {STEPS.map((s) => (
+                <article key={s.id} id={s.id} className="nx-step" data-scene={s.id}>
+                  <div className="nx-step-copy">
+                    <h3>{s.title}</h3>
+                    <p>{s.text}</p>
+                  </div>
+                  <Scene id={s.id} />
+                </article>
+              ))}
             </div>
-          ))}
+          </div>
         </section>
 
         <section className="nx-final">
           <h2 className="nx-final-big">Ready when<br />your team is</h2>
-          <button className="nx-cta" onClick={onGetStarted}>Get started <b>—</b></button>
+          <button className="nx-cta big" onClick={onGetStarted}>Get started <b>—</b></button>
         </section>
-      </main>
 
-      <footer className="lp-foot"><span>Relay. Built from public product behavior only.</span><span className="nx-powered">Powered by <b>Flo Studios</b></span></footer>
+        <footer className="lp-foot"><span>Relay. Built from public product behavior only.</span><span className="nx-powered">Powered by <b>Flo Studios</b></span></footer>
       </div>
     </div>
   );
+}
+
+// ---- Tour scenes: tiny, honest mock-ups of the real UI. Markup here, motion in scene(). ----
+
+const Av = ({ c, l }: { c: string; l: string }) => <i className="ms-av" style={{ background: c }}>{l}</i>;
+
+function Scene({ id }: { id: string }) {
+  if (id === 'channels') return (
+    <div className="ms ms-chat" aria-hidden>
+      <div className="ms-col">
+        <div className="ms-bar"># launch</div>
+        <div className="ms-msg"><Av c="#d7765a" l="M" /><div><b>Maya</b><p>Launch copy is ready for review 🚀</p></div></div>
+        <div className="ms-msg"><Av c="#3aa79b" l="K" /><div><b>Ken</b><p>Looks great. One question on pricing</p><span className="ms-replies">💬 3 replies</span></div></div>
+        <div className="ms-msg"><Av c="#8a6bd8" l="P" /><div><b>Priya</b><p>Shipping at 4 ✅</p></div></div>
+      </div>
+      <div className="ms-thread">
+        <div className="ms-bar">Thread</div>
+        <div className="ms-msg sm"><Av c="#d7765a" l="M" /><p>Pricing stays the same</p></div>
+        <div className="ms-msg sm"><Av c="#3aa79b" l="K" /><p>Perfect, thanks!</p></div>
+      </div>
+    </div>
+  );
+  if (id === 'huddles') return (
+    <div className="ms ms-huddle" aria-hidden>
+      <div className="ms-bar"># design · 🎧 Huddle</div>
+      <div className="ms-people">
+        {[['#d7765a', 'M'], ['#3aa79b', 'K'], ['#8a6bd8', 'P']].map(([c, l]) => (
+          <div key={l} className="ms-person"><Av c={c} l={l} /><span className="ms-meter"><i /><i /><i /><i /><i /></span></div>
+        ))}
+      </div>
+      <div className="ms-msg ms-notes"><Av c="#f0b07a" l="R" /><div><b>Relay Bot</b><p>📝 Huddle notes: ship Friday, Ken owns QA</p></div></div>
+    </div>
+  );
+  if (id === 'canvas') return (
+    <div className="ms ms-canvas" aria-hidden>
+      <div className="ms-doc">
+        <div className="ms-bar">📄 Launch plan</div>
+        <p className="ms-type t1">Goal: launch v2 on Friday</p>
+        <p className="ms-type t2">• Final copy review</p>
+        <p className="ms-type t3">• QA on mobile</p>
+      </div>
+      <div className="ms-board">
+        <div className="ms-lane"><b>Doing</b><span className="ms-card mover">QA on mobile</span></div>
+        <div className="ms-lane"><b>Done</b><span className="ms-card">Copy review</span><span className="ms-card ghost" /></div>
+      </div>
+    </div>
+  );
+  if (id === 'workflows') return (
+    <div className="ms ms-flow" aria-hidden>
+      <div className="ms-node trig">⚡ When someone joins #general</div>
+      <svg className="ms-wire" viewBox="0 0 10 60" preserveAspectRatio="none"><path d="M5 0 V60" /></svg>
+      <div className="ms-node act">💬 Post a welcome message</div>
+      <div className="ms-msg ms-welcome"><Av c="#f0b07a" l="R" /><div><b>Relay Bot</b><p>Welcome aboard, Sam! 👋 Start with #launch.</p></div></div>
+    </div>
+  );
+  return (
+    <div className="ms ms-search" aria-hidden>
+      <div className="ms-query"><span>⌕</span><span className="ms-q">launch</span><i className="ms-caret" /></div>
+      <div className="ms-results">
+        <div className="ms-res best">✨ <b>Answer:</b> launch is Friday at 4 PM, per Priya in #launch</div>
+        <div className="ms-res"># launch <small>channel</small></div>
+        <div className="ms-res">📄 Launch plan <small>canvas</small></div>
+        <div className="ms-res">Maya: Launch copy is ready… <small>message</small></div>
+      </div>
+    </div>
+  );
+}
+
+function scene(el: HTMLElement): gsap.core.Timeline {
+  const q = gsap.utils.selector(el);
+  const tl = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
+  switch (el.dataset.scene) {
+    case 'channels':
+      tl.fromTo(q('.ms-col .ms-msg'), { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, stagger: 0.35 })
+        .fromTo(q('.ms-replies'), { scale: 0.8 }, { scale: 1, duration: 0.5, ease: 'back.out(3)' })
+        .fromTo(q('.ms-thread'), { xPercent: 105 }, { xPercent: 0, duration: 0.7, ease: 'expo.out' }, '+=0.2')
+        .fromTo(q('.ms-thread .ms-msg'), { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, stagger: 0.3 });
+      break;
+    case 'huddles':
+      tl.fromTo(q('.ms-person'), { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, stagger: 0.3, ease: 'back.out(2)' })
+        .fromTo(q('.ms-meter i'), { scaleY: 0.2 }, { scaleY: () => 0.3 + Math.random() * 0.7, duration: 0.18, yoyo: true, repeat: 15, stagger: { each: 0.03, from: 'random' }, ease: 'sine.inOut' }, '<0.4')
+        .fromTo(q('.ms-notes'), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '+=0.2');
+      break;
+    case 'canvas':
+      tl.fromTo(q('.ms-type'), { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 0.8, stagger: 0.5, ease: 'steps(18)' })
+        .fromTo(q('.mover'), { x: 0, y: 0 }, { x: () => (q('.ghost')[0] as HTMLElement).offsetLeft - (q('.mover')[0] as HTMLElement).offsetLeft, y: () => (q('.ghost')[0] as HTMLElement).offsetTop - (q('.mover')[0] as HTMLElement).offsetTop, duration: 0.9, ease: 'power2.inOut' }, '+=0.2')
+        .to(q('.mover'), { backgroundColor: '#2f5d4a', duration: 0.3 }, '-=0.2');
+      break;
+    case 'workflows':
+      tl.fromTo(q('.trig'), { y: 12, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 })
+        .fromTo(q('.ms-wire path'), { strokeDashoffset: 60 }, { strokeDashoffset: 0, duration: 0.6, ease: 'none' })
+        .fromTo(q('.act'), { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: 'back.out(2)' })
+        .fromTo(q('.ms-welcome'), { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '+=0.15');
+      break;
+    default: {
+      const word = 'launch';
+      const qEl = q('.ms-q')[0] as HTMLElement;
+      const typed = { n: 0 };
+      tl.fromTo(typed, { n: 0 }, { n: word.length, duration: 0.7, ease: 'none', onUpdate: () => { qEl.textContent = word.slice(0, Math.round(typed.n)); } })
+        .fromTo(q('.ms-res'), { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, stagger: 0.12 })
+        .fromTo(q('.best'), { boxShadow: '0 0 0 0 rgba(157,245,197,0)' }, { boxShadow: '0 0 0 2px rgba(157,245,197,.7)', duration: 0.4 });
+    }
+  }
+  return tl;
 }

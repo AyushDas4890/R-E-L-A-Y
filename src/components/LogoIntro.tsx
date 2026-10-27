@@ -16,13 +16,15 @@ export function LogoMark({ size = 28 }: { size?: number }) {
   );
 }
 
-export function LogoIntro({ onDone }: { onDone: () => void }) {
+// onLift fires as the splash starts lifting, so the page behind can begin its entrance
+// while it is being uncovered instead of popping in after.
+export function LogoIntro({ onDone, onLift }: { onDone: () => void; onLift: () => void }) {
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let seen = false;
     try { seen = sessionStorage.getItem(SEEN) === '1'; } catch { /* storage blocked */ }
-    if (seen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { onDone(); return; }
+    if (seen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { onLift(); onDone(); return; }
 
     const ctx = gsap.context(() => {
       const paths = gsap.utils.toArray<SVGPathElement>('.rl-intro .rl-mark path');
@@ -41,10 +43,11 @@ export function LogoIntro({ onDone }: { onDone: () => void }) {
         .from('.rl-credit', { y: 14, opacity: 0, duration: 0.6 }, '-=0.2')
         .from('.rl-credit b', { backgroundSize: '0% 2px', duration: 0.6, ease: 'power2.inOut' }, '-=0.3')
         .to('.rl-intro-inner', { scale: 0.92, opacity: 0, duration: 0.5, ease: 'power2.in' }, '+=0.7')
+        .call(onLift)
         .to('.rl-intro', { yPercent: -100, duration: 0.8, ease: 'expo.inOut' }, '-=0.15');
     }, root);
     return () => ctx.revert();
-  }, [onDone]);
+  }, [onDone, onLift]);
 
   return (
     <div className="rl-intro" ref={root} aria-hidden>

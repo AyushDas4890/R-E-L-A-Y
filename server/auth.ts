@@ -3,7 +3,7 @@
 export interface SupabaseUser {
   id: string;
   email: string | null;
-  user_metadata: { full_name?: string; name?: string; user_name?: string; avatar_url?: string };
+  user_metadata: { full_name?: string; name?: string; user_name?: string; avatar_url?: string; picture?: string };
 }
 
 export interface AuthClient {
@@ -33,6 +33,7 @@ export async function verifyToken(token: string, client: AuthClient): Promise<Id
     userId: u.id,
     name: name.slice(0, 40),
     email: u.email,
-    avatarUrl: meta.avatar_url,
+    // GitHub sends avatar_url; Google sends picture (Supabase usually copies it to avatar_url too).
+    avatarUrl: meta.avatar_url ?? meta.picture,
   };
 }
