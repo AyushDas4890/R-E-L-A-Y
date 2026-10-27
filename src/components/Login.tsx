@@ -153,7 +153,9 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
     const redirectTo = `${window.location.origin}${code ? `?invite=${encodeURIComponent(code)}` : ''}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo, ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}) },
+      // Always show the provider's account chooser instead of silently reusing the browser's
+      // session, so people can pick an account or sign in to a different one with a password.
+      options: { redirectTo, queryParams: { prompt: 'select_account' } },
     });
     if (error) { setOauthError(error.message); setBusy(null); }
   }
