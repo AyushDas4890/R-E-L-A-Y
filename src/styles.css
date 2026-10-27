@@ -681,3 +681,10 @@ input[type='checkbox'].fit { width: auto; }
 .alert-banner { background: var(--side-bg); color: var(--side-text); }
 .alert-banner .link-btn { color: var(--accent-2); }
 [data-theme='meadow'] .alert-banner .link-btn { color: #b9f08a; }
+/* Far Planet: dusky teal sky over a sea of clouds and dark grass. */
+[data-theme='overcast'] {
+  --bg: #111a20; --rail-bg: #0c1419; --side-bg: #1a2a34; --panel: #16222a; --raised: #1d2c35;
+  --text: #e8eff2; --muted: #98aab3; --line: #263842; --accent: #6fb3c9; --accent-2: #a8d4e2; --hover: #1b2a33; --on-accent: #0b1a20;
+  --side-text: #eef5f7; --side-muted: #a9bec7; --side-hover: rgba(255,255,255,.07); --side-active: #2c5566;
+  --chrome: linear-gradient(180deg, #1d3340 0%, #0c1419 70%);
+}
