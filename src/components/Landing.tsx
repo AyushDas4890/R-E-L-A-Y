@@ -47,6 +47,9 @@ const STEPS = [
   { id: 'search', title: 'Find anything in a keystroke', text: 'Ctrl+K searches every message, person and channel at once, and suggests an answer.', say: 'Lost something? I’ll find it.' },
 ];
 
+// True until the landing page has mounted once in this page load.
+let firstLoad = true;
+
 interface Props {
   onGetStarted: () => void;
 }
@@ -62,6 +65,50 @@ export function Landing({ onGetStarted }: Props) {
   const [step, setStep] = useState(0);
   const endIntro = useCallback(() => setIntro(false), []);
   const lift = useCallback(() => setLive(true), []);
+
+  // In-page links. ScrollSmoother moves the page with a transform, so a native #hash jump scrolls
+  // the wrong element and leaves the page stuck part-way. Every jump goes through the smoother instead.
+  const jump = useCallback((hash: string, smooth = true) => {
+    const target = hash.length > 1 ? document.getElementById(hash.slice(1)) : null;
+    const smoother = ScrollSmoother.get();
+    if (smoother) smoother.scrollTo(target ?? 0, smooth, 'top top');
+    else if (target) target.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    else (root.current ?? window).scrollTo({ top: 0, behavior: smooth ? 'smooth' : 'auto' });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!live) return;
+    const scroller = root.current!;
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
+      if (!a || !scroller.contains(a)) return;
+      e.preventDefault();
+      const hash = a.getAttribute('href')!;
+      const url = hash === '#top' ? location.pathname + location.search : hash;
+      // A real history entry, so the browser's Back button returns to where you were.
+      if (url !== location.hash && url !== location.pathname + location.search + location.hash) history.pushState(history.state, '', url);
+      jump(hash === '#top' ? '' : hash);
+    };
+    // Back and Forward between in-page sections.
+    const onPop = () => jump(location.hash);
+    // The smoother owns scrolling; the wrapper itself must never scroll natively (browsers do that
+    // for a #hash in the address bar), or the page and the scroll position drift apart.
+    const pin = () => { if (ScrollSmoother.get() && scroller.scrollTop) scroller.scrollTop = 0; };
+    scroller.addEventListener('click', onClick);
+    scroller.addEventListener('scroll', pin);
+    window.addEventListener('popstate', onPop);
+    // A shared link like /#tour lands on its section once the page has laid out. Only on the first
+    // load: returning from sign-in remounts this page, and that should start at the top.
+    const initial = location.hash && firstLoad ? window.setTimeout(() => { pin(); jump(location.hash, false); }, 150) : undefined;
+    if (!initial) jump('', false);
+    firstLoad = false;
+    return () => {
+      scroller.removeEventListener('click', onClick);
+      scroller.removeEventListener('scroll', pin);
+      window.removeEventListener('popstate', onPop);
+      clearTimeout(initial);
+    };
+  }, [live, jump]);
 
   // Layout effect: start values are set before the browser paints the revealed hero.
   useLayoutEffect(() => {
@@ -192,7 +239,7 @@ export function Landing({ onGetStarted }: Props) {
           <div className="nx-sun" aria-hidden />
 
           <header className="nx-nav">
-            <div className="nx-brand"><LogoMark size={26} />relay</div>
+            <a className="nx-brand" href="#top" aria-label="Relay home"><LogoMark size={26} />relay</a>
             <nav className={`nx-links ${menu ? 'open' : ''}`}>
               {NAV.map((n) => <a key={n.label} href={n.href} onClick={() => setMenu(false)}>{n.label}</a>)}
               <button className="nx-links-cta" onClick={onGetStarted}>Sign in</button>

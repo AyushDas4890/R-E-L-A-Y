@@ -104,7 +104,7 @@
 .rl-mark path { fill: none; stroke: currentColor; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
 .rl-mark .rl-bubble { fill: #f0b07a; stroke: #f0b07a; }
 .rl-mark .rl-r { stroke: #160806; }
-.nx-brand { display: inline-flex; align-items: center; gap: 10px; }
+.nx-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
 /* .lp > * makes children position: relative; the splash must still cover the viewport. */
 .rl-intro, .lp.nx > .rl-intro { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #3a170f, #120806 70%); }
 .rl-intro-inner { display: grid; justify-items: center; gap: 22px; }

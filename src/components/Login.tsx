@@ -96,14 +96,14 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
         .to('.si-stage .nx-arm.r', { rotate: 0, duration: 0.6, ease: 'power2.inOut' });
 
       // Pointer: the whole scene rotates in 3D, the robot looks at the cursor, the card tilts.
-      const sx = gsap.quickTo('.si-scene', 'rotateY', { duration: 1, ease: 'power3.out' });
-      const sy = gsap.quickTo('.si-scene', 'rotateX', { duration: 1, ease: 'power3.out' });
+      const sx = gsap.quickTo('.si-scene', 'rotationY', { duration: 1, ease: 'power3.out' });
+      const sy = gsap.quickTo('.si-scene', 'rotationX', { duration: 1, ease: 'power3.out' });
       const hx = gsap.quickTo('.si-stage .nx-bot-head', 'rotationY', { duration: 0.7, ease: 'power3.out' });
       const hy = gsap.quickTo('.si-stage .nx-bot-head', 'rotationX', { duration: 0.7, ease: 'power3.out' });
       const fx = gsap.quickTo('.si-stage .nx-face', 'x', { duration: 0.5, ease: 'power3.out' });
       const fy = gsap.quickTo('.si-stage .nx-face', 'y', { duration: 0.5, ease: 'power3.out' });
-      const cx = gsap.quickTo('.si-card', 'rotateY', { duration: 0.8, ease: 'power3.out' });
-      const cy = gsap.quickTo('.si-card', 'rotateX', { duration: 0.8, ease: 'power3.out' });
+      const cx = gsap.quickTo('.si-card', 'rotationY', { duration: 0.8, ease: 'power3.out' });
+      const cy = gsap.quickTo('.si-card', 'rotationX', { duration: 0.8, ease: 'power3.out' });
       const move = (e: PointerEvent) => {
         const nx = e.clientX / window.innerWidth - 0.5, ny = e.clientY / window.innerHeight - 0.5;
         sx(nx * 10); sy(-ny * 6);
@@ -140,6 +140,14 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
       .to('.si-stage .nx-bot-scroll', { rotateY: 360, duration: 0.6, ease: 'power2.inOut' }, '<')
       .to('.si-stage .nx-bot-scroll', { y: 0, duration: 0.4, ease: 'bounce.out' });
   };
+
+  // Back from the provider's page can restore this page from the back/forward cache with the
+  // buttons still disabled on "Opening GitHub…"; re-enable them whenever the page is shown again.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => { if (e.persisted) setBusy(null); };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
 
   async function oauth(provider: Provider) {
     if (!supabase) return;

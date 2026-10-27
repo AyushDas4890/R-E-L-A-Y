@@ -11,7 +11,9 @@
 .si-brand { display: inline-flex; align-items: center; gap: 10px; border: 0; background: none; color: #fff; font: 400 22px var(--nx-font); cursor: pointer; padding: 0; }
 .si-brand:disabled { cursor: default; }
 
-.si-scene { position: absolute; inset: 64px 0 0; display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; perspective: 1400px; transform-style: preserve-3d; }
+/* The scene tilts in 3D toward the cursor. Its own box must not catch clicks: tilted, it sits in
+   front of the card's lower half, so the bottom buttons (GitHub) missed most clicks. */
+.si-scene { position: absolute; inset: 64px 0 0; display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; perspective: 1400px; transform-style: preserve-3d; pointer-events: none; }
 .si-stage { position: relative; height: 100%; transform-style: preserve-3d; perspective: 1000px; }
 /* The base robot is in-flow (home hero); on sign-in it stands on the floor ring. */
 .si-stage .nx-bot { position: absolute; left: calc(50% - 40 * var(--u)); bottom: 16%; }
@@ -29,7 +31,7 @@
 .si-bubble { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
 .si-bubble em { display: block; translate: -50% -50%; padding: 8px 14px; border-radius: 16px 16px 16px 4px; background: rgba(255,255,255,.92); color: #1c0b07; font: 600 13px var(--font); font-style: normal; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.25); backface-visibility: hidden; }
 
-.si-card { position: relative; z-index: 3; justify-self: start; width: min(420px, 90%); display: grid; gap: 14px; padding: 34px 30px; border-radius: 24px;
+.si-card { pointer-events: auto; position: relative; z-index: 3; justify-self: start; width: min(420px, 90%); display: grid; gap: 14px; padding: 34px 30px; border-radius: 24px;
   background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.05)); border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(22px) saturate(140%); -webkit-backdrop-filter: blur(22px) saturate(140%);
   box-shadow: 0 40px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.3); }
 
