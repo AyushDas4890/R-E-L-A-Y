@@ -42,6 +42,9 @@ const params = new URLSearchParams(window.location.search);
 const inviteFromUrl = () => params.get('invite') ?? '';
 // ?ws=<id> links open a specific (open) workspace; remember it before the socket connects.
 if (params.get('ws')) try { localStorage.setItem('relay.workspace', params.get('ws')!); } catch { /* ignore */ }
+// The landing page scrolls itself (ScrollSmoother); the browser restoring an old scroll offset on
+// Back would drop the visitor mid-page, on a section they didn't ask for.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const LEVEL_LABEL: Record<ChannelLevel, string> = { all: 'All new posts', mentions: 'Just mentions', mute: 'Mute' };
 
 export default function App() {
@@ -54,7 +57,12 @@ export default function App() {
   const showLoginRef = useRef(showLogin);
   showLoginRef.current = showLogin;
   const openLogin = () => {
-    if (window.history.state?.relay !== 'signin') window.history.pushState({ relay: 'signin' }, '', location.pathname + location.search);
+    if (window.history.state?.relay !== 'signin') {
+      // Coming back from sign-in should land on the top of the home page, not on whichever
+      // section (#workflows, #tour…) was last in the address bar.
+      window.history.replaceState(window.history.state, '', location.pathname + location.search);
+      window.history.pushState({ relay: 'signin' }, '', location.pathname + location.search);
+    }
     pageTransition(() => setShowLogin(true));
   };
   const closeLogin = () => {
