@@ -38,6 +38,8 @@ import {
 import { parseSlash } from './slash.ts';
 import { createStore } from './store.ts';
 import { createClient } from '@supabase/supabase-js';
+import { verifyToken, type AuthClient, type Identity } from './auth.ts';
+import { generateCode, validateInvite, decideRole } from './invites.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -146,6 +148,13 @@ function seed(): DB {
 }
 
 const store = createStore<DB>(seed, dataFile);
+
+// Admin client used only to verify access tokens. Null when auth is not configured,
+// in which case the server runs in no-auth dev mode (token treated as the identity).
+const authAdmin =
+  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } })
+    : null;
 
 function normalize(stored: Partial<DB> & Pick<DB, 'users' | 'channels' | 'messages'>): DB {
   // Databases written before newer features lack some fields; fill defaults.
@@ -330,12 +339,34 @@ function dmId(a: string, b: string): string {
   return `dm-${[a, b].sort().join('-')}`;
 }
 
-function handle(ws: WebSocket, ev: ClientEvent): void {
-  if (ev.t === 'hello') {
-    const userId = String(ev.userId).slice(0, 64);
-    const name = String(ev.name).trim().slice(0, 40) || 'Guest';
+// Resolve an identity from the auth payload. With Supabase configured, verify the JWT.
+// Without it (local dev), accept the token as a raw userId:name so the app still runs.
+async function resolveIdentity(token: string): Promise<Identity | null> {
+  if (authAdmin) return verifyToken(token, authAdmin as unknown as AuthClient);
+  if (!token) return null;
+  const [userId, name] = String(token).split(':');
+  if (!userId) return null;
+  return { userId: userId.slice(0, 64), name: (name || 'Member').trim().slice(0, 40) || 'Member', email: null };
+}
+
+async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
+  if (ev.t === 'auth') {
+    const identity = await resolveIdentity(ev.token);
+    if (!identity) {
+      send(ws, { t: 'error', message: 'Sign in to continue.', code: 'auth-required' });
+      return;
+    }
+    const { userId, name, email, avatarUrl } = identity;
     let user = db.users[userId];
-    const isNew = !user;
+    const isMember = !!user;
+    const hasOwner = Object.values(db.users).some((u) => u.role === 'owner');
+    const role = decideRole({ hasOwner, isMember, validInvite: validateInvite(ev.invite, db.invites) });
+
+    if (role === 'reject') {
+      send(ws, { t: 'error', message: 'You need a valid invite to join this workspace.', code: 'invite-required' });
+      return;
+    }
+
     if (!user) {
       user = {
         id: userId,
@@ -343,26 +374,33 @@ function handle(ws: WebSocket, ev: ClientEvent): void {
         color: COLORS[Object.keys(db.users).length % COLORS.length],
         title: '',
         status: { emoji: '', text: '' },
-        role: 'member',
+        role: role === 'owner' ? 'owner' : 'member',
+        email: email ?? undefined,
+        avatarUrl,
       };
       db.users[userId] = user;
       for (const id of ['general', 'random']) ensureMember(db.channels[id], userId);
+    } else {
+      // Keep profile details fresh from the identity provider.
+      if (authAdmin) user.name = name;
+      user.avatarUrl = avatarUrl ?? user.avatarUrl;
+      user.email = email ?? user.email;
+      if (role === 'owner') user.role = 'owner';
+      user.role ??= 'member';
     }
-    // The first person to sign in owns the workspace; older databases get an owner the same way.
-    if (!Object.values(db.users).some((u) => u.role === 'owner')) user.role = 'owner';
-    user.role ??= 'member';
+
     clients.set(ws, userId);
     send(ws, { t: 'init', snapshot: snapshotFor(userId) });
     broadcast({ t: 'user', user });
     broadcast({ t: 'presence', online: onlineIds() });
-    if (isNew) runJoinWorkflows('general');
+    if (!isMember) runJoinWorkflows('general');
     persist();
     return;
   }
 
   const userId = clients.get(ws);
   if (!userId) {
-    send(ws, { t: 'error', message: 'Send hello first' });
+    send(ws, { t: 'error', message: 'Sign in to continue.', code: 'auth-required' });
     return;
   }
 
@@ -714,6 +752,23 @@ function handle(ws: WebSocket, ev: ClientEvent): void {
       persist();
       return;
     }
+    case 'inviteCreate': {
+      if (!isAdmin(db.users[userId])) return;
+      const inv = { code: generateCode(), createdBy: userId, createdAt: Date.now(), revoked: false };
+      db.invites.push(inv);
+      audit(userId, 'invite.create', inv.code);
+      persist();
+      return;
+    }
+    case 'inviteRevoke': {
+      if (!isAdmin(db.users[userId])) return;
+      const inv = db.invites.find((i) => i.code === ev.code);
+      if (!inv) return;
+      inv.revoked = true;
+      audit(userId, 'invite.revoke', ev.code);
+      persist();
+      return;
+    }
     case 'acceptTerms': {
       db.termsAccepted[userId] = db.settings.termsVersion;
       send(ws, { t: 'termsAccepted', version: db.settings.termsVersion });
@@ -857,12 +912,10 @@ wss.on('connection', (ws) => {
       send(ws, { t: 'error', message: `Bad JSON: ${(err as Error).message}` });
       return;
     }
-    try {
-      handle(ws, ev);
-    } catch (err) {
+    handle(ws, ev).catch((err) => {
       console.error('handler failed:', err);
       send(ws, { t: 'error', message: 'Server error' });
-    }
+    });
   });
   ws.on('close', () => {
     const uid = clients.get(ws);
