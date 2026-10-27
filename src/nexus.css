@@ -16,7 +16,7 @@
 .nx-links a { color: rgba(255,255,255,.88); text-decoration: none; font-size: 13.5px; font-weight: 600; transition: color .15s; }
 .nx-links a:hover { color: var(--mint); }
 .nx-links-cta { display: none; }
-.nx-cta, .nx-menu { justify-self: end; display: inline-flex; align-items: center; gap: 10px; padding: 11px 20px; border-radius: 10px; border: 0; background: #0b0b0c; color: var(--mint); font: 400 14px var(--nx-font); cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.nx-cta, .nx-menu { justify-self: end; display: inline-flex; align-items: center; gap: 10px; padding: 11px 20px; border-radius: 10px; border: 0; background: #0b0b0c; color: var(--mint); font: 400 14px var(--nx-font); cursor: pointer; transition: box-shadow .15s; }
 .nx-cta:hover, .nx-menu:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
 .nx-cta b, .nx-menu b { font-weight: 400; }
 .nx-menu { display: none; }
@@ -31,7 +31,7 @@
 .nx-word-a { top: calc(64px + 2.5vh); left: 1.5vw; background-image: linear-gradient(100deg, #3aa79b, #1f7f86 70%, #2a8f8a); }
 .nx-word-b { right: 1.5vw; bottom: 0; font-size: clamp(100px, 18vw, 300px); background-image: linear-gradient(100deg, #9fcf9a, #d9e2b0 55%, #efe2c0); }
 
-.nx-bot { position: absolute; z-index: 2; left: calc(50% - 40 * var(--u)); bottom: calc(-16 * var(--u)); width: calc(80 * var(--u)); }
+.nx-bot { position: absolute; z-index: 2; left: calc(50% - 40 * var(--u)); bottom: calc(4 * var(--u)); width: calc(80 * var(--u)); }
 .nx-bot-inner { position: relative; display: grid; justify-items: center; perspective: 900px; }
 .nx-bot-head { position: relative; z-index: 2; width: calc(66 * var(--u)); height: calc(58 * var(--u)); border-radius: calc(24 * var(--u)); transform-style: preserve-3d;
   background: radial-gradient(circle at 34% 22%, #ffffff 0%, #efe9f3 30%, #d7cddc 62%, #a996b2 100%);
@@ -83,7 +83,7 @@
   .nx-word { font-size: 32vw; }
   .nx-word-a { left: 16px; }
   .nx-word-b { right: 12px; bottom: 150px; }
-  .nx-bot { bottom: calc(-4 * var(--u)); }
+  .nx-bot { bottom: calc(26vh); }
   .nx-copy { left: 16px; right: 16px; bottom: 22px; max-width: none; }
   .nx-head { font-size: clamp(26px, 8vw, 40px); }
 }
@@ -153,3 +153,13 @@
   .nx-stats { grid-template-columns: 1fr; }
   .nx-reel-head { flex-direction: column; align-items: start; }
 }
+
+/* Robot layers + moods */
+.nx-bot-scroll, .nx-bot-inner, .nx-bot-head { will-change: transform; }
+.nx-bot-shadow { position: absolute; left: 50%; bottom: calc(-5 * var(--u)); width: calc(50 * var(--u)); height: calc(6 * var(--u)); margin-left: calc(-25 * var(--u)); border-radius: 50%; background: radial-gradient(ellipse, rgba(10,4,2,.55), transparent 70%); z-index: 0; }
+.nx-eye, .nx-mouth { transition: transform .3s cubic-bezier(.2,.8,.2,1), border-radius .3s, height .3s; }
+.mood-focus .nx-eye { border: 0; height: calc(7 * var(--u)); width: calc(7 * var(--u)); border-radius: 50%; background: #ffe9b0; }
+.mood-focus .nx-eye.l { left: 26%; } .mood-focus .nx-eye.r { right: 26%; }
+.mood-focus .nx-mouth { height: calc(2 * var(--u)); border-radius: calc(2 * var(--u)); }
+.mood-sad .nx-eye { transform: rotate(180deg); }
+.mood-sad .nx-mouth { border-radius: calc(10 * var(--u)) calc(10 * var(--u)) calc(1 * var(--u)) calc(1 * var(--u)); top: 62%; }

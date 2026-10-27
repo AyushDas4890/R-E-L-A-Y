@@ -5,6 +5,7 @@ import { ScrollSmoother } from 'gsap/ScrollSmoother';
 import { SplitText } from 'gsap/SplitText';
 import { GlowAscii } from './GlowAscii.tsx';
 import { LogoIntro, LogoMark } from './LogoIntro.tsx';
+import { Robot } from './Robot.tsx';
 import SpotlightCard from '../react-bits/SpotlightCard.tsx';
 import '../landing.css';
 import '../nexus.css';
@@ -59,8 +60,11 @@ export function Landing({ onGetStarted }: Props) {
         return;
       }
 
+      // Smooth scrolling first: ScrollTriggers made before it measure the wrong scroller.
+      ScrollSmoother.create({ wrapper: scroller, content: '.nx-content', smooth: 1.2, effects: true, smoothTouch: 0.1 });
+
       const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
-      tl.from('.nx-nav > *:not(.nx-line)', { y: -30, opacity: 0, duration: 0.8, stagger: 0.05 })
+      tl.from('.nx-nav > *:not(.nx-line)', { y: -30, opacity: 0, duration: 0.8, stagger: 0.05, clearProps: 'transform' })
         .from('.nx-line-h', { scaleX: 0, duration: 1 }, '<')
         .from('.nx-line-v', { scaleY: 0, duration: 0.8 }, '<0.2')
         .from('.nx-word-a', { xPercent: -60, opacity: 0, duration: 1.2 }, '-=0.6')
@@ -70,7 +74,7 @@ export function Landing({ onGetStarted }: Props) {
         .from('.nx-tag', { opacity: 0, y: 12, duration: 0.6 }, '-=0.5');
 
       // Idle life: float, blink every few seconds, wave once, breathing screen glow.
-      gsap.to('.nx-bot-inner', { y: -14, duration: 2.4, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      gsap.to('.nx-bot-inner', { y: -14, duration: 2.4, ease: 'sine.inOut', yoyo: true, repeat: -1, force3D: true });
       gsap.timeline({ repeat: -1, repeatDelay: 3.2, delay: 2 })
         .to('.nx-eye', { scaleY: 0.12, duration: 0.07, ease: 'none' })
         .to('.nx-eye', { scaleY: 1, duration: 0.1, ease: 'none' });
@@ -96,13 +100,13 @@ export function Landing({ onGetStarted }: Props) {
       };
       hero.addEventListener('pointermove', onMove);
 
-      const scrub = { trigger: '.nx-hero', start: 'top top', end: 'bottom top', scrub: true };
-      gsap.to('.nx-bot', { yPercent: 20, ease: 'none', scrollTrigger: scrub });
-      gsap.to('.nx-word-a', { xPercent: -30, ease: 'none', scrollTrigger: scrub });
-      gsap.to('.nx-word-b', { xPercent: 30, ease: 'none', scrollTrigger: scrub });
+      const scrub = { trigger: '.nx-hero', start: 'top top', end: 'bottom top', scrub: 0.6 };
+      gsap.to('.nx-bot-scroll', { y: () => -window.innerHeight * 0.12, scale: 0.94, ease: 'none', scrollTrigger: { ...scrub, scrub: 0.6, invalidateOnRefresh: true } });
+      // Explicit start values: the intro also animates xPercent, and a plain to() would
+      // capture its mid-flight offset as the 'top of page' position.
+      gsap.fromTo('.nx-word-a', { xPercent: 0 }, { xPercent: -30, ease: 'none', immediateRender: false, scrollTrigger: scrub });
+      gsap.fromTo('.nx-word-b', { xPercent: 0 }, { xPercent: 30, ease: 'none', immediateRender: false, scrollTrigger: scrub });
 
-      // Smooth scrolling for the whole page.
-      ScrollSmoother.create({ wrapper: scroller, content: '.nx-content', smooth: 1.2, effects: true, smoothTouch: 0.1 });
 
       gsap.to('.nx-marquee-track', { xPercent: -50, duration: 28, ease: 'none', repeat: -1 });
       gsap.to('.nx-marquee', { skewY: -3, ease: 'none', scrollTrigger: { trigger: '.nx-marquee', start: 'top bottom', end: 'bottom top', scrub: true } });
@@ -176,25 +180,7 @@ export function Landing({ onGetStarted }: Props) {
         <div className="nx-word nx-word-a" aria-hidden>re</div>
         <div className="nx-word nx-word-b" aria-hidden>lay</div>
 
-        <div className="nx-bot" aria-hidden>
-          <div className="nx-bot-inner">
-            <div className="nx-bot-head">
-              <span className="nx-ear l" /><span className="nx-ear r" />
-              <div className="nx-screen">
-                <span className="nx-glow" />
-                <div className="nx-face">
-                  <i className="nx-eye l" /><i className="nx-eye r" />
-                  <i className="nx-mouth" />
-                </div>
-                <span className="nx-shine" />
-              </div>
-            </div>
-            <div className="nx-bot-body">
-              <span className="nx-arm l" /><span className="nx-arm r" />
-              <div className="nx-chest"><span /><span /><span /></div>
-            </div>
-          </div>
-        </div>
+        <Robot />
 
         <div className="nx-copy">
           <p className="nx-tag">Every conversation starts as a question.<br />Relay turns it into an answer.</p>
