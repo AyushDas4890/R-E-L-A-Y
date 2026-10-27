@@ -25,7 +25,7 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
   }
 
   return (
-    <div className={`msg ${compact ? 'compact' : ''} ${m.pinned ? 'pinned' : ''}`}>
+    <div className={`msg ${compact ? 'compact' : ''} ${m.pinned ? 'pinned' : ''} ${Date.now() - m.ts < 8000 ? 'fresh' : ''}`}>
       <div className="gutter">
         {compact ? <span className="hover-time">{timeLabel(m.ts)}</span> : <Avatar user={user} />}
       </div>
@@ -52,21 +52,32 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
             <RichText text={m.text} users={snap.users} groups={snap.groups} />
           </div>
         )}
-        {m.files?.map((f, i) =>
-          f.type.startsWith('image/') ? (
-            <img key={i} className="attach-img" src={f.dataUrl} alt={f.name} />
+        {m.files?.map((f, i) => {
+          const src = f.url ?? f.dataUrl;
+          return f.type.startsWith('image/') ? (
+            <a key={i} href={src} target="_blank" rel="noreferrer"><img className="attach-img" src={src} alt={f.name} loading="lazy" /></a>
           ) : f.type.startsWith('video/') ? (
-            <video key={i} className="attach-img" src={f.dataUrl} controls />
+            <video key={i} className="attach-img" src={src} controls />
           ) : f.type.startsWith('audio/') ? (
-            <audio key={i} className="attach-audio" src={f.dataUrl} controls />
+            <audio key={i} className="attach-audio" src={src} controls />
           ) : (
             <div key={i} className="attach-row">
-              <a className="attach-file" href={f.dataUrl} download={f.name}>
+              <a className="attach-file" href={src} download={f.name} target="_blank" rel="noreferrer">
                 📄 {f.name} <small>{Math.ceil(f.size / 1024)} KB</small>
               </a>
               <button className="ghost-btn" title="Summarize this file" onClick={() => send({ t: 'fileSummary', id: m.id, index: i })}>✨ Summarize</button>
             </div>
-          ),
+          );
+        })}
+        {m.preview && (
+          <a className="link-card" href={m.preview.url} target="_blank" rel="noreferrer">
+            <div>
+              <small>{m.preview.site}</small>
+              <strong>{m.preview.title}</strong>
+              {m.preview.description && <p>{m.preview.description}</p>}
+            </div>
+            {m.preview.image && <img src={m.preview.image} alt="" loading="lazy" />}
+          </a>
         )}
         {Object.keys(m.reactions).length > 0 && (
           <div className="reactions">
