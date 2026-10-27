@@ -47,6 +47,9 @@ const STEPS = [
   { id: 'search', title: 'Find anything in a keystroke', text: 'Ctrl+K searches every message, person and channel at once, and suggests an answer.', say: 'Lost something? I’ll find it.' },
 ];
 
+// True until the landing page has mounted once in this page load.
+let firstLoad = true;
+
 interface Props {
   onGetStarted: () => void;
 }
@@ -94,8 +97,11 @@ export function Landing({ onGetStarted }: Props) {
     scroller.addEventListener('click', onClick);
     scroller.addEventListener('scroll', pin);
     window.addEventListener('popstate', onPop);
-    // A shared link like /#tour lands on its section once the page has laid out.
-    const initial = location.hash ? window.setTimeout(() => { pin(); jump(location.hash, false); }, 150) : undefined;
+    // A shared link like /#tour lands on its section once the page has laid out. Only on the first
+    // load: returning from sign-in remounts this page, and that should start at the top.
+    const initial = location.hash && firstLoad ? window.setTimeout(() => { pin(); jump(location.hash, false); }, 150) : undefined;
+    if (!initial) jump('', false);
+    firstLoad = false;
     return () => {
       scroller.removeEventListener('click', onClick);
       scroller.removeEventListener('scroll', pin);
