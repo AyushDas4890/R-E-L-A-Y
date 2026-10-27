@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { ScrollSmoother } from 'gsap/ScrollSmoother';
+import { SplitText } from 'gsap/SplitText';
 import { GlowAscii } from './GlowAscii.tsx';
 import { LogoIntro, LogoMark } from './LogoIntro.tsx';
 import SpotlightCard from '../react-bits/SpotlightCard.tsx';
-import FadeContent from '../react-bits/FadeContent.tsx';
 import '../landing.css';
 import '../nexus.css';
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, ScrollSmoother, SplitText);
 
 // Warm "voxel terrain" palette for the hero glyph field.
 const TERRAIN = ['#1a0906', '#4a1c12', '#8a3a22', '#c8693c', '#f0b07a'];
@@ -49,13 +50,11 @@ export function Landing({ onGetStarted }: Props) {
     if (intro) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const scroller = root.current!;
-    ScrollTrigger.defaults({ scroller });
     let onMove: ((e: PointerEvent) => void) | null = null;
     const hero = scroller.querySelector<HTMLElement>('.nx-hero')!;
 
     const ctx = gsap.context(() => {
       if (reduce) {
-        gsap.set('.lp-feature', { opacity: 1 });
         gsap.utils.toArray<HTMLElement>('.lp-stat-num').forEach((el) => { el.textContent = el.dataset.value ?? '0'; });
         return;
       }
@@ -102,46 +101,61 @@ export function Landing({ onGetStarted }: Props) {
       gsap.to('.nx-word-a', { xPercent: -30, ease: 'none', scrollTrigger: scrub });
       gsap.to('.nx-word-b', { xPercent: 30, ease: 'none', scrollTrigger: scrub });
 
-      gsap.utils.toArray<HTMLElement>('.lp-stat-num').forEach((el) => {
-        const target = Number(el.dataset.value);
-        const counter = { n: 0 };
-        gsap.to(counter, {
-          n: target,
-          duration: 1.6,
-          ease: 'power2.out',
-          scrollTrigger: { trigger: el, start: 'top 90%', once: true },
-          onUpdate: () => { el.textContent = String(Math.round(counter.n)); },
-        });
-      });
+      // Smooth scrolling for the whole page.
+      ScrollSmoother.create({ wrapper: scroller, content: '.nx-content', smooth: 1.2, effects: true, smoothTouch: 0.1 });
 
       gsap.to('.nx-marquee-track', { xPercent: -50, duration: 28, ease: 'none', repeat: -1 });
-      gsap.to('.nx-marquee', { skewY: -2, ease: 'none', scrollTrigger: { trigger: '.nx-marquee', start: 'top bottom', end: 'bottom top', scrub: true } });
-      gsap.utils.toArray<HTMLElement>('.lp-h2').forEach((h) => {
-        gsap.from(h, { y: 50, opacity: 0, rotateX: -40, transformOrigin: '50% 100%', duration: 1, ease: 'power3.out', scrollTrigger: { trigger: h, start: 'top 88%', once: true } });
-      });
-      gsap.from('.lp-stat', { y: 30, opacity: 0, scale: 0.9, duration: 0.8, stagger: 0.12, ease: 'back.out(1.6)', scrollTrigger: { trigger: '.lp-stats', start: 'top 85%', once: true } });
-      gsap.from('.lp-final .lp-btn', { scale: 0.6, opacity: 0, duration: 0.8, ease: 'elastic.out(1, 0.5)', scrollTrigger: { trigger: '.lp-final', start: 'top 80%', once: true } });
-      gsap.from('.lp-foot > *', { y: 16, opacity: 0, duration: 0.6, stagger: 0.15, scrollTrigger: { trigger: '.lp-foot', start: 'top 98%', once: true } });
+      gsap.to('.nx-marquee', { skewY: -3, ease: 'none', scrollTrigger: { trigger: '.nx-marquee', start: 'top bottom', end: 'bottom top', scrub: true } });
 
-      gsap.from('.lp-feature', {
-        y: 40,
-        opacity: 0,
-        duration: 0.7,
-        stagger: 0.08,
-        ease: 'power2.out',
-        scrollTrigger: { trigger: '.lp-grid', start: 'top 80%', once: true },
+      // Headings: characters rise and settle as they scroll in.
+      gsap.utils.toArray<HTMLElement>('.nx-split').forEach((h) => {
+        const split = SplitText.create(h, { type: 'chars,words', mask: 'words' });
+        gsap.from(split.chars, { yPercent: 110, rotate: 8, duration: 0.9, stagger: 0.018, ease: 'power4.out', scrollTrigger: { trigger: h, start: 'top 85%', once: true } });
       });
+
+      // Statement: words light up one by one as you scrub through.
+      const words = SplitText.create('.nx-statement p', { type: 'words' }).words;
+      gsap.fromTo(words, { opacity: 0.12 }, { opacity: 1, stagger: 0.1, ease: 'none', scrollTrigger: { trigger: '.nx-statement', start: 'top 70%', end: 'bottom 50%', scrub: 0.6 } });
+
+      // Feature reel: pinned, scrolls sideways; each card lifts and straightens as it enters.
+      const track = scroller.querySelector<HTMLElement>('.nx-reel-track')!;
+      const dist = () => track.scrollWidth - window.innerWidth + 48;
+      const reel = gsap.to(track, { x: () => -dist(), ease: 'none', scrollTrigger: { trigger: '.nx-reel', start: 'top top', end: () => `+=${dist()}`, pin: true, scrub: 1, invalidateOnRefresh: true } });
+      gsap.utils.toArray<HTMLElement>('.nx-card').forEach((card) => {
+        gsap.from(card, { y: 80, rotate: 6, opacity: 0.2, ease: 'power2.out', scrollTrigger: { trigger: card, containerAnimation: reel, start: 'left 95%', end: 'left 55%', scrub: true } });
+      });
+      gsap.to('.nx-reel-progress i', { scaleX: 1, ease: 'none', scrollTrigger: { trigger: '.nx-reel', start: 'top top', end: () => `+=${dist()}`, scrub: true } });
+
+      // Stats: count up with filling bars.
+      gsap.utils.toArray<HTMLElement>('.nx-stat').forEach((el, i) => {
+        const num = el.querySelector<HTMLElement>('.lp-stat-num')!;
+        const counter = { n: 0 };
+        gsap.timeline({ scrollTrigger: { trigger: el, start: 'top 85%', once: true }, delay: i * 0.12 })
+          .from(el, { y: 50, opacity: 0, duration: 0.8, ease: 'power3.out' })
+          .to(counter, { n: Number(num.dataset.value), duration: 1.6, ease: 'power2.out', onUpdate: () => { num.textContent = String(Math.round(counter.n)); } }, '<0.1')
+          .from(el.querySelector('.nx-bar i'), { scaleX: 0, duration: 1.4, ease: 'power3.inOut' }, '<');
+      });
+
+      // Finale: the giant line scales into place; the button has a magnetic pull.
+      gsap.fromTo('.nx-final-big', { scale: 0.55, opacity: 0.2 }, { scale: 1, opacity: 1, ease: 'none', scrollTrigger: { trigger: '.nx-final', start: 'top bottom', end: 'center center', scrub: 0.8 } });
+      const btn = scroller.querySelector<HTMLElement>('.nx-final .nx-cta')!;
+      const bx = gsap.quickTo(btn, 'x', { duration: 0.5, ease: 'power3.out' });
+      const by = gsap.quickTo(btn, 'y', { duration: 0.5, ease: 'power3.out' });
+      btn.addEventListener('pointermove', (e) => { const r = btn.getBoundingClientRect(); bx((e.clientX - r.left - r.width / 2) * 0.35); by((e.clientY - r.top - r.height / 2) * 0.35); });
+      btn.addEventListener('pointerleave', () => { bx(0); by(0); });
+      gsap.from('.lp-foot > *', { y: 16, opacity: 0, duration: 0.6, stagger: 0.15, scrollTrigger: { trigger: '.lp-foot', start: 'top 98%', once: true } });
     }, root);
     return () => {
       if (onMove) hero.removeEventListener('pointermove', onMove);
       ctx.revert();
-      ScrollTrigger.defaults({ scroller: undefined });
+      ScrollSmoother.get()?.kill();
     };
   }, [intro]);
 
   return (
     <div className="lp nx" ref={root}>
       {intro && <LogoIntro onDone={endIntro} />}
+      <div className="nx-content">
       <section className="nx-hero">
         <div className="nx-terrain" aria-hidden><GlowAscii palette={TERRAIN} /></div>
         <div className="nx-sun" aria-hidden />
@@ -202,41 +216,45 @@ export function Landing({ onGetStarted }: Props) {
       </div>
 
       <main>
-        <section id="features" className="lp-section">
-          <FadeContent blur duration={800}>
-            <h2 className="lp-h2">Everything your team needs, nothing locked away</h2>
-          </FadeContent>
-          <div className="lp-grid">
-            {FEATURES.map((f) => (
-              <div className="lp-feature" key={f.title}>
-                <SpotlightCard className="lp-card" spotlightColor="rgba(240, 176, 122, 0.25)">
-                  <span className="lp-icon">{f.icon}</span>
-                  <h3>{f.title}</h3>
-                  <p>{f.text}</p>
-                </SpotlightCard>
-              </div>
+        <section className="nx-statement">
+          <p>One workspace for every conversation. Channels, threads, huddles and canvases, all moving at the speed of your team.</p>
+        </section>
+
+        <section id="features" className="nx-reel">
+          <div className="nx-reel-head">
+            <h2 className="nx-split">Everything, unlocked</h2>
+            <div className="nx-reel-progress"><i /></div>
+          </div>
+          <div className="nx-reel-track">
+            {FEATURES.map((f, i) => (
+              <SpotlightCard key={f.title} className="nx-card" spotlightColor="rgba(157, 245, 197, 0.22)">
+                <span className="nx-card-num">0{i + 1}</span>
+                <span className="lp-icon">{f.icon}</span>
+                <h3>{f.title}</h3>
+                <p>{f.text}</p>
+              </SpotlightCard>
             ))}
           </div>
         </section>
 
-        <section id="stats" className="lp-section lp-stats">
-          {STATS.map((s) => (
-            <div key={s.label} className="lp-stat">
-              <div><span className="lp-stat-num" data-value={s.value}>0</span>{s.suffix}</div>
+        <section id="stats" className="nx-stats">
+          {STATS.map((s, i) => (
+            <div key={s.label} className="nx-stat">
+              <div className="nx-stat-num"><span className="lp-stat-num" data-value={s.value}>0</span>{s.suffix}</div>
               <span>{s.label}</span>
+              <div className="nx-bar"><i style={{ width: `${[100, 70, 100][i]}%` }} /></div>
             </div>
           ))}
         </section>
 
-        <section className="lp-section lp-final">
-          <FadeContent duration={800}>
-            <h2 className="lp-h2">Ready when your team is</h2>
-            <button className="lp-btn lp-btn-primary" onClick={onGetStarted}>Get started</button>
-          </FadeContent>
+        <section className="nx-final">
+          <h2 className="nx-final-big">Ready when<br />your team is</h2>
+          <button className="nx-cta" onClick={onGetStarted}>Get started <b>—</b></button>
         </section>
       </main>
 
       <footer className="lp-foot"><span>Relay. Built from public product behavior only.</span><span className="nx-powered">Powered by <b>Flo Studios</b></span></footer>
+      </div>
     </div>
   );
 }
