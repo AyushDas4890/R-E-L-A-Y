@@ -98,7 +98,9 @@ export default function App() {
   const inWorkspace = !!snap && !!session && !authError;
   useEffect(() => {
     if (!inWorkspace || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    // clearProps hands transforms back to CSS when done; rail buttons and sidebar items have CSS
+    // transform transitions that otherwise fight the tween and leave them stuck part-way.
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out', clearProps: 'transform,opacity' } });
     tl.from('.shell > header', { y: -30, opacity: 0, duration: 0.6 })
       .from('.rail > *', { x: -24, opacity: 0, duration: 0.5, stagger: 0.04 }, '-=0.4')
       .from('.sidebar', { x: -40, opacity: 0, duration: 0.6 }, '-=0.5')

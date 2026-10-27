@@ -9,7 +9,7 @@
 .lp > *:not(.lp-bg) { position: relative; z-index: 1; }
 
 .lp-nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1120px; margin: 0 auto; padding: 18px 20px; }
-.lp-brand { display: flex; align-items: center; gap: 10px; font: 800 20px var(--display); }
+.lp-brand { display: flex; align-items: center; gap: 10px; font: 400 20px var(--display); }
 .lp-brand .logo.small { margin: 0; }
 .lp-links { display: flex; gap: 28px; }
 .lp-links a { color: var(--lp-muted); text-decoration: none; font-size: 14px; font-weight: 600; transition: color .15s; }
@@ -42,7 +42,7 @@
 .lp-h2 { margin: 0 0 36px; text-align: center; font: 800 clamp(26px, 4vw, 40px)/1.15 var(--display); letter-spacing: -.01em; }
 .lp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .lp-card { height: 100%; padding: 26px; text-align: left; }
-.lp-card h3 { margin: 14px 0 8px; font: 700 18px var(--display); }
+.lp-card h3 { margin: 14px 0 8px; font: 400 18px var(--display); }
 .lp-card p { margin: 0; color: var(--lp-muted); font-size: 14.5px; line-height: 1.55; }
 .lp-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: rgba(245,164,0,.15); color: var(--signal); font-size: 18px; font-weight: 800; }
 
@@ -75,7 +75,7 @@
 .auth-foot { color: var(--lp-muted); font-size: 13px; }
 .auth-panel { position: relative; z-index: 1; display: grid; place-items: center; padding: 24px; }
 .auth-card { width: min(420px, 100%); display: grid; gap: 16px; padding: 34px 30px; border-radius: 18px; background: rgba(255,255,255,.96); color: #14202e; box-shadow: 0 30px 80px rgba(0,0,0,.5); --text: #14202e; --muted: #5b6878; --line: #dce2ea; --panel: #fff; --raised: #eef2f7; --accent: #1f5bd8; --on-accent: #fff; --hover: #e8edf4; }
-.auth-card h1 { margin: 0; font: 800 26px/1.15 var(--display); }
+.auth-card h1 { margin: 0; font: 400 26px/1.15 var(--display); }
 .auth-card .muted { margin: 0; color: #5b6878; font-size: 14.5px; }
 .auth-card form, .auth-card .oauth-buttons { display: grid; gap: 12px; }
 .auth-card .field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: #34425a; }
