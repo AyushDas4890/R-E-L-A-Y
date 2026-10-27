@@ -4,10 +4,11 @@ import { useRelayCtx } from '../ctx.ts';
 import { channelLabel, timeLabel } from '../format.tsx';
 import { Modal } from './Modals.tsx';
 
-type Tab = 'analytics' | 'members' | 'groups' | 'policies' | 'flags' | 'audit';
+type Tab = 'analytics' | 'members' | 'invites' | 'groups' | 'policies' | 'flags' | 'audit';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'analytics', label: 'Analytics' },
   { id: 'members', label: 'Members' },
+  { id: 'invites', label: 'Invites' },
   { id: 'groups', label: 'User groups' },
   { id: 'policies', label: 'Policies' },
   { id: 'flags', label: 'Flagged' },
@@ -32,6 +33,7 @@ export function AdminModal({ onClose }: { onClose: () => void }) {
       </div>
       {tab === 'analytics' && <AnalyticsTab />}
       {tab === 'members' && <MembersTab />}
+      {tab === 'invites' && <InvitesTab />}
       {tab === 'groups' && <GroupsTab />}
       {tab === 'policies' && <PoliciesTab />}
       {tab === 'flags' && <FlagsTab />}
@@ -216,6 +218,41 @@ function FlagsTab() {
             <button className="send-btn danger" onClick={() => send({ t: 'resolveFlag', id: f.id, removeMessage: true })}>Remove message</button>
             <button className="ghost-btn" onClick={() => send({ t: 'resolveFlag', id: f.id, removeMessage: false })}>Dismiss</button>
           </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InvitesTab() {
+  const { snap, send } = useRelayCtx();
+  const [copied, setCopied] = useState<string | null>(null);
+  const invites = (snap.admin?.invites ?? []).slice().reverse();
+  const copy = (code: string) => {
+    void navigator.clipboard?.writeText(`${window.location.origin}/?invite=${code}`);
+    setCopied(code);
+  };
+  return (
+    <div className="grid-gap">
+      <div className="row-between">
+        <p className="muted">New people need an invite link to join. Anyone already in the workspace can sign in again without one.</p>
+        <button className="send-btn" onClick={() => send({ t: 'inviteCreate' })}>Generate invite link</button>
+      </div>
+      {invites.length === 0 && <p className="muted">No invites yet.</p>}
+      {invites.map((inv) => (
+        <div key={inv.code} className={`sched-item invite ${inv.revoked ? 'revoked' : ''}`}>
+          <div>
+            <code>{inv.code}</code>
+            <small>by {snap.users[inv.createdBy]?.name ?? 'admin'} · {new Date(inv.createdAt).toLocaleDateString()}</small>
+          </div>
+          {inv.revoked ? (
+            <span className="invite-tag">Revoked</span>
+          ) : (
+            <div className="stack">
+              <button className="ghost-btn" onClick={() => copy(inv.code)}>{copied === inv.code ? 'Copied' : 'Copy link'}</button>
+              <button className="ghost-btn" onClick={() => send({ t: 'inviteRevoke', code: inv.code })}>Revoke</button>
+            </div>
+          )}
         </div>
       ))}
     </div>
