@@ -4,6 +4,9 @@ import { channelLabel, RichText } from './format.tsx';
 import { getDevSession, saveDevSession, useAuthToken, useLastRead, useRelay, useUnread } from './store.ts';
 import { authEnabled } from './supabase.ts';
 import { Login } from './components/Login.tsx';
+import { Landing } from './components/Landing.tsx';
+import { gsap } from 'gsap';
+import { pageTransition } from './transition.ts';
 import { Avatar } from './components/Avatar.tsx';
 import { Composer } from './components/Composer.tsx';
 import { HuddleBar } from './components/Huddle.tsx';
@@ -34,6 +37,7 @@ export default function App() {
   const { token, ready, signOut } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
   const [invite, setInvite] = useState(inviteFromUrl);
+  const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl());
   // In auth mode the token comes from Supabase; in dev mode from localStorage.
   const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
   const { snap, typing, error, authError, analytics, connected, send, clearError } = useRelay(session);
@@ -90,15 +94,37 @@ export default function App() {
     [snap, active],
   );
 
+  // Workspace entrance: chrome slides in once, then each channel switch staggers its messages in.
+  const inWorkspace = !!snap && !!session && !authError;
+  useEffect(() => {
+    if (!inWorkspace || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    tl.from('.shell > header', { y: -30, opacity: 0, duration: 0.6 })
+      .from('.rail > *', { x: -24, opacity: 0, duration: 0.5, stagger: 0.04 }, '-=0.4')
+      .from('.sidebar', { x: -40, opacity: 0, duration: 0.6 }, '-=0.5')
+      .from('.side-item, .side-section > *', { x: -16, opacity: 0, duration: 0.4, stagger: 0.02 }, '-=0.4')
+      .from('.main', { y: 30, opacity: 0, duration: 0.7 }, '-=0.6');
+    return () => { tl.revert(); };
+  }, [inWorkspace]);
+  useEffect(() => {
+    if (!inWorkspace || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const rows = gsap.utils.toArray<HTMLElement>('.main .message-list > *').slice(-30);
+    const tween = gsap.fromTo(rows, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.025, ease: 'power3.out', clearProps: 'transform,opacity' });
+    gsap.fromTo('.channel-head', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out', clearProps: 'transform,opacity' });
+    return () => { tween.kill(); };
+  }, [inWorkspace, active, view]);
+
   if (!session || authError) {
     if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
+    if (!showLogin && !authError) return <Landing onGetStarted={() => pageTransition(() => setShowLogin(true))} />;
     return (
       <Login
+        onBack={authError ? undefined : () => pageTransition(() => setShowLogin(false))}
         invite={invite}
         onInvite={setInvite}
         error={authError?.message}
         signedIn={!!session && authError?.code === 'invite-required'}
-        onDevEnter={(tok, inv) => { setInvite(inv); setDevSession(saveDevSession(tok, inv)); }}
+        onDevEnter={(tok, inv) => pageTransition(() => { setInvite(inv); setDevSession(saveDevSession(tok, inv)); })}
         onSignOut={leave}
       />
     );
@@ -273,6 +299,9 @@ export default function App() {
         <button className="nav-scrim" aria-label="Close channels" tabIndex={-1} onClick={() => setNavOpen(false)} />
 
         <main className="main">
+          <div className="main-bg" aria-hidden>
+            <video src="/bg/silver-line-waves.mp4" poster="/bg/silver-line-waves.jpg" autoPlay muted loop playsInline preload="metadata" />
+          </div>
           {!connected && <div className="banner">Reconnecting…</div>}
           {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
           {view === 'saved' || view === 'mentions' ? (

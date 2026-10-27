@@ -1,3 +1,4 @@
+import { gsap } from 'gsap';
 import { useEffect, useRef, useState } from 'react';
 import type { Message } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
@@ -132,8 +133,15 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
 
 export function MessageList({ messages, inThread }: { messages: Message[]; inThread?: boolean }) {
   const endRef = useRef<HTMLDivElement>(null);
+  const seen = useRef(messages.length);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
+    endRef.current?.scrollIntoView({ block: 'end', behavior: seen.current ? 'smooth' : 'auto' });
+    // A message that just arrived pops in; the initial render is handled by the channel-switch stagger.
+    if (messages.length > seen.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const last = endRef.current?.previousElementSibling;
+      if (last) gsap.fromTo(last, { y: 24, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+    }
+    seen.current = messages.length;
   }, [messages.length, messages[messages.length - 1]?.id]);
 
   return (
