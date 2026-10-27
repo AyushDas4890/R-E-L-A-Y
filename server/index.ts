@@ -24,6 +24,7 @@ import type {
   Workflow,
   WorkspaceSummary,
 } from '../src/types.ts';
+import { MAX_HUDDLE } from '../src/types.ts';
 import {
   barred,
   canPost,
@@ -233,7 +234,9 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   }
 
   const clients = new Map<WebSocket, string>();
-  const huddles = new Map<string, Set<string>>();
+  // The tabs in each huddle (channel id -> socket -> peer id). Each tab is one peer in the
+  // WebRTC mesh; the huddle's participants are the users behind those tabs.
+  const calls = new Map<string, Map<WebSocket, string>>();
 
   function broadcast(ev: ServerEvent, filter?: (userId: string) => boolean): void {
     const payload = JSON.stringify(ev);
@@ -288,9 +291,9 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   }
 
   function huddleList(): HuddleState[] {
-    return [...huddles.entries()]
-      .filter(([, set]) => set.size > 0)
-      .map(([channelId, set]) => ({ channelId, participants: [...set] }));
+    return [...calls.entries()]
+      .filter(([, call]) => call.size > 0)
+      .map(([channelId, call]) => ({ channelId, participants: [...new Set([...call.keys()].map((ws) => clients.get(ws)!))] }));
   }
 
   function snapshotFor(userId: string): Snapshot {
@@ -474,7 +477,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
             broadcastChannel(ch, { t: 'channel', channel: ch });
             postMessage(ch.id, BOT_ID, `<@${userId}> set the topic to: ${slash.text}`, { system: true });
           } else if (slash.kind === 'huddle') {
-            toggleHuddle(ch.id, userId, 'join');
+            joinHuddle(ws, ch.id);
           } else if (slash.kind === 'summarize') {
             postMessage(ch.id, BOT_ID, summarize(ch.id, ev.threadId), { threadId: ev.threadId });
           } else if (slash.kind === 'recap') {
@@ -652,7 +655,19 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
           send(ws, { t: 'error', message: 'An information barrier blocks huddles between you two.' });
           return;
         }
-        toggleHuddle(ch.id, userId, ev.action);
+        if (ev.action === 'join') joinHuddle(ws, ch.id);
+        else leaveHuddle(userId, ch.id);
+        return;
+      }
+      case 'rtc': {
+        if (!ev.signal || !['description', 'candidate', 'state'].includes(ev.signal.kind)) return;
+        // Signals only travel between two tabs in the same huddle of this workspace.
+        for (const call of calls.values()) {
+          const from = call.get(ws);
+          if (!from) continue;
+          for (const [peer, id] of call) if (id === ev.to && peer !== ws) send(peer, { t: 'rtc', from, signal: ev.signal });
+          return;
+        }
         return;
       }
       case 'list': {
@@ -881,17 +896,67 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
 
   const huddleSessions = new Map<string, { startedAt: number; everyone: Set<string> }>();
 
-  function toggleHuddle(channelId: string, userId: string, action: 'join' | 'leave'): void {
-    const set = huddles.get(channelId) ?? new Set<string>();
-    if (action === 'join') set.add(userId);
-    else set.delete(userId);
-    huddles.set(channelId, set);
-    if (action === 'join') {
-      const session = huddleSessions.get(channelId) ?? { startedAt: Date.now(), everyone: new Set<string>() };
-      session.everyone.add(userId);
-      huddleSessions.set(channelId, session);
+  // Tells every tab in a huddle who its peers are, so each can connect to the others.
+  function syncCall(channelId: string): void {
+    const call = calls.get(channelId);
+    if (!call) return;
+    for (const [ws, self] of call) {
+      const peers = [...call].filter(([other]) => other !== ws).map(([other, id]) => ({ id, userId: clients.get(other)! }));
+      send(ws, { t: 'huddleCall', channelId, self, peers });
     }
-    if (set.size === 0) endHuddle(channelId);
+  }
+
+  // Takes one tab out of whatever huddle it is in. Returns that huddle's channel id.
+  function dropFromCall(ws: WebSocket): string | undefined {
+    for (const [channelId, call] of calls) {
+      if (!call.delete(ws)) continue;
+      if (ws.readyState === WebSocket.OPEN) send(ws, { t: 'huddleCall', channelId: null, self: '', peers: [] });
+      if (call.size === 0) {
+        calls.delete(channelId);
+        endHuddle(channelId);
+      }
+      return channelId;
+    }
+    return undefined;
+  }
+
+  // A tab is in one huddle at a time, and a user is in a huddle from one tab: joining from
+  // another tab moves them there, so nobody ends up connected to (and hearing) themselves.
+  function joinHuddle(ws: WebSocket, channelId: string): void {
+    const userId = clients.get(ws)!;
+    const current = calls.get(channelId);
+    if (current?.has(ws)) {
+      syncCall(channelId);
+      return;
+    }
+    const ownTabs = [...(current?.keys() ?? [])].filter((other) => clients.get(other) === userId);
+    if (current && current.size - ownTabs.length >= MAX_HUDDLE) {
+      send(ws, { t: 'error', message: `This huddle is full. Up to ${MAX_HUDDLE} people can join one.` });
+      return;
+    }
+    // Moving tabs keeps the huddle going, so this skips dropFromCall's end-of-huddle handling.
+    for (const other of ownTabs) {
+      current!.delete(other);
+      send(other, { t: 'huddleCall', channelId: null, self: '', peers: [] });
+    }
+    const left = dropFromCall(ws);
+    const call = calls.get(channelId) ?? new Map<WebSocket, string>();
+    call.set(ws, randomUUID());
+    calls.set(channelId, call);
+    const session = huddleSessions.get(channelId) ?? { startedAt: Date.now(), everyone: new Set<string>() };
+    session.everyone.add(userId);
+    huddleSessions.set(channelId, session);
+    if (left) syncCall(left);
+    syncCall(channelId);
+    broadcast({ t: 'huddles', huddles: huddleList() });
+  }
+
+  // Leaving from any tab takes all of that user's tabs out of the huddle.
+  function leaveHuddle(userId: string, channelId: string): void {
+    const call = calls.get(channelId);
+    if (!call) return;
+    for (const ws of [...call.keys()]) if (clients.get(ws) === userId) dropFromCall(ws);
+    syncCall(channelId);
     broadcast({ t: 'huddles', huddles: huddleList() });
   }
 
@@ -936,10 +1001,12 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   timers.push(setInterval(applyRetention, 60 * 60_000));
 
   function leave(ws: WebSocket): void {
-    const uid = clients.get(ws);
-    if (!clients.delete(ws)) return;
-    if (uid && !onlineIds().includes(uid)) {
-      for (const [cid, set] of huddles) if (set.delete(uid) && set.size === 0) endHuddle(cid);
+    if (!clients.has(ws)) return;
+    // Drop the tab from its huddle while its user id is still known, then forget the socket.
+    const left = dropFromCall(ws);
+    clients.delete(ws);
+    if (left) {
+      syncCall(left);
       broadcast({ t: 'huddles', huddles: huddleList() });
     }
     broadcast({ t: 'presence', online: onlineIds() });

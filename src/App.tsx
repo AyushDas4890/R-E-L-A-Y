@@ -10,6 +10,7 @@ import { pageTransition } from './transition.ts';
 import { Avatar } from './components/Avatar.tsx';
 import { Composer } from './components/Composer.tsx';
 import { HuddleBar } from './components/Huddle.tsx';
+import { useHuddleCalls } from './huddle-call.ts';
 import { MessageList } from './components/MessageList.tsx';
 import {
   NewChannelModal,
@@ -50,7 +51,8 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl());
   // In auth mode the token comes from Supabase; in dev mode from localStorage.
   const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
-  const { snap, typing, error, authError, analytics, workspaces, connected, send, clearError, switchWorkspace } = useRelay(session);
+  const { snap, typing, error, authError, analytics, workspaces, connected, send, listen, clearError, switchWorkspace } = useRelay(session);
+  const calls = useHuddleCalls(send, listen, connected);
   const leave = () => {
     void signOut();
     setDevSession(null);
@@ -212,7 +214,7 @@ export default function App() {
   const openThread = (id: string | null) => setPanel(id ? { kind: 'thread', id } : null);
   const togglePanel = (kind: 'canvas' | 'list' | 'details') => setPanel(panel?.kind === kind ? null : { kind });
 
-  const ctx = { snap, send, typing, openThread, openChannel, analytics };
+  const ctx = { snap, send, typing, openThread, openChannel, analytics, calls };
   const admin = isAdmin(me);
   const sectioned = new Set(snap.sections.flatMap((sec) => sec.channelIds));
   const addSection = () => {

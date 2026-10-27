@@ -178,6 +178,8 @@ export function useRelay(session: Session | null) {
   const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null, workspaces: { mine: [], discover: [] } });
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  // Huddle signaling isn't app state, so it goes to listeners instead of the reducer.
+  const listeners = useRef(new Set<(ev: ServerEvent) => void>());
   // The workspace to open on (re)connect; remembered across reloads.
   const target = useRef<string | undefined>(readWorkspace());
   const sessionRef = useRef(session);
@@ -206,7 +208,8 @@ export function useRelay(session: Session | null) {
       };
       ws.onmessage = (e) => {
         const ev = JSON.parse(e.data as string) as ServerEvent;
-        if (ev.t === 'export') downloadJson(ev.data);
+        if (ev.t === 'rtc' || ev.t === 'huddleCall') listeners.current.forEach((fn) => fn(ev));
+        else if (ev.t === 'export') downloadJson(ev.data);
         else if (ev.t === 'workspaceCreated') {
           target.current = ev.id;
           authenticate(ws);
@@ -243,13 +246,18 @@ export function useRelay(session: Session | null) {
 
   const clearError = useCallback(() => dispatch({ clearError: true }), []);
 
+  const listen = useCallback((fn: (ev: ServerEvent) => void) => {
+    listeners.current.add(fn);
+    return () => void listeners.current.delete(fn);
+  }, []);
+
   // Switching re-authenticates on the open socket; the server moves it to the other workspace.
   const switchWorkspace = useCallback((id: string) => {
     target.current = id;
     if (wsRef.current) authenticate(wsRef.current);
   }, []);
 
-  return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, workspaces: state.workspaces, connected, send, clearError, switchWorkspace };
+  return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, workspaces: state.workspaces, connected, send, listen, clearError, switchWorkspace };
 }
 
 // Channel ids repeat across workspaces (#general everywhere), so read state is keyed by both.

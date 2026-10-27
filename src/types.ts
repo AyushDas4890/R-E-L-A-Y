@@ -146,6 +146,21 @@ export interface HuddleState {
   participants: string[];
 }
 
+// Huddle media is a WebRTC mesh: every browser in a huddle connects to every other one.
+export const MAX_HUDDLE = 6;
+
+// One browser tab in a huddle. A user with two tabs open has two peers.
+export interface HuddlePeer {
+  id: string;
+  userId: string;
+}
+
+// WebRTC signaling, relayed by the server between two peers in the same huddle.
+export type RtcSignal =
+  | { kind: 'description'; description: { type: 'offer' | 'answer' | 'pranswer' | 'rollback'; sdp?: string } }
+  | { kind: 'candidate'; candidate: { candidate?: string; sdpMid?: string | null; sdpMLineIndex?: number | null; usernameFragment?: string | null } }
+  | { kind: 'state'; muted: boolean; sharing: boolean };
+
 export const PLAN_FEATURES = [
   'Unlimited message history',
   'Unlimited huddles with screen share',
@@ -221,6 +236,7 @@ export type ClientEvent =
   | { t: 'schedule'; channelId: string; text: string; at: number }
   | { t: 'unschedule'; id: string }
   | { t: 'huddle'; channelId: string; action: 'join' | 'leave' }
+  | { t: 'rtc'; to: string; signal: RtcSignal }
   | { t: 'list'; channelId: string; items: ListItem[] }
   | { t: 'sections'; sections: Section[] }
   | { t: 'groups'; groups: UserGroup[] }
@@ -248,6 +264,9 @@ export type ServerEvent =
   | { t: 'scheduled'; list: Scheduled[] }
   | { t: 'typing'; channelId: string; userId: string }
   | { t: 'huddles'; huddles: HuddleState[] }
+  // Sent to each tab in a huddle when its membership changes; channelId null means this tab is out.
+  | { t: 'huddleCall'; channelId: string | null; self: string; peers: HuddlePeer[] }
+  | { t: 'rtc'; from: string; signal: RtcSignal }
   | { t: 'saved'; saved: string[] }
   | { t: 'lists'; channelId: string; items: ListItem[] }
   | { t: 'sections'; sections: Section[] }
