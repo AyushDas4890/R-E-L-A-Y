@@ -6,3 +6,5 @@ data
 ruvector.db
 .env
 .env.local
+
+.vercel

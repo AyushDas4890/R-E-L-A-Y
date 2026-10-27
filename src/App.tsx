@@ -277,6 +277,9 @@ export default function App() {
         <button className="nav-scrim" aria-label="Close channels" tabIndex={-1} onClick={() => setNavOpen(false)} />
 
         <main className="main">
+          <div className="main-bg" aria-hidden>
+            <video src="/bg/silver-line-waves.mp4" poster="/bg/silver-line-waves.jpg" autoPlay muted loop playsInline preload="metadata" />
+          </div>
           {!connected && <div className="banner">Reconnecting…</div>}
           {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
           {view === 'saved' || view === 'mentions' ? (

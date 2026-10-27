@@ -452,3 +452,10 @@ input[type='checkbox'].fit { width: auto; }
 @media (prefers-reduced-transparency: reduce) {
   .menu, .channel-head, .msg .actions { backdrop-filter: none; background: var(--panel); }
 }
+
+/* Workspace backdrop: silver line waves video behind the message pane, tinted toward the theme so text stays readable. */
+.main { isolation: isolate; background: transparent; }
+.main-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: var(--bg) url('/bg/silver-line-waves.jpg') center / cover; }
+.main-bg video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.main-bg::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 72%, transparent); }
+@media (prefers-reduced-motion: reduce) { .main-bg video { display: none; } }
