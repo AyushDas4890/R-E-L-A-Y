@@ -43,6 +43,19 @@ export function dndPresets(now = new Date()): { label: string; until: number }[]
   ];
 }
 
+// Alerts can't render formatting, so turn message markup into plain readable text.
+export function plainText(text: string, users: Snapshot['users']): string {
+  return text
+    .replace(/<@([^>]+)>/g, (_, id: string) => `@${users[id]?.name ?? 'someone'}`)
+    .replace(/```([\s\S]*?)```/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    // Only marks at word edges, so snake_case_names survive.
+    .replace(/(^|\W)(\*\*|__|~~|\*|_)(\S(?:[\s\S]*?\S)?)\2(?=\W|$)/g, '$1$3')
+    .replace(/^>\s?/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Slack's default: notify for DMs, mentions, and replies in threads you started.
 export function shouldNotify(m: Message, snap: Snapshot): boolean {
   if (m.userId === snap.me || m.system) return false;
@@ -86,7 +99,7 @@ export function useMessageAlerts(
       const ch = snap.channels[m.channelId];
       const where = ch.kind === 'dm' ? author : `${author} in #${ch.name}`;
       const n = new Notification(where, {
-        body: m.text.replace(/<@[^>]+>/g, '@…').slice(0, 140) || (m.files?.length ? 'Shared a file' : ''),
+        body: plainText(m.text, snap.users).slice(0, 140) || (m.files?.length ? 'Shared a file' : ''),
         tag: m.id,
       });
       n.onclick = () => {
