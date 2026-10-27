@@ -13,7 +13,8 @@
 
 .si-scene { position: absolute; inset: 64px 0 0; display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; perspective: 1400px; transform-style: preserve-3d; }
 .si-stage { position: relative; height: 100%; transform-style: preserve-3d; perspective: 1000px; }
-.si-stage .nx-bot { left: calc(50% - 40 * var(--u)); bottom: 16%; }
+/* The base robot is in-flow (home hero); on sign-in it stands on the floor ring. */
+.si-stage .nx-bot { position: absolute; left: calc(50% - 40 * var(--u)); bottom: 16%; }
 
 .si-floor { position: absolute; left: -20%; right: -20%; bottom: -10%; height: 55%; transform-origin: 50% 100%; transform: rotateX(72deg); overflow: hidden;
   -webkit-mask-image: radial-gradient(ellipse at 50% 100%, #000 30%, transparent 70%); mask-image: radial-gradient(ellipse at 50% 100%, #000 30%, transparent 70%); }
