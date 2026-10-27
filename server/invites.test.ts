@@ -40,6 +40,13 @@ test('decideRole: new user with a valid invite joins as member', () => {
   assert.equal(decideRole({ hasOwner: true, isMember: false, validInvite: true }), 'member');
 });
 
-test('decideRole: new user without a valid invite is rejected', () => {
-  assert.equal(decideRole({ hasOwner: true, isMember: false, validInvite: false }), 'reject');
+test('decideRole: in an invite-only workspace a new user without a valid invite is rejected', () => {
+  assert.equal(decideRole({ hasOwner: true, isMember: false, validInvite: false, inviteOnly: true }), 'reject');
+});
+
+test('decideRole: open workspaces let anyone in; invite-only ones need a code', () => {
+  assert.equal(decideRole({ hasOwner: true, isMember: false, validInvite: false }), 'member');
+  assert.equal(decideRole({ hasOwner: true, isMember: false, validInvite: false, inviteOnly: true }), 'reject');
+  assert.equal(decideRole({ hasOwner: true, isMember: false, validInvite: true, inviteOnly: true }), 'member');
+  assert.equal(decideRole({ hasOwner: true, isMember: true, validInvite: false, inviteOnly: true }), 'member');
 });

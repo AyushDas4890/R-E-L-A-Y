@@ -390,7 +390,7 @@ async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
     let user = db.users[userId];
     const isMember = !!user;
     const hasOwner = Object.values(db.users).some((u) => u.role === 'owner');
-    const role = decideRole({ hasOwner, isMember, validInvite: validateInvite(ev.invite, db.invites) });
+    const role = decideRole({ hasOwner, isMember, validInvite: validateInvite(ev.invite, db.invites), inviteOnly: db.settings.inviteOnly });
 
     if (role === 'reject') {
       send(ws, { t: 'error', message: 'You need a valid invite to join this workspace.', code: 'invite-required' });
@@ -766,15 +766,18 @@ async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
     }
     case 'settings': {
       if (!isAdmin(db.users[userId])) return;
-      const terms = ev.settings.terms.slice(0, 20_000);
+      // Partial updates: the invite switch and the policies form each send only their own fields.
+      const next = { ...db.settings, ...ev.settings };
+      const terms = (next.terms ?? '').slice(0, 20_000);
       db.settings = {
-        retentionDays: Math.max(0, Math.min(3650, Math.floor(ev.settings.retentionDays) || 0)),
+        inviteOnly: !!next.inviteOnly,
+        retentionDays: Math.max(0, Math.min(3650, Math.floor(next.retentionDays) || 0)),
         terms,
         termsVersion: terms !== db.settings.terms ? db.settings.termsVersion + 1 : db.settings.termsVersion,
-        barriers: ev.settings.barriers.filter(([a, b]) => a !== b && db.groups.some((g) => g.id === a) && db.groups.some((g) => g.id === b)),
+        barriers: (next.barriers ?? []).filter(([a, b]) => a !== b && db.groups.some((g) => g.id === a) && db.groups.some((g) => g.id === b)),
       };
       broadcast({ t: 'settings', settings: db.settings });
-      audit(userId, 'settings.update', `retention ${db.settings.retentionDays || '∞'}d, ${db.settings.barriers.length} barriers, terms v${db.settings.termsVersion}`);
+      audit(userId, 'settings.update', `${db.settings.inviteOnly ? 'invite-only' : 'open sign-up'}, retention ${db.settings.retentionDays || '∞'}d, ${db.settings.barriers.length} barriers, terms v${db.settings.termsVersion}`);
       applyRetention();
       persist();
       return;
