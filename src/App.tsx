@@ -45,7 +45,7 @@ export default function App() {
   const [view, setView] = useState<View>('channel');
   const [panel, setPanel] = useState<Panel>(null);
   const [modal, setModal] = useState<Modal>(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('relay.theme') ?? 'midnight');
+  const [theme, setTheme] = useState(() => localStorage.getItem('relay.theme') ?? 'switchboard');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
