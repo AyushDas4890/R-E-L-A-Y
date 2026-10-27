@@ -2,7 +2,7 @@ import { gsap } from 'gsap';
 import { useEffect, useRef, useState } from 'react';
 import type { Message } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
-import { dayLabel, EMOJI, RichText, timeLabel } from '../format.tsx';
+import { dayLabel, EMOJI, RichText, safeUrl, timeLabel } from '../format.tsx';
 import { isAdmin } from '../premium.ts';
 import { Avatar } from './Avatar.tsx';
 
@@ -54,7 +54,7 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
           </div>
         )}
         {m.files?.map((f, i) => {
-          const src = f.url ?? f.dataUrl;
+          const src = safeUrl(f.url ?? f.dataUrl);
           return f.type.startsWith('image/') ? (
             <a key={i} href={src} target="_blank" rel="noreferrer"><img className="attach-img" src={src} alt={f.name} loading="lazy" /></a>
           ) : f.type.startsWith('video/') ? (
@@ -71,13 +71,13 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
           );
         })}
         {m.preview && (
-          <a className="link-card" href={m.preview.url} target="_blank" rel="noreferrer">
+          <a className="link-card" href={safeUrl(m.preview.url)} target="_blank" rel="noreferrer">
             <div>
               <small>{m.preview.site}</small>
               <strong>{m.preview.title}</strong>
               {m.preview.description && <p>{m.preview.description}</p>}
             </div>
-            {m.preview.image && <img src={m.preview.image} alt="" loading="lazy" />}
+            {safeUrl(m.preview.image) && <img src={safeUrl(m.preview.image)} alt="" loading="lazy" />}
           </a>
         )}
         {Object.keys(m.reactions).length > 0 && (

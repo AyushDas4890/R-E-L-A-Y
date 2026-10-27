@@ -44,13 +44,26 @@ export function LogoIntro({ onDone, onLift }: { onDone: () => void; onLift: () =
         .from('.rl-credit b', { backgroundSize: '0% 2px', duration: 0.6, ease: 'power2.inOut' }, '-=0.3')
         .to('.rl-intro-inner', { scale: 0.92, opacity: 0, duration: 0.5, ease: 'power2.in' }, '+=0.7')
         .call(onLift)
-        .to('.rl-intro', { yPercent: -100, duration: 0.8, ease: 'expo.inOut' }, '-=0.15');
+        // The context is scoped to this element, so it is targeted directly (a '.rl-intro'
+        // selector only searches inside it and never matched, so the splash never lifted).
+        .to(root.current, { yPercent: -100, duration: 0.8, ease: 'expo.inOut' }, '-=0.15');
     }, root);
     return () => ctx.revert();
   }, [onDone, onLift]);
 
+  // Click or press a key to skip the splash.
+  const skip = () => {
+    try { sessionStorage.setItem(SEEN, '1'); } catch { /* ignore */ }
+    onLift();
+    onDone();
+  };
+  useEffect(() => {
+    window.addEventListener('keydown', skip, { once: true });
+    return () => window.removeEventListener('keydown', skip);
+  });
+
   return (
-    <div className="rl-intro" ref={root} aria-hidden>
+    <div className="rl-intro" ref={root} aria-hidden onClick={skip}>
       <div className="rl-intro-inner">
         <div className="rl-lockup">
           <span className="rl-pulse" />

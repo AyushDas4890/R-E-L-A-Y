@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
 import { getDevSession, readKey, saveDevSession, useAuthToken, useLastRead, useRelay, useUnread } from './store.ts';
@@ -48,7 +48,27 @@ export default function App() {
   const { token, ready, signOut } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
   const [invite, setInvite] = useState(inviteFromUrl);
-  const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl());
+  const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
+  // Sign-in is its own history entry, so the browser's Back button returns to the landing page
+  // instead of leaving the site. (`history` below is the in-app channel history, hence window.history.)
+  const showLoginRef = useRef(showLogin);
+  showLoginRef.current = showLogin;
+  const openLogin = () => {
+    if (window.history.state?.relay !== 'signin') window.history.pushState({ relay: 'signin' }, '', location.pathname + location.search);
+    pageTransition(() => setShowLogin(true));
+  };
+  const closeLogin = () => {
+    if (window.history.state?.relay === 'signin') window.history.back();
+    else pageTransition(() => setShowLogin(false));
+  };
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const want = e.state?.relay === 'signin';
+      if (showLoginRef.current !== want) pageTransition(() => setShowLogin(want));
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   // In auth mode the token comes from Supabase; in dev mode from localStorage.
   const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
   const { snap, typing, error, authError, analytics, workspaces, connected, send, listen, clearError, switchWorkspace } = useRelay(session);
@@ -153,10 +173,10 @@ export default function App() {
 
   if (!session || (authError && authError.code === 'auth-required')) {
     if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
-    if (!showLogin && !authError) return <Landing onGetStarted={() => pageTransition(() => setShowLogin(true))} />;
+    if (!showLogin && !authError) return <Landing onGetStarted={openLogin} />;
     return (
       <Login
-        onBack={authError ? undefined : () => pageTransition(() => setShowLogin(false))}
+        onBack={authError ? undefined : closeLogin}
         invite={invite}
         onInvite={setInvite}
         error={authError?.message}
@@ -181,7 +201,12 @@ export default function App() {
     );
   }
   if (!snap) {
-    return <div className="welcome"><p className="muted">{connected ? 'Loading workspace…' : 'Connecting to Relay server…'}</p></div>;
+    return (
+      <div className="welcome">
+        <p className="muted">{connected ? 'Loading workspace…' : 'Connecting to Relay server…'}</p>
+        {!connected && <p className="muted"><small>The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.</small></p>}
+      </div>
+    );
   }
 
   const me = snap.users[snap.me];

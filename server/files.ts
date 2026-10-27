@@ -22,14 +22,28 @@ export function storagePath(name: string, id: string = randomUUID()): string {
   return `${id}/${safe}`;
 }
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+// Rebuilds an attachment from what a client sent. Only an inline data URL is accepted: a
+// client-supplied `url` could point the server (file summaries) or other members' browsers
+// (javascript: links) anywhere, so it is dropped. Returns null when nothing usable is left.
+export function cleanUpload(raw: unknown): FileAttachment | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const f = raw as Record<string, unknown>;
+  if (typeof f.dataUrl !== 'string' || !/^data:[\w.+-]+\/[\w.+-]+(;[\w=.+-]+)*;base64,/i.test(f.dataUrl)) return null;
+  const size = Buffer.byteLength(f.dataUrl.slice(f.dataUrl.indexOf(',') + 1), 'base64');
+  if (size > MAX_FILE_BYTES) return null;
+  const type = typeof f.type === 'string' ? f.type.slice(0, 100) : '';
+  return { name: String(f.name ?? 'file').slice(0, 200) || 'file', type, size, dataUrl: f.dataUrl };
+}
+
 export const inlineFiles: FileStore = {
   async offload(file) {
     return file;
   },
   async read(file) {
     if (file.dataUrl) return decodeDataUrl(file.dataUrl);
-    const res = await fetch(file.url!);
-    return Buffer.from(await res.arrayBuffer());
+    throw new Error(`${file.name} has no inline data`);
   },
 };
 
@@ -45,7 +59,15 @@ export function createSupabaseFiles(client: SupabaseClient): FileStore {
       const { data } = client.storage.from(BUCKET).getPublicUrl(path);
       return { name: file.name, type: file.type, size: file.size, url: data.publicUrl };
     },
-    read: inlineFiles.read,
+    async read(file) {
+      if (file.dataUrl) return decodeDataUrl(file.dataUrl);
+      // Only fetch from our own bucket, never an arbitrary address stored in a message.
+      const base = client.storage.from(BUCKET).getPublicUrl('').data.publicUrl;
+      if (!file.url?.startsWith(base)) throw new Error(`${file.name} is not in storage`);
+      const res = await fetch(file.url, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) throw new Error(`read ${file.name} failed: ${res.status}`);
+      return Buffer.from(await res.arrayBuffer());
+    },
   };
 }
 
