@@ -252,3 +252,14 @@ input[type='checkbox'].fit { width: auto; }
 .audit th { color: var(--muted); font-weight: 600; }
 .terms { white-space: pre-wrap; max-height: 40vh; overflow-y: auto; }
 .palette-results .answer { background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 10px; }
+
+/* Sign-in and invites */
+.oauth-buttons { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.oauth-btn { width: 100%; }
+.field { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; }
+.field span { font-size: 12px; font-weight: 600; }
+.login-error { color: #e0245e; font-size: 13px; margin-top: 8px; }
+.signout-btn { font-size: 16px; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.invite.revoked code { text-decoration: line-through; opacity: 0.6; }
+.invite-tag { font-size: 12px; color: #e0245e; }

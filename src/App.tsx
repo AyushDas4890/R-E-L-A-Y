@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel, RichText } from './format.tsx';
-import { getIdentity, saveIdentity, useLastRead, useRelay, useUnread } from './store.ts';
+import { getDevSession, saveDevSession, useAuthToken, useLastRead, useRelay, useUnread } from './store.ts';
+import { authEnabled } from './supabase.ts';
+import { Login } from './components/Login.tsx';
 import { Avatar } from './components/Avatar.tsx';
 import { Composer } from './components/Composer.tsx';
 import { HuddleBar } from './components/Huddle.tsx';
@@ -24,26 +26,19 @@ type Modal = null | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'workf
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
 type View = 'channel' | 'saved' | 'mentions';
 
-function Welcome({ onDone }: { onDone: (name: string) => void }) {
-  const [name, setName] = useState('');
-  return (
-    <div className="welcome">
-      <div className="welcome-card">
-        <div className="logo">R</div>
-        <h1>Relay</h1>
-        <p>Team chat where every premium feature is already on.</p>
-        <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) onDone(name.trim()); }}>
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" maxLength={40} />
-          <button className="send-btn" disabled={!name.trim()}>Enter workspace →</button>
-        </form>
-      </div>
-    </div>
-  );
-}
+const inviteFromUrl = () => new URLSearchParams(window.location.search).get('invite') ?? '';
 
 export default function App() {
-  const [identity, setIdentity] = useState(getIdentity);
-  const { snap, typing, error, analytics, connected, send, clearError } = useRelay(identity);
+  const { token, ready, signOut } = useAuthToken();
+  const [devSession, setDevSession] = useState(getDevSession);
+  const [invite, setInvite] = useState(inviteFromUrl);
+  // In auth mode the token comes from Supabase; in dev mode from localStorage.
+  const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
+  const { snap, typing, error, authError, analytics, connected, send, clearError } = useRelay(session);
+  const leave = () => {
+    void signOut();
+    setDevSession(null);
+  };
   const { lastRead, markRead } = useLastRead();
   const unread = useUnread(snap, lastRead);
   const [active, setActive] = useState('general');
@@ -77,8 +72,18 @@ export default function App() {
     [snap, active],
   );
 
-  if (!identity) {
-    return <Welcome onDone={(name) => setIdentity(saveIdentity(name))} />;
+  if (!session || authError) {
+    if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
+    return (
+      <Login
+        invite={invite}
+        onInvite={setInvite}
+        error={authError?.message}
+        signedIn={!!session && authError?.code === 'invite-required'}
+        onDevEnter={(tok, inv) => { setInvite(inv); setDevSession(saveDevSession(tok, inv)); }}
+        onSignOut={leave}
+      />
+    );
   }
   if (!snap) {
     return <div className="welcome"><p className="muted">{connected ? 'Loading workspace…' : 'Connecting to Relay server…'}</p></div>;
@@ -158,6 +163,7 @@ export default function App() {
           <button className="rail-me" title="Profile" onClick={() => setModal('profile')}>
             <Avatar user={me} size={34} online={connected} />
           </button>
+          <button className="rail-btn signout-btn" title="Sign out" onClick={leave}>⎋</button>
         </nav>
 
         <aside className="sidebar">
