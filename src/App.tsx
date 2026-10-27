@@ -4,6 +4,7 @@ import { channelLabel, RichText } from './format.tsx';
 import { getDevSession, saveDevSession, useAuthToken, useLastRead, useRelay, useUnread } from './store.ts';
 import { authEnabled } from './supabase.ts';
 import { Login } from './components/Login.tsx';
+import { Landing } from './components/Landing.tsx';
 import { Avatar } from './components/Avatar.tsx';
 import { Composer } from './components/Composer.tsx';
 import { HuddleBar } from './components/Huddle.tsx';
@@ -34,6 +35,7 @@ export default function App() {
   const { token, ready, signOut } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
   const [invite, setInvite] = useState(inviteFromUrl);
+  const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl());
   // In auth mode the token comes from Supabase; in dev mode from localStorage.
   const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
   const { snap, typing, error, authError, analytics, connected, send, clearError } = useRelay(session);
@@ -92,8 +94,10 @@ export default function App() {
 
   if (!session || authError) {
     if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
+    if (!showLogin && !authError) return <Landing onGetStarted={() => setShowLogin(true)} />;
     return (
       <Login
+        onBack={authError ? undefined : () => setShowLogin(false)}
         invite={invite}
         onInvite={setInvite}
         error={authError?.message}

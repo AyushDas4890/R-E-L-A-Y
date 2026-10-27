@@ -5,3 +5,4 @@ data
 .swarm
 ruvector.db
 .env
+.env.local
