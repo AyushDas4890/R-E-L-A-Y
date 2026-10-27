@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { HuddleCalls } from './huddle-call.ts';
 import type { Analytics, ClientEvent, Snapshot } from './types.ts';
 
 export interface RelayCtx {
@@ -8,6 +9,7 @@ export interface RelayCtx {
   openThread: (id: string | null) => void;
   openChannel: (id: string) => void;
   analytics: Analytics | null;
+  calls: HuddleCalls;
 }
 
 export const Ctx = createContext<RelayCtx | null>(null);
