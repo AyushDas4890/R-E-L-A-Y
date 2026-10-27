@@ -211,13 +211,35 @@ export function WorkflowModal({ onClose }: { onClose: () => void }) {
               onChange={(e) =>
                 patch(w.id, (x) => ({
                   ...x,
-                  trigger: e.target.value === 'join' ? { type: 'join', channelId: 'general' } : { type: 'keyword', keyword: 'hello', channelId: 'any' },
+                  trigger:
+                    e.target.value === 'join'
+                      ? { type: 'join', channelId: 'general' }
+                      : e.target.value === 'schedule'
+                        ? { type: 'schedule', channelId: 'general', time: '09:30', weekdaysOnly: true }
+                        : { type: 'keyword', keyword: 'hello', channelId: 'any' },
                 }))
               }
             >
               <option value="keyword">When a message contains…</option>
               <option value="join">When someone new joins…</option>
+              <option value="schedule">On a schedule…</option>
             </select>
+            {w.trigger.type === 'schedule' && (
+              <>
+                <input
+                  type="time"
+                  value={w.trigger.time}
+                  onChange={(e) => patch(w.id, (x) => ({ ...x, trigger: { ...(x.trigger as { type: 'schedule'; channelId: string; weekdaysOnly: boolean }), type: 'schedule', time: e.target.value } }))}
+                />
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={w.trigger.weekdaysOnly}
+                    onChange={(e) => patch(w.id, (x) => ({ ...x, trigger: { ...(x.trigger as { type: 'schedule'; channelId: string; time: string }), type: 'schedule', weekdaysOnly: e.target.checked } }))}
+                  /> Weekdays only
+                </label>
+              </>
+            )}
             {w.trigger.type === 'keyword' && (
               <input
                 value={w.trigger.keyword}

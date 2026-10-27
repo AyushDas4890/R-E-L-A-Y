@@ -72,7 +72,10 @@ export interface Workflow {
   id: string;
   name: string;
   enabled: boolean;
-  trigger: { type: 'keyword'; keyword: string; channelId: string | 'any' } | { type: 'join'; channelId: string };
+  trigger:
+    | { type: 'keyword'; keyword: string; channelId: string | 'any' }
+    | { type: 'join'; channelId: string }
+    | { type: 'schedule'; channelId: string; time: string; weekdaysOnly: boolean };
   reply: string;
   branch?: { contains: string; reply: string };
 }

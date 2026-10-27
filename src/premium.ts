@@ -37,6 +37,19 @@ export function workflowReply(wf: Workflow, text: string): string {
   return text.toLowerCase().includes(wf.branch.contains.toLowerCase()) ? wf.branch.reply : wf.reply;
 }
 
+// A schedule fires once per day, within SCHEDULE_WINDOW_MIN minutes after its time, so a server
+// restart long after the time does not replay a missed run. Returns the day key to dedupe on.
+const SCHEDULE_WINDOW_MIN = 5;
+export function scheduleDue(trigger: Extract<Workflow['trigger'], { type: 'schedule' }>, now: Date): string | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(trigger.time);
+  if (!m) return null;
+  const day = now.getDay();
+  if (trigger.weekdaysOnly && (day === 0 || day === 6)) return null;
+  const elapsed = now.getHours() * 60 + now.getMinutes() - (Number(m[1]) * 60 + Number(m[2]));
+  if (elapsed < 0 || elapsed >= SCHEDULE_WINDOW_MIN) return null;
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
 export function pruneRetention(messages: Message[], retentionDays: number, legalHolds: string[], now: number) {
   if (retentionDays <= 0) return { kept: messages, removed: 0 };
   const cutoff = now - retentionDays * DAY;
@@ -175,6 +188,12 @@ export const WORKFLOW_TEMPLATES: Omit<Workflow, 'id'>[] = [
     enabled: true,
     trigger: { type: 'keyword', keyword: '!standup', channelId: 'any' },
     reply: 'Standup time: what did you do yesterday, what are you doing today, anything blocking you?',
+  },
+  {
+    name: 'Daily standup (weekdays 9:30)',
+    enabled: true,
+    trigger: { type: 'schedule', channelId: 'general', time: '09:30', weekdaysOnly: true },
+    reply: '☀️ Standup time! Reply in this thread: what did you do yesterday, what are you doing today, anything blocking you?',
   },
   {
     name: 'Incident triage',

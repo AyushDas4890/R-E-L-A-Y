@@ -34,6 +34,7 @@ import {
   huddleNote,
   isAdmin,
   pruneRetention,
+  scheduleDue,
   summarizeText,
   workflowReply,
 } from '../src/premium.ts';
@@ -997,6 +998,19 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
     }
     persist();
   }, 1000));
+
+  // Scheduled workflows: post the reply once per day when the clock reaches the trigger time.
+  const scheduleFired = new Map<string, string>();
+  timers.push(setInterval(() => {
+    const now = new Date();
+    for (const wf of db.workflows) {
+      if (!wf.enabled || wf.trigger.type !== 'schedule') continue;
+      const key = scheduleDue(wf.trigger, now);
+      if (!key || scheduleFired.get(wf.id) === key) continue;
+      scheduleFired.set(wf.id, key);
+      postMessage(wf.trigger.channelId, BOT_ID, wf.reply);
+    }
+  }, 20_000));
 
   timers.push(setInterval(applyRetention, 60 * 60_000));
 
