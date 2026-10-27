@@ -119,6 +119,7 @@ export function ProfileModal({ onClose, theme, setTheme }: { onClose: () => void
       </div>
       <label>Theme
         <select value={theme} onChange={(e) => setTheme(e.target.value)}>
+          <option value="plum">Plum</option>
           <option value="switchboard">Switchboard</option>
           <option value="midnight">Midnight</option>
           <option value="daylight">Daylight</option>
