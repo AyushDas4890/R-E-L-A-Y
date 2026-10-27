@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 480" width="1100" height="480" role="img" aria-label="Relay architecture: browsers on Vercel talk to a Node WebSocket server on Render, which stores state and checks sign-in with Supabase; huddle audio flows browser to browser over WebRTC.">
+  <defs>
+    <style>
+      .bg { fill: #120806; }
+      .box { fill: #1f0e09; stroke: #c8693c; stroke-opacity: .6; stroke-width: 1.5; }
+      .box.mint { stroke: #9df5c5; stroke-opacity: .55; }
+      .h { font: 700 18px 'Segoe UI', system-ui, -apple-system, sans-serif; fill: #f6e7da; }
+      .t { font: 400 13.5px 'Segoe UI', system-ui, -apple-system, sans-serif; fill: #d6b9a6; }
+      .k { font: 600 12px ui-monospace, Consolas, monospace; fill: #9df5c5; }
+      .lbl { font: 600 12.5px 'Segoe UI', system-ui, sans-serif; fill: #f0b07a; }
+      .wire { fill: none; stroke: #c8693c; stroke-width: 2; stroke-opacity: .55; }
+      .wire.rtc { stroke: #9df5c5; stroke-dasharray: 6 6; animation: dash 1.2s linear infinite; }
+      .pk { fill: #ffd27a; }
+      .pk.m { fill: #9df5c5; }
+      @keyframes dash { to { stroke-dashoffset: -24; } }
+    </style>
+    <filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect class="bg" width="1100" height="480" rx="18"/>
+
+  <!-- Browsers -->
+  <g>
+    <rect class="box" x="40" y="60" width="250" height="110" rx="14"/>
+    <text class="h" x="62" y="94">🖥️ Browser · Alex</text>
+    <text class="t" x="62" y="120">React 18 + Vite UI, GSAP motion</text>
+    <text class="k" x="62" y="146">slack-reverse.vercel.app</text>
+  </g>
+  <g>
+    <rect class="box" x="40" y="310" width="250" height="110" rx="14"/>
+    <text class="h" x="62" y="344">📱 Browser · Maya</text>
+    <text class="t" x="62" y="370">Same app, phone layout</text>
+    <text class="k" x="62" y="396">served by Vercel CDN</text>
+  </g>
+
+  <!-- Server -->
+  <g>
+    <rect class="box" x="425" y="150" width="270" height="180" rx="16"/>
+    <text class="h" x="447" y="186">⚙️ Relay server</text>
+    <text class="t" x="447" y="212">Node 24 · one process on Render</text>
+    <text class="t" x="447" y="236">• WebSocket hub per workspace</text>
+    <text class="t" x="447" y="258">• permissions, rate limits, audit</text>
+    <text class="t" x="447" y="280">• Relay Bot, workflows, schedules</text>
+    <text class="t" x="447" y="302">• link previews (SSRF-guarded)</text>
+  </g>
+
+  <!-- Supabase -->
+  <g>
+    <rect class="box mint" x="820" y="60" width="240" height="96" rx="14"/>
+    <text class="h" x="842" y="94">🔑 Supabase Auth</text>
+    <text class="t" x="842" y="120">Google · GitHub OAuth</text>
+    <text class="k" x="842" y="142">JWT verified per socket</text>
+  </g>
+  <g>
+    <rect class="box mint" x="820" y="192" width="240" height="96" rx="14"/>
+    <text class="h" x="842" y="226">🗄️ Postgres state</text>
+    <text class="t" x="842" y="252">one JSONB row per workspace</text>
+    <text class="k" x="842" y="274">RLS on, service role only</text>
+  </g>
+  <g>
+    <rect class="box mint" x="820" y="324" width="240" height="96" rx="14"/>
+    <text class="h" x="842" y="358">📎 Storage</text>
+    <text class="t" x="842" y="384">attachments, unguessable paths</text>
+    <text class="k" x="842" y="406">bucket: relay-files</text>
+  </g>
+
+  <!-- wires -->
+  <path id="w1" class="wire" d="M290 115 C 360 115, 360 210, 425 210"/>
+  <path id="w2" class="wire" d="M290 365 C 360 365, 360 270, 425 270"/>
+  <path id="w3" class="wire" d="M695 200 C 760 200, 760 108, 820 108"/>
+  <path id="w4" class="wire" d="M695 240 L 820 240"/>
+  <path id="w5" class="wire" d="M695 280 C 760 280, 760 372, 820 372"/>
+  <path class="wire rtc" d="M165 170 L 165 310"/>
+
+  <text class="lbl" x="318" y="146">wss:// events</text>
+  <text class="lbl" x="318" y="352">wss:// events</text>
+  <text class="lbl" x="180" y="246" fill="#9df5c5" style="fill:#9df5c5">WebRTC mesh</text>
+  <text class="lbl" x="180" y="264" style="fill:#9df5c5;font-weight:400">huddle audio + screen</text>
+
+  <!-- packets -->
+  <circle class="pk" r="5" filter="url(#g)"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#w1"/></animateMotion></circle>
+  <circle class="pk" r="5" filter="url(#g)"><animateMotion dur="2.2s" begin="1.1s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#w2"/></animateMotion></circle>
+  <circle class="pk m" r="5" filter="url(#g)"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#w3"/></animateMotion></circle>
+  <circle class="pk m" r="5" filter="url(#g)"><animateMotion dur="1.8s" begin=".4s" repeatCount="indefinite"><mpath href="#w4"/></animateMotion></circle>
+  <circle class="pk m" r="5" filter="url(#g)"><animateMotion dur="2.4s" begin=".9s" repeatCount="indefinite"><mpath href="#w5"/></animateMotion></circle>
+
+  <text class="t" x="40" y="462" style="fill:#8d7466">Media never passes through the server. It only relays the WebRTC handshake between tabs in the same huddle.</text>
+</svg>
