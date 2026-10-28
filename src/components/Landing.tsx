@@ -239,7 +239,7 @@ export function Landing({ onGetStarted }: Props) {
           <div className="nx-sun" aria-hidden />
 
           <header className="nx-nav">
-            <a className="nx-brand" href="#top" aria-label="Relay home"><LogoMark size={26} />relay</a>
+            <a className="nx-brand" href="#top" aria-label="Relay home"><LogoMark size={34} />relay</a>
             <nav className={`nx-links ${menu ? 'open' : ''}`}>
               {NAV.map((n) => <a key={n.label} href={n.href} onClick={() => setMenu(false)}>{n.label}</a>)}
               <button className="nx-links-cta" onClick={onGetStarted}>Sign in</button>
