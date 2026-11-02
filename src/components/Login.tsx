@@ -88,7 +88,13 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
         <div className="ap-si-card">
           <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
           <h1>{signedIn ? 'Join a workspace' : 'Sign in to Relay'}</h1>
-          <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : authEnabled ? 'Use your Google or GitHub account.' : 'Enter a name to start in dev mode.'}</p>
+          <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : 'Use your GitHub or Google account.'}</p>
+
+          {!signedIn && (
+            <button className="ap-pill dark full" onClick={() => (authEnabled ? oauth('github') : setOauthError('GitHub sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, or continue with a name below.'))} disabled={!!busy}>
+              <GithubIcon />{busy === 'github' ? 'Opening GitHub…' : 'Continue with GitHub'}
+            </button>
+          )}
 
           {signedIn ? (
             <>
@@ -104,9 +110,6 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
               <button className="ap-pill quiet full" onClick={() => oauth('google')} disabled={!!busy}>
                 <GoogleIcon />{busy === 'google' ? 'Opening Google…' : 'Continue with Google'}
               </button>
-              <button className="ap-pill quiet full" onClick={() => oauth('github')} disabled={!!busy}>
-                <GithubIcon />{busy === 'github' ? 'Opening GitHub…' : 'Continue with GitHub'}
-              </button>
               <div className="ap-si-divider">Have an invite?</div>
               <label className="ap-si-field">
                 Invite code
@@ -114,21 +117,25 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
               </label>
             </>
           ) : (
-            <form className="ap-si-form" onSubmit={(e) => {
-              e.preventDefault();
-              const name = devName.trim();
-              if (name) onDevEnter(`${crypto.randomUUID()}:${name}`, code);
-            }}>
-              <label className="ap-si-field">
-                Your name
-                <input value={devName} onChange={(e) => setDevName(e.target.value)} placeholder="Name" maxLength={40} autoFocus />
-              </label>
-              <label className="ap-si-field">
-                Invite code
-                <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Optional" maxLength={32} />
-              </label>
-              <button className="ap-pill blue full" disabled={!devName.trim()}>Continue</button>
-            </form>
+            // Dev mode: no Supabase keys, so a plain name stands in for an account.
+            <>
+              <div className="ap-si-divider">or continue in dev mode</div>
+              <form className="ap-si-form" onSubmit={(e) => {
+                e.preventDefault();
+                const name = devName.trim();
+                if (name) onDevEnter(`${crypto.randomUUID()}:${name}`, code);
+              }}>
+                <label className="ap-si-field">
+                  Your name
+                  <input value={devName} onChange={(e) => setDevName(e.target.value)} placeholder="Name" maxLength={40} autoFocus />
+                </label>
+                <label className="ap-si-field">
+                  Invite code
+                  <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Optional" maxLength={32} />
+                </label>
+                <button className="ap-pill blue full" disabled={!devName.trim()}>Continue</button>
+              </form>
+            </>
           )}
 
           {shownError && <p className="ap-si-error" role="alert">{shownError}</p>}

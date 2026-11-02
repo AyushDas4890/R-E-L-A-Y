@@ -2,39 +2,39 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { HeroChat } from './HeroChat.tsx';
-import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
+import { FeaturePage } from './Features.tsx';
+import { RouteLink, SiteFooter, SiteNav, useRoute, type Route } from './Site.tsx';
 import '../tour.css';
 import '../apple.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const NAV = [
-  { label: 'Overview', href: '#tour' },
-  { label: 'Huddles', href: '#huddles' },
-  { label: 'Workflows', href: '#workflows' },
-  { label: 'Search', href: '#search' },
-];
-
 // One statement, revealed word by word: the first words land dark, the rest follow.
 const STATEMENT = 'Relay is team chat with a teammate built in. It answers, reminds and recaps, so the work keeps moving.';
 
 // Each feature tile shows a looping motion graphic of the real UI doing that job.
-const STEPS = [
-  { id: 'channels', title: 'Channels and threads', text: 'Every team gets a channel. Side conversations fold into threads, so the main room stays readable.', wide: true },
-  { id: 'huddles', title: 'Huddles', text: 'Start a call from any channel. When it ends, the notes land back in the conversation.' },
-  { id: 'canvas', title: 'Canvases and lists', text: 'Docs and tracked work live beside the chat, by status and owner.' },
-  { id: 'workflows', title: 'Workflows', text: 'Welcome new people, answer common questions and send reminders on a schedule.' },
-  { id: 'search', title: 'Search', text: 'Ctrl K searches every message, person and channel, and suggests the answer.' },
+const STEPS: { id: string; title: string; text: string; page: Route; wide?: boolean }[] = [
+  { id: 'channels', title: 'Channels and threads', text: 'Every team gets a channel. Side conversations fold into threads, so the main room stays readable.', page: 'overview', wide: true },
+  { id: 'huddles', title: 'Huddles', text: 'Start a call from any channel. When it ends, the notes land back in the conversation.', page: 'huddles' },
+  { id: 'canvas', title: 'Canvases and lists', text: 'Docs and tracked work live beside the chat, by status and owner.', page: 'overview' },
+  { id: 'workflows', title: 'Workflows', text: 'Welcome new people, answer common questions and send reminders on a schedule.', page: 'workflows' },
+  { id: 'search', title: 'Search', text: 'Ctrl K searches every message, person and channel, and suggests the answer.', page: 'search' },
 ];
 
 interface Props {
   onGetStarted: () => void;
 }
 
+// The public site: the home page here, and one page per feature in the nav.
 export function Landing({ onGetStarted }: Props) {
+  const [route, go] = useRoute();
+  if (route !== 'home') return <FeaturePage page={route} go={go} onGetStarted={onGetStarted} />;
+  return <Home go={go} onGetStarted={onGetStarted} />;
+}
+
+function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
   const root = useRef<HTMLDivElement>(null);
-  const [menu, setMenu] = useState(false);
   const [poke, setPoke] = useState(0);
 
   useLayoutEffect(() => {
@@ -71,17 +71,7 @@ export function Landing({ onGetStarted }: Props) {
     <div className="ap" ref={root} id="top">
       <section className="ap-hero">
         <div className="ap-sky" aria-hidden />
-        <header className="ap-nav">
-          <a className="ap-brand" href="#top" aria-label="Relay home"><LogoMark size={22} />Relay</a>
-          <nav className={`ap-links ${menu ? 'open' : ''}`}>
-            {NAV.map((n) => <a key={n.label} href={n.href} onClick={() => setMenu(false)}>{n.label}</a>)}
-          </nav>
-          <div className="ap-nav-end">
-            <button className="ap-link-btn" onClick={onGetStarted}>Sign in</button>
-            <button className="ap-pill dark" onClick={onGetStarted}>Get started</button>
-            <button className="ap-menu" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}><Icon n="menu" size={18} /></button>
-          </div>
-        </header>
+        <SiteNav route="home" go={go} onGetStarted={onGetStarted} />
 
         <div className="ap-hero-copy">
           <h1 className="ap-statement">
@@ -125,6 +115,7 @@ export function Landing({ onGetStarted }: Props) {
             <div className="ap-tile-copy">
               <h3>{s.title}</h3>
               <p>{s.text}</p>
+              <RouteLink to={s.page} go={go} className="ap-more">Learn more <Icon n="chevron" size={14} /></RouteLink>
             </div>
             <div className="ap-tile-media" data-scene={s.id}><Scene id={s.id} /></div>
           </article>
@@ -137,10 +128,7 @@ export function Landing({ onGetStarted }: Props) {
         <button className="ap-pill blue" onClick={onGetStarted}>Get started free</button>
       </section>
 
-      <footer className="ap-foot">
-        <span>Relay. Built from public product behavior only.</span>
-        <span>Powered by Flo Studios</span>
-      </footer>
+      <SiteFooter go={go} />
     </div>
   );
 }
