@@ -216,3 +216,16 @@ export const WORKFLOW_TEMPLATES: Omit<Workflow, 'id'>[] = [
     reply: 'Nice work. Logged to the wins board.',
   },
 ];
+
+// Alerts can't render formatting, so turn message markup into plain readable text.
+export function plainText(text: string, users: Record<string, { name: string }>): string {
+  return text
+    .replace(/<@([^>]+)>/g, (_, id: string) => `@${users[id]?.name ?? 'someone'}`)
+    .replace(/```([\s\S]*?)```/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    // Only marks at word edges, so snake_case_names survive.
+    .replace(/(^|\W)(\*\*|__|~~|\*|_)(\S(?:[\s\S]*?\S)?)\2(?=\W|$)/g, '$1$3')
+    .replace(/^>\s?/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

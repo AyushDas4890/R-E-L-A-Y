@@ -15,6 +15,8 @@ export interface User {
   role?: Role;
   avatarUrl?: string;
   email?: string;
+  // Left or was removed. Kept so old messages still show a name; hidden from people lists.
+  inactive?: boolean;
 }
 
 export interface Invite {
@@ -78,6 +80,8 @@ export interface Workflow {
     | { type: 'schedule'; channelId: string; time: string; weekdaysOnly: boolean };
   reply: string;
   branch?: { contains: string; reply: string };
+  // Who published it. Only they (or an admin) may change or delete it.
+  createdBy?: string;
 }
 
 export interface ListItem {
@@ -134,6 +138,8 @@ export interface AdminData {
   legalHolds: string[];
   preservedCount: number;
   invites: Invite[];
+  // People an admin removed. They can't rejoin, even by invite, until restored.
+  removed: string[];
 }
 
 export interface Scheduled {
@@ -194,13 +200,36 @@ export interface WorkspaceSummary {
   inviteOnly: boolean;
 }
 
+export type ChannelLevel = 'all' | 'mentions' | 'mute';
+
+// A person's own settings inside one workspace. Kept on the server so every device sees the same.
+export interface UserPrefs {
+  // Channel id -> server time the person last read it.
+  lastRead: Record<string, number>;
+  // Only channels that differ from the default ('mentions').
+  levels: Record<string, ChannelLevel>;
+  // Do Not Disturb until this time (0 = off).
+  dndUntil: number;
+  // Email about mentions and DMs while offline. On unless they switch it off.
+  email: boolean;
+}
+
+// Where to continue paging up a channel's history: the oldest message already sent.
+export interface HistoryCursor {
+  ts: number;
+  id: string;
+}
+
 export interface Snapshot {
   me: string;
   workspace: { id: string; name: string; plan: string; color: string };
   users: Record<string, User>;
   online: string[];
   channels: Record<string, Channel>;
+  // The newest page per channel, plus saved and pinned messages. Older ones come via `history`.
   messages: Message[];
+  // Channels that have older messages than `messages` holds, with where to continue from.
+  history: Record<string, HistoryCursor>;
   canvases: Record<string, string>;
   workflows: Workflow[];
   scheduled: Scheduled[];
@@ -212,6 +241,7 @@ export interface Snapshot {
   groups: UserGroup[];
   settings: Settings;
   termsAccepted: number;
+  prefs: UserPrefs;
   admin?: AdminData;
 }
 
@@ -240,7 +270,8 @@ export type ClientEvent =
   | { t: 'unschedule'; id: string }
   | { t: 'huddle'; channelId: string; action: 'join' | 'leave' }
   | { t: 'rtc'; to: string; signal: RtcSignal }
-  | { t: 'list'; channelId: string; items: ListItem[] }
+  // One change to one item, so two people editing a list don't overwrite each other.
+  | { t: 'listItem'; channelId: string; id: string; patch?: Partial<Pick<ListItem, 'title' | 'status' | 'assignee' | 'due'>>; remove?: boolean }
   | { t: 'sections'; sections: Section[] }
   | { t: 'groups'; groups: UserGroup[] }
   | { t: 'flag'; id: string; reason: string }
@@ -251,6 +282,18 @@ export type ClientEvent =
   | { t: 'settings'; settings: Partial<Omit<Settings, 'termsVersion'>> }
   | { t: 'legalHold'; userId: string; on: boolean }
   | { t: 'acceptTerms' }
+  | { t: 'leaveWorkspace' }
+  | { t: 'removeMember'; userId: string }
+  | { t: 'restoreMember'; userId: string }
+  // Anonymizes this person's messages and erases their personal data in this workspace.
+  | { t: 'deleteMyAccount' }
+  | { t: 'history'; channelId: string; before: HistoryCursor }
+  | { t: 'markRead'; channelId: string }
+  | { t: 'setLevel'; channelId: string; level: ChannelLevel }
+  | { t: 'setDnd'; until: number }
+  | { t: 'setEmail'; on: boolean }
+  // One-time upload of what this browser kept before prefs lived on the server.
+  | { t: 'importPrefs'; lastRead?: Record<string, number>; levels?: Record<string, string>; dndUntil?: number }
   | { t: 'fileSummary'; id: string; index: number }
   | { t: 'analytics' }
   | { t: 'export' };
@@ -276,6 +319,9 @@ export type ServerEvent =
   | { t: 'groups'; groups: UserGroup[] }
   | { t: 'settings'; settings: Settings }
   | { t: 'termsAccepted'; version: number }
+  | { t: 'prefs'; prefs: UserPrefs }
+  // `cursor` is where to continue, or null when this page reached the start of the channel.
+  | { t: 'history'; channelId: string; messages: Message[]; cursor: HistoryCursor | null }
   | { t: 'admin'; admin: AdminData }
   | { t: 'analytics'; data: Analytics }
   | { t: 'export'; data: unknown }
@@ -283,7 +329,7 @@ export type ServerEvent =
   | { t: 'workspaceCreated'; id: string }
   | { t: 'workspace'; workspace: Snapshot['workspace'] }
   | { t: 'starred'; list: string[] }
-  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' };
+  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' };
 
 export interface Analytics {
   totalMessages: number;

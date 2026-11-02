@@ -123,12 +123,12 @@ export function DirectoryView({ onMessage }: { onMessage: (userId: string) => vo
   const { snap } = useRelayCtx();
   const [q, setQ] = useState('');
   const people = Object.values(snap.users)
-    .filter((u) => !u.bot && (u.name + ' ' + u.title).toLowerCase().includes(q.toLowerCase()))
+    .filter((u) => !u.bot && !u.inactive && (u.name + ' ' + u.title).toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <>
       <header className="channel-head">
-        <div className="channel-title"><h2>People</h2><p className="topic">{Object.values(snap.users).filter((u) => !u.bot).length} members of {snap.workspace.name}</p></div>
+        <div className="channel-title"><h2>People</h2><p className="topic">{Object.values(snap.users).filter((u) => !u.bot && !u.inactive).length} members of {snap.workspace.name}</p></div>
       </header>
       <div className="feed">
         <input className="dir-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or title" aria-label="Search people" />

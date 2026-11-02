@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { mentionsUser } from './premium.ts';
+import { usePrefs } from './notify.ts';
 import { supabase, authEnabled } from './supabase.ts';
 import type { Analytics, ClientEvent, ServerEvent, Snapshot, WorkspaceSummary } from './types.ts';
 
@@ -7,7 +8,7 @@ interface State {
   snap: Snapshot | null;
   typing: Record<string, Record<string, number>>;
   error: string | null;
-  authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' } | null;
+  authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' } | null;
   analytics: Analytics | null;
   workspaces: { mine: WorkspaceSummary[]; discover: WorkspaceSummary[] };
 }
@@ -25,7 +26,8 @@ function reduce(state: State, action: Action): State {
     return { ...state, typing };
   }
   const ev = action.ev;
-  if (ev.t === 'init') return { ...state, snap: ev.snapshot, authError: null };
+  // An older server sends no `history`: then the snapshot already holds everything.
+  if (ev.t === 'init') return { ...state, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {} }, authError: null };
   // Auth/invite rejections block the session, so they are kept apart from transient errors.
   if (ev.t === 'error') return ev.code ? { ...state, authError: { message: ev.message, code: ev.code } } : { ...state, error: ev.message };
   if (ev.t === 'analytics') return { ...state, analytics: ev.data };
@@ -75,6 +77,17 @@ function reduce(state: State, action: Action): State {
       return { ...state, snap: { ...snap, workspace: ev.workspace } };
     case 'starred':
       return { ...state, snap: { ...snap, starred: ev.list } };
+    case 'prefs':
+      return { ...state, snap: { ...snap, prefs: ev.prefs } };
+    case 'history': {
+      const have = new Set(snap.messages.map((m) => m.id));
+      const older = ev.messages.filter((m) => !have.has(m.id));
+      const messages = older.length ? [...snap.messages, ...older].sort((a, b) => a.ts - b.ts || (a.id < b.id ? -1 : 1)) : snap.messages;
+      const history = { ...snap.history };
+      if (ev.cursor) history[ev.channelId] = ev.cursor;
+      else delete history[ev.channelId];
+      return { ...state, snap: { ...snap, messages, history } };
+    }
     case 'admin':
       return { ...state, snap: { ...snap, admin: ev.admin } };
     case 'typing':
@@ -283,27 +296,38 @@ export function useRelay(session: Session | null) {
   return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, workspaces: state.workspaces, connected, send, listen, clearError, switchWorkspace };
 }
 
-// Channel ids repeat across workspaces (#general everywhere), so read state is keyed by both.
-// The original workspace keeps bare channel ids so existing read state still applies.
-export const readKey = (workspaceId: string, channelId: string) => (workspaceId === 'hq' ? channelId : `${workspaceId}/${channelId}`);
-
-export function useLastRead() {
-  const [lastRead, setLastRead] = useState<Record<string, number>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('relay.lastRead') ?? '{}') as Record<string, number>;
-    } catch (err) {
-      console.warn('lastRead unreadable', err);
-      return {};
-    }
-  });
+// Read state lives on the server, so it follows the person to every device. The server stamps the
+// time (message times are server time too) and echoes the new prefs to all of their tabs.
+export function useLastRead(snap: Snapshot | null, send: (ev: ClientEvent) => void) {
+  const lastRead = usePrefs(snap).lastRead;
+  const sent = useRef<Record<string, number>>({});
   const markRead = useCallback((channelId: string) => {
-    setLastRead((prev) => {
-      const next = { ...prev, [channelId]: Date.now() };
-      localStorage.setItem('relay.lastRead', JSON.stringify(next));
-      return next;
-    });
-  }, []);
+    if (!snap) return;
+    let latest = 0;
+    for (const m of snap.messages) if (m.channelId === channelId && m.ts > latest) latest = m.ts;
+    // Nothing newer than what the server already has (or than we just reported): stay quiet.
+    if ((lastRead[channelId] ?? 0) >= latest || (sent.current[channelId] ?? 0) >= latest) return;
+    sent.current[channelId] = latest;
+    send({ t: 'markRead', channelId });
+  }, [snap?.messages, lastRead, send]);
   return { lastRead, markRead };
+}
+
+// Asks for the next page above what a channel has loaded. A cursor is only asked for once, so a
+// scroll event firing repeatedly doesn't send the same request again; the answer moves the cursor.
+export function useOlderHistory(snap: Snapshot | null, send: (ev: ClientEvent) => void, connected: boolean) {
+  const asked = useRef<Record<string, string>>({});
+  useEffect(() => {
+    asked.current = {};
+  }, [connected, snap?.workspace.id]);
+  return useCallback((channelId: string) => {
+    const before = snap?.history[channelId];
+    if (!before) return;
+    const key = `${before.ts}:${before.id}`;
+    if (asked.current[channelId] === key) return;
+    asked.current[channelId] = key;
+    send({ t: 'history', channelId, before });
+  }, [snap?.history, send]);
 }
 
 export function useUnread(snap: Snapshot | null, lastRead: Record<string, number>) {
@@ -312,7 +336,7 @@ export function useUnread(snap: Snapshot | null, lastRead: Record<string, number
     if (!snap) return out;
     for (const m of snap.messages) {
       if (m.userId === snap.me || m.threadId || m.system) continue;
-      const seen = lastRead[readKey(snap.workspace.id, m.channelId)] ?? 0;
+      const seen = lastRead[m.channelId] ?? 0;
       if (m.ts <= seen) continue;
       const entry = (out[m.channelId] ??= { count: 0, mentions: 0 });
       entry.count += 1;

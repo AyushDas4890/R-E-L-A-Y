@@ -1,5 +1,5 @@
 import { gsap } from 'gsap';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Message } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { dayLabel, EMOJI, RichText, safeUrl, timeLabel } from '../format.tsx';
@@ -132,10 +132,26 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
   );
 }
 
-export function MessageList({ messages, inThread }: { messages: Message[]; inThread?: boolean }) {
+export function MessageList({ messages, inThread, onOlder }: { messages: Message[]; inThread?: boolean; onOlder?: () => void }) {
+  const listRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const seen = useRef(messages.length);
+  // Our own scroll-to-end passes through the top of the list; only the reader's scrolling should load more.
+  const autoScrollUntil = useRef(0);
+  const prev = useRef({ first: messages[0]?.id, last: messages[messages.length - 1]?.id, height: 0 });
+  // Older messages were added above: keep what the reader was looking at where it was.
+  useLayoutEffect(() => {
+    const el = listRef.current;
+    const first = messages[0]?.id;
+    const last = messages[messages.length - 1]?.id;
+    if (el && prev.current.first && first !== prev.current.first && last === prev.current.last) el.scrollTop += el.scrollHeight - prev.current.height;
+    prev.current = { first, last, height: el?.scrollHeight ?? 0 };
+    // A page that doesn't fill the pane can't be scrolled, so ask for the next one right away.
+    // Skipped while the pane is collapsed (mid-animation, hidden), or it would pull in everything.
+    if (el && onOlder && el.clientHeight > 100 && el.scrollHeight <= el.clientHeight) onOlder();
+  });
   useEffect(() => {
+    autoScrollUntil.current = Date.now() + 1000;
     endRef.current?.scrollIntoView({ block: 'end', behavior: seen.current ? 'smooth' : 'auto' });
     // A message that just arrived pops in; the initial render is handled by the channel-switch stagger.
     if (messages.length > seen.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -143,10 +159,16 @@ export function MessageList({ messages, inThread }: { messages: Message[]; inThr
       if (last) gsap.fromTo(last, { y: 24, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
     }
     seen.current = messages.length;
-  }, [messages.length, messages[messages.length - 1]?.id]);
+  }, [messages[messages.length - 1]?.id]);
 
   return (
-    <div className="message-list">
+    <div
+      className="message-list"
+      ref={listRef}
+      // The browser's own scroll anchoring would double the compensation done above.
+      style={{ overflowAnchor: 'none' }}
+      onScroll={onOlder ? (e) => e.currentTarget.scrollTop < 120 && Date.now() > autoScrollUntil.current && onOlder() : undefined}
+    >
       {messages.map((m, i) => {
         const prev = messages[i - 1];
         const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();

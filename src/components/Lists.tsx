@@ -14,12 +14,11 @@ export function ListPanel({ channelId, onClose }: { channelId: string; onClose: 
   const [title, setTitle] = useState('');
   const members = snap.channels[channelId]?.members.filter((id) => !snap.users[id]?.bot) ?? [];
 
-  const save = (next: ListItem[]) => send({ t: 'list', channelId, items: next });
-  const patch = (id: string, change: Partial<ListItem>) => save(items.map((it) => (it.id === id ? { ...it, ...change } : it)));
+  const patch = (id: string, change: Partial<ListItem>) => send({ t: 'listItem', channelId, id, patch: change });
 
   const add = () => {
     if (!title.trim()) return;
-    save([...items, { id: crypto.randomUUID(), title: title.trim(), done: false, assignee: '', due: '', status: 'todo' }]);
+    send({ t: 'listItem', channelId, id: crypto.randomUUID(), patch: { title: title.trim() } });
     setTitle('');
   };
 
@@ -50,7 +49,7 @@ export function ListPanel({ channelId, onClose }: { channelId: string; onClose: 
                       onChange={(e) => patch(it.id, { status: e.target.checked ? 'done' : 'todo' })}
                     />
                     <span className="grow">{it.title}</span>
-                    <button className="icon-btn" aria-label="Delete task" onClick={() => save(items.filter((x) => x.id !== it.id))}>×</button>
+                    <button className="icon-btn" aria-label="Delete task" onClick={() => send({ t: 'listItem', channelId, id: it.id, remove: true })}>×</button>
                   </div>
                   <div className="row">
                     <select value={it.status} onChange={(e) => patch(it.id, { status: e.target.value as ListItem['status'] })}>

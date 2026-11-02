@@ -77,7 +77,7 @@ export function DetailsPanel({ channelId, onClose }: { channelId: string; onClos
   const pins = snap.messages.filter((m) => m.channelId === channelId && m.pinned);
   const amMember = ch.members.includes(snap.me);
   const admin = isAdmin(snap.users[snap.me]);
-  const invitable = Object.values(snap.users).filter((u) => !u.bot && !ch.members.includes(u.id) && (admin || u.role !== 'guest'));
+  const invitable = Object.values(snap.users).filter((u) => !u.bot && !u.inactive && !ch.members.includes(u.id) && (admin || u.role !== 'guest'));
   const section = snap.sections.find((sec) => sec.channelIds.includes(channelId));
   const moveToSection = (sectionId: string) =>
     send({

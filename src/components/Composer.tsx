@@ -49,7 +49,7 @@ export function Composer({
             .filter((g) => g.handle.includes(mentionQuery.toLowerCase()))
             .map((g) => ({ key: g.id, label: `@${g.handle} · ${g.members.length} people`, token: `<!g:${g.id}>` })),
           ...Object.values(snap.users)
-            .filter((u) => u.name.toLowerCase().includes(mentionQuery.toLowerCase()))
+            .filter((u) => !u.inactive && u.name.toLowerCase().includes(mentionQuery.toLowerCase()))
             .map((u) => ({ key: u.id, label: `@${u.name}`, token: `<@${u.id}>` })),
         ].slice(0, 6);
 

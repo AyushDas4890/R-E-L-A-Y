@@ -120,6 +120,12 @@ export function ProfileModal({ onClose, appearance }: { onClose: () => void; app
         <label style={{ width: 80 }}>Status<input value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="🌴" /></label>
         <label className="grow">&nbsp;<input value={text} onChange={(e) => setText(e.target.value)} placeholder="On vacation" /></label>
       </div>
+      {me.email && (
+        <label className="check">
+          <input type="checkbox" checked={snap.prefs?.email !== false} onChange={(e) => send({ t: 'setEmail', on: e.target.checked })} />
+          Email me about mentions and DMs when I'm away ({me.email})
+        </label>
+      )}
       <AppearanceSettings a={appearance} />
       <button className="send-btn" onClick={() => { send({ t: 'profile', name, title, status: { emoji, text } }); onClose(); }}>Save</button>
     </Modal>

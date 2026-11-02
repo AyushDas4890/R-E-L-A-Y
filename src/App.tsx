@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
-import { getDevSession, readKey, saveDevSession, useAuthToken, useLastRead, useRelay, useUnread } from './store.ts';
+import { getDevSession, saveDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
 import { authEnabled } from './supabase.ts';
 import { Login } from './components/Login.tsx';
 import { Landing } from './components/Landing.tsx';
@@ -27,7 +27,7 @@ import { ListPanel } from './components/Lists.tsx';
 import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
 import { CreateWorkspaceModal, FindWorkspacesModal, InviteModal, WorkspacePicker, WorkspaceSwitcher, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
-import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, type ChannelLevel } from './notify.ts';
+import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, usePrefsMigration, type ChannelLevel } from './notify.ts';
 import { useAppearance } from './appearance.ts';
 import { Backdrop } from './components/Appearance.tsx';
 import { Icon } from './components/Icon.tsx';
@@ -86,7 +86,8 @@ export default function App() {
     void signOut();
     setDevSession(null);
   };
-  const { lastRead, markRead } = useLastRead();
+  const { lastRead, markRead } = useLastRead(snap, send);
+  const loadOlder = useOlderHistory(snap, send, connected);
   const unread = useUnread(snap, lastRead);
   // Navigation history, so the top bar's back and forward buttons work like a browser.
   const [history, setHistory] = useState<{ stack: Place[]; at: number }>({ stack: [{ view: 'channel', channel: 'general' }], at: 0 });
@@ -102,8 +103,9 @@ export default function App() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [showBrowse, setShowBrowse] = useState(false);
   const [bannerHidden, setBannerHidden] = useState(() => localStorage.getItem('relay.alertBanner') === 'hidden');
-  const dnd = useDnd();
-  const levels = useChannelLevels(snap?.workspace.id);
+  const dnd = useDnd(snap, send);
+  const levels = useChannelLevels(snap, send);
+  usePrefsMigration(snap, send);
 
   const go = (to: Partial<Place>) => {
     setHistory(({ stack, at }) => {
@@ -140,7 +142,7 @@ export default function App() {
   }, [snap?.workspace.id]);
 
   useEffect(() => {
-    if (snap && view === 'channel' && snap.channels[active]) markRead(readKey(snap.workspace.id, active));
+    if (snap && view === 'channel' && snap.channels[active]) markRead(active);
   }, [active, view, snap?.messages.length, snap?.workspace.id]);
 
   const totalUnread = Object.entries(unread).reduce((n, [cid, u]) => n + (levels.levelOf(cid) === 'mute' ? 0 : u.mentions || 0), 0);
@@ -223,7 +225,7 @@ export default function App() {
   const joined = channels.filter((c) => c.kind !== 'dm' && c.members.includes(snap.me));
   const browse = channels.filter((c) => c.kind === 'public' && !c.members.includes(snap.me));
   const dms = channels.filter((c) => c.kind === 'dm');
-  const people = Object.values(snap.users).filter((u) => u.id !== snap.me && !u.bot);
+  const people = Object.values(snap.users).filter((u) => u.id !== snap.me && !u.bot && !u.inactive);
   const ch = snap.channels[active] ?? snap.channels.general ?? channels[0];
   const typingNow = Object.keys(typing[ch?.id] ?? {}).map((id) => snap.users[id]?.name).filter(Boolean);
   const isMember = ch?.members.includes(snap.me);
@@ -394,6 +396,8 @@ export default function App() {
                     <button key={w.id} role="menuitem" className="ws-item" onClick={() => { switchWorkspace(w.id); setMenu(null); }}><WorkspaceTile ws={w} size={22} /> {w.name}</button>
                   ))}
                   <button role="menuitem" onClick={() => { setModal('createWs'); setMenu(null); }}>Create a new workspace</button>
+                  <button role="menuitem" className="danger" onClick={() => { if (confirm(`Leave ${snap.workspace.name}? You can rejoin later if it is open or you have an invite.`)) send({ t: 'leaveWorkspace' }); setMenu(null); }}>Leave workspace</button>
+                  <button role="menuitem" className="danger" onClick={() => { if (confirm(`Delete your account in ${snap.workspace.name}? Your messages stay but show "Deleted user", and your saved items, reminders and settings here are erased. This cannot be undone.`)) send({ t: 'deleteMyAccount' }); setMenu(null); }}>Delete my account</button>
                   <button role="menuitem" className="danger" onClick={leave}>Sign out</button>
                 </div>
               )}
@@ -543,7 +547,7 @@ export default function App() {
                   <p className="muted">Say hi, share a file, or try <code>/remind me stretch in 10m</code>.</p>
                 </div>
               ) : (
-                <MessageList messages={channelMessages} />
+                <MessageList messages={channelMessages} onOlder={snap.history[active] ? () => loadOlder(active) : undefined} />
               )}
               <div className="typing">
                 {typingNow.length > 0 && (
