@@ -4,6 +4,7 @@ import { renderCanvas } from '../format.tsx';
 import { isAdmin } from '../premium.ts';
 import { Composer } from './Composer.tsx';
 import { MessageList, MessageRow } from './MessageList.tsx';
+import { Icon } from './Icon.tsx';
 
 export function ThreadPanel({ parentId, onClose }: { parentId: string; onClose: () => void }) {
   const { snap, send } = useRelayCtx();
@@ -16,7 +17,7 @@ export function ThreadPanel({ parentId, onClose }: { parentId: string; onClose: 
         <h3>Thread</h3>
         <div>
           <button className="ghost-btn" onClick={() => send({ t: 'send', channelId: parent.channelId, text: '/summarize', threadId: parentId })}>
-            ✨ Summarize
+            <Icon n="sparkles" /> Summarize
           </button>
           <button className="icon-btn" aria-label="Close thread" onClick={onClose}>×</button>
         </div>

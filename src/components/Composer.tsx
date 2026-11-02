@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { FileAttachment } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { EMOJI } from '../format.tsx';
+import { Icon } from './Icon.tsx';
 
 const MAX_FILE = 4 * 1024 * 1024;
 
@@ -143,7 +144,7 @@ export function Composer({
         <div className="file-chips">
           {files.map((f, i) => (
             <span key={i} className="chip">
-              📎 {f.name}
+              <Icon n="paperclip" /> {f.name}
               <button aria-label="Remove file" onClick={() => setFiles(files.filter((_, j) => j !== i))}>
                 ×
               </button>
@@ -177,24 +178,24 @@ export function Composer({
             ＋
             <input type="file" multiple hidden onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
           </label>
-          <button className="icon-btn" title="Emoji" onClick={() => setPicker(!picker)}>☺</button>
+          <button className="icon-btn" title="Emoji" onClick={() => setPicker(!picker)}><Icon n="smile" /></button>
           <button className="icon-btn" title="Mention" onClick={() => setText(text + '@')}>@</button>
           {recording ? (
-            <button className="ghost-btn danger" onClick={() => recorderRef.current?.stop()}>⏹ Stop {recording} clip</button>
+            <button className="ghost-btn danger" onClick={() => recorderRef.current?.stop()}><Icon n="stop" /> Stop {recording} clip</button>
           ) : (
             <>
-              <button className="icon-btn" title="Record audio clip" onClick={() => void startClip('audio')}>🎙</button>
-              <button className="icon-btn" title="Record screen clip" onClick={() => void startClip('screen')}>🎬</button>
+              <button className="icon-btn" title="Record audio clip" onClick={() => void startClip('audio')}><Icon n="mic" /></button>
+              <button className="icon-btn" title="Record screen clip" onClick={() => void startClip('screen')}><Icon n="video" /></button>
             </>
           )}
           <span className="spacer" />
           {onSchedule && (
             <button className="ghost-btn" disabled={!text.trim()} onClick={() => { onSchedule(text); setText(''); }}>
-              ⏱ Schedule
+              <Icon n="clock" /> Schedule
             </button>
           )}
           <button className="send-btn" disabled={!text.trim() && files.length === 0} onClick={submit}>
-            Send ➤
+            Send <Icon n="send" />
           </button>
         </div>
         {picker && (

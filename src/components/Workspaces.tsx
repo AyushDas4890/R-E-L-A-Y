@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { ClientEvent, Snapshot, WorkspaceSummary } from '../types.ts';
+import { Icon } from './Icon.tsx';
 import { Modal } from './Modals.tsx';
+import { LogoMark } from './LogoIntro.tsx';
+import '../apple.css';
 
 export const wsInitials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
@@ -29,8 +32,8 @@ export function WorkspaceSwitcher({ current, mine, onSwitch, onCreate, onFind }:
           <WorkspaceTile ws={w} active={w.id === current.id} />
         </button>
       ))}
-      <button className="ws-switch add" title="Add a workspace" aria-label="Add a workspace" onClick={onCreate}>＋</button>
-      <button className="ws-switch find" title="Find workspaces to join" aria-label="Find workspaces" onClick={onFind}>⌕</button>
+      <button className="ws-switch add" title="Add a workspace" aria-label="Add a workspace" onClick={onCreate}><Icon n="plus" /></button>
+      <button className="ws-switch find" title="Find workspaces to join" aria-label="Find workspaces" onClick={onFind}><Icon n="search" /></button>
     </div>
   );
 }
@@ -45,7 +48,7 @@ export function CreateWorkspaceModal({ onClose, onCreate }: { onClose: () => voi
         <input autoFocus value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder="e.g. Design Studio" onKeyDown={(e) => e.key === 'Enter' && name.trim() && onCreate(name.trim())} />
       </label>
       {name.trim() && (
-        <div className="ws-preview"><WorkspaceTile ws={{ name, color: '#7c5cff' }} size={44} /><strong>{name.trim()}</strong></div>
+        <div className="ws-preview"><WorkspaceTile ws={{ name, color: '#1f5bd8' }} size={44} /><strong>{name.trim()}</strong></div>
       )}
       <button className="send-btn" disabled={!name.trim()} onClick={() => onCreate(name.trim())}>Create workspace</button>
     </Modal>
@@ -63,7 +66,7 @@ export function FindWorkspacesModal({ discover, onClose, onJoin }: { discover: W
             <div key={w.id} className="ws-row">
               <WorkspaceTile ws={w} size={40} />
               <div className="grow"><strong>{w.name}</strong><small className="muted">{w.members} {w.members === 1 ? 'member' : 'members'} · open to join</small></div>
-              <button className="send-btn" onClick={() => onJoin(w.id)}>Join</button>
+              <button className="ghost-btn" onClick={() => onJoin(w.id)}>Join</button>
             </div>
           ))}
         </div>
@@ -117,31 +120,58 @@ export function WorkspacePicker({ message, mine, discover, onSwitch, onCreate, o
   const [code, setCode] = useState('');
   return (
     <div className="ws-picker">
+      <div className="ap-sky" aria-hidden />
+      <header className="ap-si-nav">
+        <span className="ap-brand"><LogoMark size={22} />Relay</span>
+        <button className="ap-link-btn" onClick={onSignOut}>Sign out</button>
+      </header>
       <div className="ws-picker-card">
         <h1>Choose a workspace</h1>
+        <p className="ws-picker-sub">Open one you belong to, join an open one, or start your own.</p>
         {message && <p className="login-error">{message}</p>}
-        {[...mine.map((w) => ({ w, label: 'Open' })), ...discover.map((w) => ({ w, label: 'Join' }))].map(({ w, label }) => (
-          <div key={w.id} className="ws-row">
-            <WorkspaceTile ws={w} size={40} />
-            <div className="grow"><strong>{w.name}</strong><small className="muted">{w.members} {w.members === 1 ? 'member' : 'members'}</small></div>
-            <button className="send-btn" onClick={() => onSwitch(w.id)}>{label}</button>
-          </div>
-        ))}
+        {mine.length > 0 && (
+          <>
+            <h2 className="ws-section">Your workspaces</h2>
+            <div className="ws-group">
+              {mine.map((w) => (
+                <div key={w.id} className="ws-row">
+                  <WorkspaceTile ws={w} size={40} />
+                  <div className="grow"><strong>{w.name}</strong><small className="muted">{w.members} {w.members === 1 ? 'member' : 'members'}</small></div>
+                  <span className="ws-lamp" title="You are a member" />
+                  <button className="ws-open" onClick={() => onSwitch(w.id)}>Open</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {discover.length > 0 && (
+          <>
+            <h2 className="ws-section">Open to join</h2>
+            <div className="ws-group">
+              {discover.map((w) => (
+                <div key={w.id} className="ws-row">
+                  <WorkspaceTile ws={w} size={40} />
+                  <div className="grow"><strong>{w.name}</strong><small className="muted">{w.members} {w.members === 1 ? 'member' : 'members'}</small></div>
+                  <button className="ws-open" onClick={() => onSwitch(w.id)}>Join</button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
         <form className="ws-create-inline" onSubmit={(e) => { e.preventDefault(); if (name.trim()) onCreate(name.trim()); }}>
           <label>
-            Or create a new workspace
+            Create a workspace
             <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder="Workspace name" />
           </label>
-          <button className="send-btn" disabled={!name.trim()}>Create workspace</button>
+          <button className="ap-pill blue" disabled={!name.trim()}>Create workspace</button>
         </form>
         <form className="ws-create-inline" onSubmit={(e) => { e.preventDefault(); if (code.trim()) onInvite(code.trim()); }}>
           <label>
-            Have an invite code?
-            <input value={code} maxLength={32} onChange={(e) => setCode(e.target.value)} placeholder="Paste it here" />
+            Join with an invite code
+            <input value={code} maxLength={32} onChange={(e) => setCode(e.target.value)} placeholder="Code" />
           </label>
-          <button className="ghost-btn" disabled={!code.trim()}>Join with invite</button>
+          <button className="ap-pill quiet" disabled={!code.trim()}>Join with invite</button>
         </form>
-        <button className="ghost-btn" onClick={onSignOut}>Sign out</button>
       </div>
     </div>
   );

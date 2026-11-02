@@ -108,7 +108,7 @@ function seed(name = 'Relay HQ', createdBy?: string, inviteOnly = false): DB {
         name: 'Relay Bot',
         color: '#7c5cff',
         title: 'Workflow automation',
-        status: { emoji: '🤖', text: 'Always on' },
+        status: { emoji: '', text: 'Always on' },
         bot: true,
       },
     },
@@ -123,7 +123,7 @@ function seed(name = 'Relay HQ', createdBy?: string, inviteOnly = false): DB {
         name: 'Welcome new members',
         enabled: true,
         trigger: { type: 'join', channelId: 'general' },
-        reply: 'Welcome aboard! 👋 Try `/remind me stretch in 10m`, open a canvas, or press ⌘K to search.',
+        reply: 'Welcome aboard. Try `/remind me stretch in 10m`, open a canvas, or press ⌘K to search.',
       },
       {
         id: 'wf-help',
@@ -545,7 +545,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
               id: randomUUID(),
               channelId: dmId(userId, BOT_ID),
               userId,
-              text: `⏰ Reminder: ${slash.text}`,
+              text: `Reminder: ${slash.text}`,
               at: Date.now() + slash.inMs,
             };
             openDM(userId, BOT_ID);

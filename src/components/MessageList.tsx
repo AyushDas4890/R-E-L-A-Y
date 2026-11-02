@@ -5,6 +5,7 @@ import { useRelayCtx } from '../ctx.ts';
 import { dayLabel, EMOJI, RichText, safeUrl, timeLabel } from '../format.tsx';
 import { isAdmin } from '../premium.ts';
 import { Avatar } from './Avatar.tsx';
+import { Icon } from './Icon.tsx';
 
 export function MessageRow({ m, compact, inThread }: { m: Message; compact: boolean; inThread?: boolean }) {
   const { snap, send, openThread } = useRelayCtx();
@@ -36,7 +37,7 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
             <strong>{user?.name ?? 'Unknown'}</strong>
             {user?.status.emoji && <span title={user.status.text}>{user.status.emoji}</span>}
             <time>{timeLabel(m.ts)}</time>
-            {m.pinned && <span className="badge">📌 pinned</span>}
+            {m.pinned && <span className="badge"><Icon n="pin" size={12} /> pinned</span>}
             {m.edited && <span className="edited">(edited)</span>}
           </div>
         )}
@@ -64,9 +65,9 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
           ) : (
             <div key={i} className="attach-row">
               <a className="attach-file" href={src} download={f.name} target="_blank" rel="noreferrer">
-                📄 {f.name} <small>{Math.ceil(f.size / 1024)} KB</small>
+                <Icon n="file" /> {f.name} <small>{Math.ceil(f.size / 1024)} KB</small>
               </a>
-              <button className="ghost-btn" title="Summarize this file" onClick={() => send({ t: 'fileSummary', id: m.id, index: i })}>✨ Summarize</button>
+              <button className="ghost-btn" title="Summarize this file" onClick={() => send({ t: 'fileSummary', id: m.id, index: i })}><Icon n="sparkles" /> Summarize</button>
             </div>
           );
         })}
@@ -96,18 +97,18 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
         )}
         {replies.length > 0 && (
           <button className="thread-link" onClick={() => openThread(m.id)}>
-            💬 {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+            <Icon n="message" size={14} /> {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
             <span> · last {timeLabel(replies[replies.length - 1].ts)}</span>
           </button>
         )}
       </div>
       <div className="actions">
-        <button title="React" onClick={() => setPicker(!picker)}>☺</button>
-        {!inThread && <button title="Reply in thread" onClick={() => openThread(m.id)}>💬</button>}
-        <button title={m.pinned ? 'Unpin' : 'Pin'} onClick={() => send({ t: 'pin', id: m.id })}>📌</button>
-        <button title={saved ? 'Unsave' : 'Save for later'} onClick={() => send({ t: 'save', id: m.id })}>{saved ? '★' : '☆'}</button>
-        {mine && <button title="Edit" onClick={() => { setDraft(m.text); setEditing(true); }}>✎</button>}
-        {(mine || canModerate) && <button title="Delete" onClick={() => { if (confirm('Delete this message?')) send({ t: 'delete', id: m.id }); }}>🗑</button>}
+        <button title="React" onClick={() => setPicker(!picker)}><Icon n="smile" /></button>
+        {!inThread && <button title="Reply in thread" onClick={() => openThread(m.id)}><Icon n="message" /></button>}
+        <button title={m.pinned ? 'Unpin' : 'Pin'} onClick={() => send({ t: 'pin', id: m.id })}><Icon n="pin" /></button>
+        <button title={saved ? 'Unsave' : 'Save for later'} onClick={() => send({ t: 'save', id: m.id })}><Icon n="star" fill={saved} /></button>
+        {mine && <button title="Edit" onClick={() => { setDraft(m.text); setEditing(true); }}><Icon n="pencil" /></button>}
+        {(mine || canModerate) && <button title="Delete" onClick={() => { if (confirm('Delete this message?')) send({ t: 'delete', id: m.id }); }}><Icon n="trash" /></button>}
         {!mine && (
           <button
             title="Flag for admin review"
@@ -116,7 +117,7 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
               if (reason?.trim()) send({ t: 'flag', id: m.id, reason: reason.trim() });
             }}
           >
-            🚩
+            <Icon n="flag" />
           </button>
         )}
         {picker && (
