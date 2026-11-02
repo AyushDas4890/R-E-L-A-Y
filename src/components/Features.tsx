@@ -3,7 +3,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Film, Clip, Win, Msg, Bot, Cursor, typeInto, eraseText, type Build, type Chapter } from './Film.tsx';
 import { Icon, type IconName } from './Icon.tsx';
-import { RouteLink, SiteFooter, SiteNav, type Route } from './Site.tsx';
+import { RouteLink, SiteFooter, SiteNav, type FeatureRoute, type Route } from './Site.tsx';
 import '../apple.css';
 import '../features.css';
 
@@ -343,10 +343,10 @@ interface PageDef {
   film: { label: string; chapters: Chapter[]; build: Build; Mock: () => ReactNode };
   details: Detail[];
   facts: Fact[];
-  next: Exclude<Route, 'home'>;
+  next: FeatureRoute;
 }
 
-const PAGE_DEFS: Record<Exclude<Route, 'home'>, PageDef> = {
+const PAGE_DEFS: Record<FeatureRoute, PageDef> = {
   overview: {
     eyebrow: 'Overview',
     title: <>Every conversation,<br />in one calm place</>,
@@ -436,9 +436,9 @@ const PAGE_DEFS: Record<Exclude<Route, 'home'>, PageDef> = {
   },
 };
 
-const NEXT_LABEL: Record<Exclude<Route, 'home'>, string> = { overview: 'Overview', huddles: 'Huddles', workflows: 'Workflows', search: 'Search' };
+const NEXT_LABEL: Record<FeatureRoute, string> = { overview: 'Overview', huddles: 'Huddles', workflows: 'Workflows', search: 'Search' };
 
-export function FeaturePage({ page, go, onGetStarted }: { page: Exclude<Route, 'home'>; go: (r: Route) => void; onGetStarted: () => void }) {
+export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go: (r: Route) => void; onGetStarted: () => void }) {
   const def = PAGE_DEFS[page];
   const root = useRef<HTMLDivElement>(null);
   const { Mock } = def.film;

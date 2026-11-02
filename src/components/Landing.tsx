@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { HeroChat } from './HeroChat.tsx';
 import { Icon } from './Icon.tsx';
 import { FeaturePage } from './Features.tsx';
+import { HelpPage } from './Help.tsx';
 import { RouteLink, SiteFooter, SiteNav, useRoute, type Route } from './Site.tsx';
 import '../tour.css';
 import '../apple.css';
@@ -29,6 +30,7 @@ interface Props {
 // The public site: the home page here, and one page per feature in the nav.
 export function Landing({ onGetStarted }: Props) {
   const [route, go] = useRoute();
+  if (route === 'help') return <HelpPage go={go} onGetStarted={onGetStarted} signedIn={false} />;
   if (route !== 'home') return <FeaturePage page={route} go={go} onGetStarted={onGetStarted} />;
   return <Home go={go} onGetStarted={onGetStarted} />;
 }

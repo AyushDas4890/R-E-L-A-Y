@@ -5,6 +5,8 @@ import { getDevSession, saveDevSession, useAuthToken, useLastRead, useOlderHisto
 import { authEnabled } from './supabase.ts';
 import { Login } from './components/Login.tsx';
 import { Landing } from './components/Landing.tsx';
+import { HelpPage } from './components/Help.tsx';
+import { useRoute } from './components/Site.tsx';
 import { gsap } from 'gsap';
 import { pageTransition } from './transition.ts';
 import { Avatar } from './components/Avatar.tsx';
@@ -52,6 +54,8 @@ export default function App() {
   const { token, ready, signOut } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
   const [invite, setInvite] = useState(inviteFromUrl);
+  // Help pages are public and also open for signed-in people, so they are decided before anything else.
+  const [siteRoute, goSite] = useRoute();
   const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
   // Sign-in is its own history entry, so the browser's Back button returns to the landing page
   // instead of leaving the site. (`history` below is the in-app channel history, hence window.history.)
@@ -182,6 +186,9 @@ export default function App() {
     setModal(null);
   };
 
+  if (siteRoute === 'help') {
+    return <HelpPage go={goSite} signedIn={!!session && !authError} onGetStarted={() => (session ? goSite('home') : openLogin())} />;
+  }
   if (!session || (authError && authError.code === 'auth-required')) {
     if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
     if (!showLogin && !authError) return <Landing onGetStarted={openLogin} />;
@@ -389,6 +396,7 @@ export default function App() {
                   <div className="menu-head"><WorkspaceTile ws={snap.workspace} size={36} /><div><strong>{snap.workspace.name}</strong><small className="muted">{snap.settings.inviteOnly ? 'Invite-only' : 'Open to anyone who signs in'}</small></div></div>
                   <button role="menuitem" onClick={() => { setModal('invite'); setMenu(null); }}>Invite people to {snap.workspace.name}</button>
                   <button role="menuitem" onClick={() => { setModal('profile'); setMenu(null); }}>Preferences</button>
+                  <button role="menuitem" onClick={() => { window.open('/help', '_blank', 'noopener'); setMenu(null); }}>Help center</button>
                   {admin && <button role="menuitem" onClick={() => { setModal('admin'); setMenu(null); }}>Admin console</button>}
                   {admin && <button role="menuitem" onClick={() => { renameWorkspace(); setMenu(null); }}>Rename workspace</button>}
                   {workspaces.mine.length > 1 && <p className="menu-title">Switch workspace</p>}

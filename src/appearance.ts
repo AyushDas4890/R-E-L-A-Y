@@ -23,6 +23,8 @@ export const BACKGROUNDS: Background[] = [
 ];
 
 export const THEMES = [
+  { id: 'minimal', label: 'Minimal' },
+  { id: 'minimal-dark', label: 'Minimal dark' },
   { id: 'plum', label: 'Plum' },
   { id: 'moonlight', label: 'Moonlight' },
   { id: 'chrome', label: 'Chrome' },
@@ -66,8 +68,14 @@ const write = (key: string, value: string | null) => {
 };
 
 export function useAppearance() {
-  const [theme, setThemeState] = useState(() => read('relay.theme', 'plum'));
-  const [bgId, setBgId] = useState(() => read('relay.bg', 'purple-desert'));
+  // Plum was the old default, so a browser still on it moves to Minimal once; choosing Plum again sticks.
+  const [theme, setThemeState] = useState(() => {
+    const saved = read('relay.theme', 'minimal');
+    const seen = read('relay.minimalSeen', '');
+    write('relay.minimalSeen', '1');
+    return !seen && saved === 'plum' ? 'minimal' : saved;
+  });
+  const [bgId, setBgId] = useState(() => read('relay.bg', 'none'));
   const [accent, setAccentState] = useState(() => read('relay.accent', ''));
   // How much the theme colour covers the background, so text stays readable (0–95%).
   const [dim, setDimState] = useState(() => Number(read('relay.bgDim', '78')));

@@ -4,16 +4,19 @@ import { Icon } from './Icon.tsx';
 
 // Public site routes. Each feature in the nav has its own page at a real path
 // (Vercel rewrites every path to index.html, and Vite's dev server does the same).
-export type Route = 'home' | 'overview' | 'huddles' | 'workflows' | 'search';
+export type FeatureRoute = 'overview' | 'huddles' | 'workflows' | 'search';
+// The help center has its own pages under /help/<article>; it is one route here.
+export type Route = 'home' | FeatureRoute | 'help';
 
 export const PAGES: { route: Exclude<Route, 'home'>; label: string; path: string }[] = [
   { route: 'overview', label: 'Overview', path: '/overview' },
   { route: 'huddles', label: 'Huddles', path: '/huddles' },
   { route: 'workflows', label: 'Workflows', path: '/workflows' },
   { route: 'search', label: 'Search', path: '/search' },
+  { route: 'help', label: 'Help', path: '/help' },
 ];
 
-const routeFrom = (path: string): Route => PAGES.find((p) => p.path === path.replace(/\/+$/, ''))?.route ?? 'home';
+const routeFrom = (path: string): Route => (/^\/help(\/|$)/.test(path) ? 'help' : PAGES.find((p) => p.path === path.replace(/\/+$/, ''))?.route ?? 'home');
 export const pathOf = (r: Route) => PAGES.find((p) => p.route === r)?.path ?? '/';
 
 export function useRoute(): [Route, (r: Route) => void] {
@@ -41,7 +44,7 @@ export function RouteLink({ to, go, className, children }: { to: Route; go: (r: 
   return <a href={pathOf(to)} className={className} onClick={onClick}>{children}</a>;
 }
 
-export function SiteNav({ route, go, onGetStarted }: { route: Route; go: (r: Route) => void; onGetStarted: () => void }) {
+export function SiteNav({ route, go, onGetStarted, signedIn }: { route: Route; go: (r: Route) => void; onGetStarted: () => void; signedIn?: boolean }) {
   const [menu, setMenu] = useState(false);
   const to = (r: Route) => { setMenu(false); go(r); };
   return (
@@ -53,8 +56,14 @@ export function SiteNav({ route, go, onGetStarted }: { route: Route; go: (r: Rou
         ))}
       </nav>
       <div className="ap-nav-end">
-        <button className="ap-link-btn" onClick={onGetStarted}>Sign in</button>
-        <button className="ap-pill dark" onClick={onGetStarted}>Get started</button>
+        {signedIn ? (
+          <button className="ap-pill dark" onClick={onGetStarted}>Open Relay</button>
+        ) : (
+          <>
+            <button className="ap-link-btn" onClick={onGetStarted}>Sign in</button>
+            <button className="ap-pill dark" onClick={onGetStarted}>Get started</button>
+          </>
+        )}
         <button className="ap-menu" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}><Icon n="menu" size={18} /></button>
       </div>
     </header>
