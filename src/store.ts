@@ -82,7 +82,8 @@ function reduce(state: State, action: Action): State {
     case 'history': {
       const have = new Set(snap.messages.map((m) => m.id));
       const older = ev.messages.filter((m) => !have.has(m.id));
-      const messages = older.length ? [...snap.messages, ...older].sort((a, b) => a.ts - b.ts || (a.id < b.id ? -1 : 1)) : snap.messages;
+      // Older pages go in front, and the sort is stable, so messages sharing a millisecond keep their order.
+      const messages = older.length ? [...older, ...snap.messages].sort((a, b) => a.ts - b.ts) : snap.messages;
       const history = { ...snap.history };
       if (ev.cursor) history[ev.channelId] = ev.cursor;
       else delete history[ev.channelId];
