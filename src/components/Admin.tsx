@@ -80,7 +80,8 @@ function AnalyticsTab() {
 
 function MembersTab() {
   const { snap, send } = useRelayCtx();
-  const people = Object.values(snap.users).filter((u) => !u.bot);
+  const people = Object.values(snap.users).filter((u) => !u.bot && !u.inactive);
+  const removed = snap.admin?.removed ?? [];
   const holds = snap.admin?.legalHolds ?? [];
   const iAmOwner = snap.users[snap.me]?.role === 'owner';
   return (
@@ -105,6 +106,14 @@ function MembersTab() {
             <option value="member">Member</option>
             <option value="guest">Guest</option>
           </select>
+          {u.id !== snap.me && <button className="ghost-btn danger" onClick={() => { if (confirm(`Remove ${u.name} from ${snap.workspace.name}? They are signed out at once and can't rejoin, even with an invite, until you restore them.`)) send({ t: 'removeMember', userId: u.id }); }}>Remove</button>}
+        </div>
+      ))}
+      {removed.length > 0 && <p className="muted small">Removed people</p>}
+      {removed.map((id) => (
+        <div key={id} className="member wide">
+          <span className="grow">{snap.users[id]?.name ?? id}</span>
+          <button className="ghost-btn" onClick={() => send({ t: 'restoreMember', userId: id })}>Allow back in</button>
         </div>
       ))}
       <p className="muted small">{snap.admin?.preservedCount ?? 0} edited or deleted messages preserved under legal hold. They're included in exports.</p>
@@ -115,7 +124,7 @@ function MembersTab() {
 function GroupsTab() {
   const { snap, send } = useRelayCtx();
   const [groups, setGroups] = useState<UserGroup[]>(snap.groups);
-  const people = Object.values(snap.users).filter((u) => !u.bot);
+  const people = Object.values(snap.users).filter((u) => !u.bot && !u.inactive);
   const patch = (id: string, change: Partial<UserGroup>) => setGroups(groups.map((g) => (g.id === id ? { ...g, ...change } : g)));
   return (
     <div className="grid-gap">

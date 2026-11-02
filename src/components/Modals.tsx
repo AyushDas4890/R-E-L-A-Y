@@ -6,6 +6,7 @@ import { channelLabel, timeLabel } from '../format.tsx';
 import { searchAnswer, WORKFLOW_TEMPLATES } from '../premium.ts';
 import type { Appearance } from '../appearance.ts';
 import { AppearanceSettings } from './Appearance.tsx';
+import { Icon } from './Icon.tsx';
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -61,7 +62,7 @@ export function SearchPalette({ onClose, onPick }: { onClose: () => void; onPick
         <div className="palette-results">
           {results.answer && (
             <button className="answer" onClick={() => onPick(results.answer!.channelId, results.answer!.threadId ?? results.answer!.id)}>
-              <span>✨</span>
+              <span><Icon n="sparkles" /></span>
               <div>
                 <strong>Best answer</strong> from {snap.users[results.answer.userId]?.name} in {channelLabel(snap.channels[results.answer.channelId], snap.users, snap.me)}
                 <small>{results.answer.text.slice(0, 200)}</small>
@@ -70,12 +71,12 @@ export function SearchPalette({ onClose, onPick }: { onClose: () => void; onPick
           )}
           {results.channels.map(({ c, label }) => (
             <button key={c.id} onClick={() => onPick(c.id)}>
-              <span>{c.kind === 'dm' ? '●' : c.kind === 'private' ? '🔒' : '#'}</span> {label}
+              <span>{c.kind === 'dm' ? '●' : c.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span> {label}
             </button>
           ))}
           {results.messages.map((m) => (
             <button key={m.id} onClick={() => onPick(m.channelId, m.threadId ?? m.id)}>
-              <span>💬</span>
+              <span><Icon n="message" /></span>
               <div>
                 <strong>{snap.users[m.userId]?.name}</strong> in {channelLabel(snap.channels[m.channelId], snap.users, snap.me)}
                 <small>{m.text.slice(0, 100)}</small>
@@ -119,6 +120,12 @@ export function ProfileModal({ onClose, appearance }: { onClose: () => void; app
         <label style={{ width: 80 }}>Status<input value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="🌴" /></label>
         <label className="grow">&nbsp;<input value={text} onChange={(e) => setText(e.target.value)} placeholder="On vacation" /></label>
       </div>
+      {me.email && (
+        <label className="check">
+          <input type="checkbox" checked={snap.prefs?.email !== false} onChange={(e) => send({ t: 'setEmail', on: e.target.checked })} />
+          Email me about mentions and DMs when I'm away ({me.email})
+        </label>
+      )}
       <AppearanceSettings a={appearance} />
       <button className="send-btn" onClick={() => { send({ t: 'profile', name, title, status: { emoji, text } }); onClose(); }}>Save</button>
     </Modal>
@@ -130,13 +137,13 @@ export function PlanModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Plan & billing" onClose={onClose}>
       <div className="plan-card">
-        <span className="badge">★ ACTIVE</span>
+        <span className="badge">Active</span>
         <h3>{snap.workspace.plan}</h3>
         <p className="muted">Relay is self-hosted, so nothing is gated. Every premium capability is switched on for every member, with no seat limits and no billing.</p>
       </div>
       <ul className="feature-list">
         {PLAN_FEATURES.map((f) => (
-          <li key={f}>✓ {f}</li>
+          <li key={f}><Icon n="check" /> {f}</li>
         ))}
       </ul>
     </Modal>
@@ -147,7 +154,7 @@ export function ScheduledModal({ onClose }: { onClose: () => void }) {
   const { snap, send } = useRelayCtx();
   return (
     <Modal title="Scheduled messages" onClose={onClose}>
-      {snap.scheduled.length === 0 && <p className="muted">Nothing scheduled. Use ⏱ Schedule in the composer.</p>}
+      {snap.scheduled.length === 0 && <p className="muted">Nothing scheduled. Use Schedule in the composer.</p>}
       {snap.scheduled.map((s) => (
         <div key={s.id} className="sched-item">
           <div>

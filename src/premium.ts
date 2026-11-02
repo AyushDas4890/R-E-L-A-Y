@@ -193,14 +193,14 @@ export const WORKFLOW_TEMPLATES: Omit<Workflow, 'id'>[] = [
     name: 'Daily standup (weekdays 9:30)',
     enabled: true,
     trigger: { type: 'schedule', channelId: 'general', time: '09:30', weekdaysOnly: true },
-    reply: '☀️ Standup time! Reply in this thread: what did you do yesterday, what are you doing today, anything blocking you?',
+    reply: 'Standup time! Reply in this thread: what did you do yesterday, what are you doing today, anything blocking you?',
   },
   {
     name: 'Incident triage',
     enabled: true,
     trigger: { type: 'keyword', keyword: '!incident', channelId: 'any' },
     reply: 'Incident logged. Post impact, start time, and owner in this thread.',
-    branch: { contains: 'sev1', reply: '🚨 SEV1 declared. Page the on-call now and open a huddle in this channel.' },
+    branch: { contains: 'sev1', reply: 'SEV1 declared. Page the on-call now and open a huddle in this channel.' },
   },
   {
     name: 'IT help desk',
@@ -213,6 +213,19 @@ export const WORKFLOW_TEMPLATES: Omit<Workflow, 'id'>[] = [
     name: 'Celebrate wins',
     enabled: true,
     trigger: { type: 'keyword', keyword: '!win', channelId: 'any' },
-    reply: '🎉 Nice work! Logged to the wins board.',
+    reply: 'Nice work. Logged to the wins board.',
   },
 ];
+
+// Alerts can't render formatting, so turn message markup into plain readable text.
+export function plainText(text: string, users: Record<string, { name: string }>): string {
+  return text
+    .replace(/<@([^>]+)>/g, (_, id: string) => `@${users[id]?.name ?? 'someone'}`)
+    .replace(/```([\s\S]*?)```/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    // Only marks at word edges, so snake_case_names survive.
+    .replace(/(^|\W)(\*\*|__|~~|\*|_)(\S(?:[\s\S]*?\S)?)\2(?=\W|$)/g, '$1$3')
+    .replace(/^>\s?/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

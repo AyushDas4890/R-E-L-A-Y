@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { Message } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { channelLabel, RichText, timeLabel } from '../format.tsx';
 import { mentionsUser } from '../premium.ts';
 import { Avatar } from './Avatar.tsx';
+import { Icon } from './Icon.tsx';
 
 type ActivityTab = 'all' | 'mentions' | 'threads' | 'dms';
 
-function Empty({ mark, title, text }: { mark: string; title: string; text: string }) {
+function Empty({ mark, title, text }: { mark: ReactNode; title: string; text: string }) {
   return (
     <div className="empty">
       <div className="empty-mark" aria-hidden>{mark}</div>
@@ -64,7 +65,7 @@ export function ActivityView() {
         </nav>
       </header>
       <div className="feed">
-        {items.length === 0 && <Empty mark="🔔" title="You’re all caught up" text="Mentions, replies to your threads and DMs show up here." />}
+        {items.length === 0 && <Empty mark={<Icon n="bell" size={28} />} title="You’re all caught up" text="Mentions, replies to your threads and DMs show up here." />}
         {items.map(({ m, kind }) => <FeedRow key={m.id} m={m} verb={verbs[kind]} />)}
       </div>
     </>
@@ -78,7 +79,7 @@ export function SavedView() {
     <>
       <header className="channel-head"><div className="channel-title"><h2>Later</h2><p className="topic">Messages you saved to come back to</p></div></header>
       <div className="feed">
-        {saved.length === 0 && <Empty mark="★" title="Nothing saved yet" text="Hover a message and press ☆ to keep it here." />}
+        {saved.length === 0 && <Empty mark={<Icon n="bookmark" size={28} />} title="Nothing saved yet" text="Hover a message and use the star to keep it here." />}
         {saved.map((m) => <FeedRow key={m.id} m={m} verb="in" />)}
       </div>
     </>
@@ -99,7 +100,7 @@ export function DmsView({ onNew }: { onNew: () => void }) {
         <div className="head-actions"><button className="send-btn" onClick={onNew}>New message</button></div>
       </header>
       <div className="feed">
-        {rows.length === 0 && <Empty mark="💬" title="No conversations yet" text="Start one from the People directory." />}
+        {rows.length === 0 && <Empty mark={<Icon n="message" size={28} />} title="No conversations yet" text="Start one from the People directory." />}
         {rows.map(({ c, last }) => {
           const other = c.members.find((m) => m !== snap.me) ?? snap.me;
           return (
@@ -122,12 +123,12 @@ export function DirectoryView({ onMessage }: { onMessage: (userId: string) => vo
   const { snap } = useRelayCtx();
   const [q, setQ] = useState('');
   const people = Object.values(snap.users)
-    .filter((u) => !u.bot && (u.name + ' ' + u.title).toLowerCase().includes(q.toLowerCase()))
+    .filter((u) => !u.bot && !u.inactive && (u.name + ' ' + u.title).toLowerCase().includes(q.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <>
       <header className="channel-head">
-        <div className="channel-title"><h2>People</h2><p className="topic">{Object.values(snap.users).filter((u) => !u.bot).length} members of {snap.workspace.name}</p></div>
+        <div className="channel-title"><h2>People</h2><p className="topic">{Object.values(snap.users).filter((u) => !u.bot && !u.inactive).length} members of {snap.workspace.name}</p></div>
       </header>
       <div className="feed">
         <input className="dir-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or title" aria-label="Search people" />
@@ -153,7 +154,7 @@ export function HuddlesView() {
     <>
       <header className="channel-head"><div className="channel-title"><h2>Huddles</h2><p className="topic">Live conversations happening now</p></div></header>
       <div className="feed">
-        {snap.huddles.length === 0 && <Empty mark="🎧" title="No huddles right now" text="Start one from any channel with the 🎧 button or /huddle." />}
+        {snap.huddles.length === 0 && <Empty mark={<Icon n="headphones" size={28} />} title="No huddles right now" text="Start one from any channel with the headphones button or /huddle." />}
         {snap.huddles.map((h) => {
           const ch = snap.channels[h.channelId];
           if (!ch) return null;

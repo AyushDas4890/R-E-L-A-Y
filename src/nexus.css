@@ -101,16 +101,28 @@
 
 /* Motion logo + intro splash */
 .rl-mark { flex: none; overflow: visible; }
-.rl-mark path { fill: none; stroke: currentColor; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
-.rl-mark .rl-bubble { fill: #f0b07a; stroke: #f0b07a; }
-.rl-mark .rl-r { stroke: #160806; }
+.rl-mark path { fill: #f0b07a; }
+/* Idle handoff: the blocks turn half a circle, rest, then turn again. */
+.rl-spin { transform-box: view-box; transform-origin: 0 0; animation: rl-spin 6s cubic-bezier(.7,0,.2,1) infinite; }
+.nx-brand:hover .rl-spin { animation-duration: 2s; }
+.rl-intro .rl-spin { animation: none; }
+@keyframes rl-spin { 0%, 35% { transform: rotate(0); } 50%, 85% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+.rl-top, .rl-bot, .rl-spark { animation: 6s cubic-bezier(.7,0,.2,1) infinite; }
+.rl-top { animation-name: rl-lean-top; }
+.rl-bot { animation-name: rl-lean-bot; }
+.rl-spark { fill: #fff; opacity: 0; transform-box: fill-box; transform-origin: center; animation-name: rl-spark; animation-timing-function: ease-out; }
+.nx-brand:hover :is(.rl-top, .rl-bot, .rl-spark) { animation-duration: 2s; }
+.rl-intro :is(.rl-top, .rl-bot, .rl-spark) { animation: none; }
+/* Before each turn the blocks lean in and touch, a spark flashes, then they spin apart. */
+@keyframes rl-lean-top { 0%, 30%, 55%, 80%, 100% { transform: translate(0, 0); } 42%, 92% { transform: translate(-10px, 10px); } }
+@keyframes rl-lean-bot { 0%, 30%, 55%, 80%, 100% { transform: translate(0, 0); } 42%, 92% { transform: translate(10px, -10px); } }
+@keyframes rl-spark { 0%, 38%, 50%, 88%, 100% { opacity: 0; transform: scale(.4); } 42%, 92% { opacity: 1; transform: scale(1); } 47%, 97% { opacity: 0; transform: scale(3); } }
+@media (prefers-reduced-motion: reduce) { .rl-spin, .rl-top, .rl-bot, .rl-spark { animation: none; } }
 .nx-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
 /* .lp > * makes children position: relative; the splash must still cover the viewport. */
 .rl-intro, .lp.nx > .rl-intro { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #3a170f, #120806 70%); }
 .rl-intro-inner { display: grid; justify-items: center; gap: 22px; }
 .rl-lockup { position: relative; display: flex; align-items: center; gap: 18px; color: #f0b07a; }
-.rl-intro .rl-bubble { fill: transparent; }
-.rl-intro .rl-r { stroke: #120806; }
 .rl-pulse { position: absolute; left: 44px; top: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%; border: 2px solid rgba(240,176,122,.6); pointer-events: none; }
 .rl-word { display: flex; overflow: hidden; font: 400 clamp(52px, 9vw, 96px)/1 'Audiowide', var(--display); color: #fff; }
 .rl-word span { display: inline-block; }

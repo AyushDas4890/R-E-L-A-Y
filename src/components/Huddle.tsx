@@ -4,6 +4,7 @@ import { channelLabel } from '../format.tsx';
 import { SPEAKING, useCallView } from '../huddle-call.ts';
 import { MAX_HUDDLE } from '../types.ts';
 import { Avatar } from './Avatar.tsx';
+import { Icon } from './Icon.tsx';
 
 function ScreenTile({ stream, label, mine }: { stream: MediaStream; label: string; mine?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -13,7 +14,7 @@ function ScreenTile({ stream, label, mine }: { stream: MediaStream; label: strin
   return (
     <figure className={`screen-tile ${mine ? 'mine' : ''}`}>
       <video ref={ref} autoPlay playsInline muted />
-      <figcaption>🖥 {label}</figcaption>
+      <figcaption><Icon n="monitor" /> {label}</figcaption>
     </figure>
   );
 }
@@ -60,7 +61,7 @@ export function HuddleBar({ channelId }: { channelId: string }) {
             return (
               <span key={id} className={`huddle-avatar ${speaking ? 'speaking' : ''} ${connecting ? 'connecting' : ''}`} title={`${name(id)}${status ? ` · ${status}` : ''}`}>
                 <Avatar user={snap.users[id]} size={30} />
-                {muted && <i className="huddle-muted" aria-label="muted">🔇</i>}
+                {muted && <i className="huddle-muted" aria-label="muted"><Icon n="micOff" size={14} /></i>}
               </span>
             );
           })}
@@ -69,8 +70,8 @@ export function HuddleBar({ channelId }: { channelId: string }) {
         {inCall ? (
           <div className="huddle-controls">
             <span className="meter"><i style={{ transform: `scaleX(${inCall.muted ? 0 : Math.min(inCall.level * 8, 1)})` }} /></span>
-            <button className="ghost-btn" onClick={() => calls.call?.setMuted(!inCall.muted)}>{inCall.muted ? '🔇 Unmute' : '🎙 Mute'}</button>
-            <button className="ghost-btn" onClick={share}>{inCall.screen ? '🖥 Stop sharing' : '🖥 Share screen'}</button>
+            <button className="ghost-btn" onClick={() => calls.call?.setMuted(!inCall.muted)}>{inCall.muted ? <><Icon n="micOff" /> Unmute</> : <><Icon n="mic" /> Mute</>}</button>
+            <button className="ghost-btn" onClick={share}><Icon n="monitor" /> {inCall.screen ? 'Stop sharing' : 'Share screen'}</button>
             <button className="send-btn danger" onClick={() => calls.leave()}>Leave</button>
           </div>
         ) : (

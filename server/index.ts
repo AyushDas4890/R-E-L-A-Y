@@ -21,6 +21,7 @@ import type {
   Snapshot,
   User,
   UserGroup,
+  UserPrefs,
   Workflow,
   WorkspaceSummary,
 } from '../src/types.ts';
@@ -45,6 +46,11 @@ import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
 import { cleanUpload, createFiles } from './files.ts';
 import { firstUrl, unfurl } from './unfurl.ts';
+import { isCursor, olderMessages, recentMessages } from './history.ts';
+import { createMailer, type EmailProvider } from './mailer.ts';
+import { digest, digestLine, enqueue, mayEmail, recipients, takeDue, type Outbox } from './notifications.ts';
+import { applyListPatch, mergeWorkflows, removeVerdict, userView } from './access.ts';
+import { cleanPrefs, mergeImport, visiblePrefs, withDnd, withEmail, withLevel, withRead } from './prefs.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -53,6 +59,8 @@ const dataFile = path.join(dataDir, 'db.json');
 const distDir = path.join(root, 'dist');
 
 const BOT_ID = 'relaybot';
+// Stands in for the author of messages whose account was deleted.
+const DELETED_ID = 'deleted-user';
 const COLORS = ['#7c5cff', '#ff6b8b', '#18b6a0', '#f5a524', '#3b9cff', '#e0577d', '#5fb760', '#c06cf0'];
 const MAX_TEXT = 8000;
 
@@ -75,6 +83,8 @@ interface DB {
   preserved: Message[];
   invites: Invite[];
   starred: Record<string, string[]>;
+  prefs: Record<string, UserPrefs>;
+  removed: string[];
   meta: { name: string; color: string; createdAt: number; createdBy?: string };
 }
 
@@ -108,7 +118,7 @@ function seed(name = 'Relay HQ', createdBy?: string, inviteOnly = false): DB {
         name: 'Relay Bot',
         color: '#7c5cff',
         title: 'Workflow automation',
-        status: { emoji: '🤖', text: 'Always on' },
+        status: { emoji: '', text: 'Always on' },
         bot: true,
       },
     },
@@ -123,7 +133,7 @@ function seed(name = 'Relay HQ', createdBy?: string, inviteOnly = false): DB {
         name: 'Welcome new members',
         enabled: true,
         trigger: { type: 'join', channelId: 'general' },
-        reply: 'Welcome aboard! 👋 Try `/remind me stretch in 10m`, open a canvas, or press ⌘K to search.',
+        reply: 'Welcome aboard. Try `/remind me stretch in 10m`, open a canvas, or press ⌘K to search.',
       },
       {
         id: 'wf-help',
@@ -146,6 +156,8 @@ function seed(name = 'Relay HQ', createdBy?: string, inviteOnly = false): DB {
     preserved: [],
     invites: [],
     starred: {},
+    prefs: {},
+    removed: [],
     meta: { name, color: WORKSPACE_COLORS[Math.floor(Math.random() * WORKSPACE_COLORS.length)], createdAt: now, createdBy },
   };
   db.messages.push({
@@ -160,6 +172,9 @@ function seed(name = 'Relay HQ', createdBy?: string, inviteOnly = false): DB {
 }
 
 const files = createFiles();
+// Email is off unless RELAY_EMAIL_PROVIDER names a provider. RELAY_APP_URL is the UI's public address, for links.
+const mail = createMailer();
+const appUrl = process.env.RELAY_APP_URL?.trim().replace(/\/+$/, '') || undefined;
 
 // Admin client used only to verify access tokens. Null when auth is not configured,
 // in which case the server runs in no-auth dev mode (token treated as the identity).
@@ -185,6 +200,8 @@ function normalize(stored: Partial<DB> & Pick<DB, 'users' | 'channels' | 'messag
     preserved: [],
     invites: [],
     starred: {},
+    prefs: {},
+    removed: [],
     ...stored,
     meta: { name: 'Relay HQ', color: '#f5a400', createdAt: 0, ...stored.meta },
     settings: { ...DEFAULT_SETTINGS, ...stored.settings },
@@ -217,7 +234,14 @@ async function resolveIdentity(token: unknown): Promise<Identity | null> {
 }
 
 // Everything below lives once per workspace: its data, its connected sockets and its timers.
-function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
+// What the runtime needs from outside it: email, and whether a person is connected to any workspace.
+interface Outside {
+  mail: EmailProvider | null;
+  isOnline: (userId: string) => boolean;
+  appUrl?: string;
+}
+
+function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEvict: (ws: WebSocket) => void, outside: Outside) {
   const timers: NodeJS.Timeout[] = [];
   const workspaceInfo = () => ({ id, name: db.meta.name, plan: 'Enterprise Grid · all premium unlocked', color: db.meta.color });
 
@@ -281,6 +305,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       legalHolds: db.legalHolds,
       preservedCount: db.preserved.length,
       invites: db.invites,
+      removed: db.removed,
     };
   }
 
@@ -304,6 +329,11 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
     for (const [ws, uid] of clients) if (uid === userId) send(ws, { t: 'init', snapshot: snapshotFor(userId) });
   }
 
+  // Each person gets the user record as they may see it (email only for admins and the user).
+  function broadcastUser(user: User): void {
+    for (const [ws, uid] of clients) send(ws, { t: 'user', user: userView(user, db.users[uid]) });
+  }
+
   function broadcastChannel(ch: Channel, ev: ServerEvent): void {
     broadcast(ev, (uid) => canSee(ch, uid));
   }
@@ -318,17 +348,34 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       .map(([channelId, call]) => ({ channelId, participants: [...new Set([...call.keys()].map((ws) => clients.get(ws)!))] }));
   }
 
+  function prefsFor(userId: string): UserPrefs {
+    return visiblePrefs(cleanPrefs(db.prefs[userId]), (cid) => !!db.channels[cid] && canSee(db.channels[cid], userId));
+  }
+
+  // Every open tab of a person, so a change on one device shows on the others at once.
+  function sendToUser(userId: string, ev: ServerEvent): void {
+    for (const [ws, uid] of clients) if (uid === userId) send(ws, ev);
+  }
+
+  function setPrefs(userId: string, next: UserPrefs): void {
+    db.prefs[userId] = next;
+    sendToUser(userId, { t: 'prefs', prefs: prefsFor(userId) });
+    persist();
+  }
+
   function snapshotFor(userId: string): Snapshot {
     const visibleChannels = Object.fromEntries(
       Object.entries(db.channels).filter(([, ch]) => canSee(ch, userId)),
     );
+    const recent = recentMessages(db.messages, new Set(Object.keys(visibleChannels)), new Set(db.saved[userId] ?? []));
     return {
       me: userId,
       workspace: workspaceInfo(),
-      users: db.users,
+      users: Object.fromEntries(Object.entries(db.users).map(([id, u]) => [id, userView(u, db.users[userId])])),
       online: onlineIds(),
       channels: visibleChannels,
-      messages: db.messages.filter((m) => visibleChannels[m.channelId]),
+      messages: recent.messages,
+      history: recent.history,
       canvases: Object.fromEntries(Object.entries(db.canvases).filter(([cid]) => visibleChannels[cid])),
       workflows: db.workflows,
       scheduled: db.scheduled.filter((s) => s.userId === userId),
@@ -340,6 +387,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       groups: db.groups,
       settings: db.settings,
       termsAccepted: db.termsAccepted[userId] ?? 0,
+      prefs: prefsFor(userId),
       admin: isAdmin(db.users[userId]) ? adminData() : undefined,
     };
   }
@@ -365,7 +413,43 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
     broadcastChannel(ch, { t: 'message', message });
     persist();
     runWorkflows(message);
+    queueEmails(message, ch);
     return message;
+  }
+
+  // People who are away hear about mentions and DMs by email, in one batch a couple of minutes later.
+  const outbox: Outbox = new Map();
+  const lastEmailed = new Map<string, number>();
+
+  function queueEmails(m: Message, ch: Channel): void {
+    if (!outside.mail) return;
+    const now = Date.now();
+    for (const uid of recipients(m, ch, db.users, db.groups, canSee)) {
+      if (outside.isOnline(uid) || !mayEmail(db.users[uid], cleanPrefs(db.prefs[uid]), ch.id, now)) continue;
+      enqueue(outbox, uid, { channelId: ch.id, messageId: m.id, ts: m.ts }, now);
+    }
+  }
+
+  function sendDueEmails(): void {
+    const mail = outside.mail;
+    if (!mail) return;
+    const now = Date.now();
+    for (const [uid, items] of takeDue(outbox, lastEmailed, now)) {
+      const user = db.users[uid];
+      const prefs = cleanPrefs(db.prefs[uid]);
+      // Things may have changed during the wait: they came back, read it, or the message is gone.
+      if (outside.isOnline(uid) || !user?.email) continue;
+      const lines = items.flatMap((p) => {
+        const m = db.messages.find((x) => x.id === p.messageId);
+        const ch = db.channels[p.channelId];
+        if (!m || !ch || !canSee(ch, uid) || !mayEmail(user, prefs, ch.id, now) || m.ts <= (prefs.lastRead[ch.id] ?? 0)) return [];
+        return [digestLine(m, ch, db.users)];
+      });
+      if (lines.length === 0) continue;
+      lastEmailed.set(uid, now);
+      const link = outside.appUrl ? `${outside.appUrl}/?ws=${encodeURIComponent(id)}` : undefined;
+      mail.send({ to: user.email, ...digest(lines, db.meta.name, link) }).catch((err) => console.error('email failed:', err instanceof Error ? err.message : err));
+    }
   }
 
   function runWorkflows(message: Message): void {
@@ -428,7 +512,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   function mayPost(ch: Channel, userId: string): boolean {
     if (!canSee(ch, userId) || !canPost(ch, db.users[userId])) return false;
     const other = ch.kind === 'dm' ? ch.members.find((u) => u !== userId) : undefined;
-    return !(other && barred(userId, other, db.groups, db.settings.barriers));
+    return !(other && (db.users[other]?.inactive || barred(userId, other, db.groups, db.settings.barriers)));
   }
 
   // Workflows arrive from the client as-is. Keep only well-formed ones, and only let a publisher
@@ -470,11 +554,12 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   }
 
     // Admit (or refuse) one signed-in connection into this workspace.
-    function join(ws: WebSocket, identity: Identity, invite?: string): 'ok' | 'invite-required' {
+    function join(ws: WebSocket, identity: Identity, invite?: string): 'ok' | 'invite-required' | 'removed' {
       const { userId, name, email, avatarUrl } = identity;
+      if (db.removed.includes(userId)) return 'removed';
       let user = db.users[userId];
-      const isMember = !!user;
-      const hasOwner = Object.values(db.users).some((u) => u.role === 'owner');
+      const isMember = !!user && !user.inactive;
+      const hasOwner = Object.values(db.users).some((u) => u.role === 'owner' && !u.inactive);
       const reservedForOther = !!db.meta.createdBy && db.meta.createdBy !== userId;
       const role = decideRole({ hasOwner, isMember, validInvite: validateInvite(invite, db.invites), inviteOnly: db.settings.inviteOnly, reservedForOther });
 
@@ -494,6 +579,11 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
         db.users[userId] = user;
         for (const id of ['general', 'random']) ensureMember(db.channels[id], userId);
       } else {
+        // Coming back after leaving: the invite rules above already ran, so this is a fresh start.
+        if (user.inactive) {
+          user.inactive = false;
+          for (const id of ['general', 'random']) ensureMember(db.channels[id], userId);
+        }
         // Keep profile details fresh from the identity provider.
         if (authAdmin) user.name = name;
         user.avatarUrl = avatarUrl ?? user.avatarUrl;
@@ -504,12 +594,70 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
 
       clients.set(ws, userId);
       send(ws, { t: 'init', snapshot: snapshotFor(userId) });
-      broadcast({ t: 'user', user });
+      broadcastUser(user);
       broadcast({ t: 'presence', online: onlineIds() });
       if (!isMember) runJoinWorkflows('general');
       persist();
       return 'ok';
     }
+
+  function soleOwner(userId: string): boolean {
+    const owners = Object.values(db.users).filter((u) => u.role === 'owner' && !u.inactive);
+    return owners.length === 1 && owners[0].id === userId;
+  }
+
+  // Disconnects every tab of a person at once and tells them why.
+  function evict(userId: string, code: 'no-workspace' | 'removed', message: string): void {
+    for (const [ws, uid] of [...clients]) {
+      if (uid !== userId) continue;
+      send(ws, { t: 'error', message, code });
+      leave(ws);
+      onEvict(ws);
+    }
+  }
+
+  // Takes a person out of the workspace (they stay as a name on old messages). DMs are kept:
+  // the other side's history is theirs too.
+  function retire(userId: string, code: 'no-workspace' | 'removed', message: string): void {
+    const user = db.users[userId];
+    user.inactive = true;
+    if (user.role === 'owner' || user.role === 'admin') user.role = 'member';
+    db.scheduled = db.scheduled.filter((s) => s.userId !== userId);
+    evict(userId, code, message);
+    for (const ch of Object.values(db.channels)) {
+      if (ch.kind === 'dm' || !ch.members.includes(userId)) continue;
+      ch.members = ch.members.filter((u) => u !== userId);
+      broadcastChannel(ch, { t: 'channel', channel: ch });
+    }
+    broadcastUser(user);
+    persist();
+  }
+
+  // Erases a person's data. Their messages stay in the conversation, credited to "Deleted user".
+  function forget(userId: string): void {
+    db.users[DELETED_ID] ??= { id: DELETED_ID, name: 'Deleted user', color: '#8a8f98', title: '', status: { emoji: '', text: '' }, role: 'member', inactive: true };
+    for (const m of db.messages) {
+      if (m.userId === userId) m.userId = DELETED_ID;
+      for (const [emoji, who] of Object.entries(m.reactions)) {
+        m.reactions[emoji] = who.filter((u) => u !== userId);
+        if (m.reactions[emoji].length === 0) delete m.reactions[emoji];
+      }
+    }
+    for (const f of db.flags) if (f.by === userId) f.by = DELETED_ID;
+    for (const w of db.workflows) if (w.createdBy === userId) delete w.createdBy;
+    for (const g of db.groups) g.members = g.members.filter((u) => u !== userId);
+    for (const ch of Object.values(db.channels)) {
+      if (!ch.members.includes(userId)) continue;
+      ch.members = ch.kind === 'dm' ? [...new Set(ch.members.map((u) => (u === userId ? DELETED_ID : u)))] : ch.members.filter((u) => u !== userId);
+    }
+    db.scheduled = db.scheduled.filter((s) => s.userId !== userId);
+    delete db.users[userId];
+    delete db.prefs[userId];
+    delete db.saved[userId];
+    delete db.sections[userId];
+    delete db.starred[userId];
+    delete db.termsAccepted[userId];
+  }
 
   async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
     const userId = clients.get(ws);
@@ -531,6 +679,10 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
           send(ws, { t: 'error', message: 'An information barrier blocks messages between you two.' });
           return;
         }
+        if (other && db.users[other]?.inactive) {
+          send(ws, { t: 'error', message: 'This person is no longer in the workspace.' });
+          return;
+        }
         // Posting in a public channel joins it; tell everyone so member lists stay right.
         if (ensureMember(ch, userId)) broadcastChannel(ch, { t: 'channel', channel: ch });
         const threadId = threadIn(ch.id, ev.threadId);
@@ -545,7 +697,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
               id: randomUUID(),
               channelId: dmId(userId, BOT_ID),
               userId,
-              text: `⏰ Reminder: ${slash.text}`,
+              text: `Reminder: ${slash.text}`,
               at: Date.now() + slash.inMs,
             };
             openDM(userId, BOT_ID);
@@ -583,7 +735,12 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'edit': {
         const m = db.messages.find((x) => x.id === ev.id);
-        if (!m || m.userId !== userId || typeof ev.text !== 'string' || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId)) return;
+        const home = m && db.channels[m.channelId];
+        if (!m || !home || m.userId !== userId || typeof ev.text !== 'string') return;
+        if (!mayPost(home, userId)) {
+          send(ws, { t: 'error', message: `You can't edit messages in ${home.kind === 'dm' ? 'this conversation' : `#${home.name}`} right now.` });
+          return;
+        }
         preserve(m);
         m.text = ev.text.slice(0, MAX_TEXT);
         m.edited = true;
@@ -621,7 +778,12 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'pin': {
         const m = db.messages.find((x) => x.id === ev.id);
-        if (!m || !db.channels[m.channelId] || !canSee(db.channels[m.channelId], userId)) return;
+        const home = m && db.channels[m.channelId];
+        if (!m || !home || !canSee(home, userId)) return;
+        if (!home.members.includes(userId)) {
+          send(ws, { t: 'error', message: `Join #${home.name} to pin messages.` });
+          return;
+        }
         m.pinned = !m.pinned;
         const ch = db.channels[m.channelId];
         if (ch) broadcastChannel(ch, { t: 'message', message: m });
@@ -631,7 +793,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       case 'save': {
         const list = db.saved[userId] ?? [];
         db.saved[userId] = list.includes(ev.id) ? list.filter((i) => i !== ev.id) : [...list, ev.id];
-        send(ws, { t: 'saved', saved: db.saved[userId] });
+        sendToUser(userId, { t: 'saved', saved: db.saved[userId] });
         persist();
         return;
       }
@@ -684,7 +846,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
         return;
       }
       case 'openDM': {
-        if (!db.users[ev.userId]) return;
+        if (!db.users[ev.userId] || db.users[ev.userId].inactive) return;
         if (barred(userId, ev.userId, db.groups, db.settings.barriers)) {
           send(ws, { t: 'error', message: 'An information barrier blocks DMs with this person.' });
           return;
@@ -703,13 +865,17 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
         if (ev.name !== undefined) user.name = ev.name.trim().slice(0, 40) || user.name;
         if (ev.title !== undefined) user.title = ev.title.slice(0, 80);
         if (ev.status) user.status = { emoji: ev.status.emoji.slice(0, 8), text: ev.status.text.slice(0, 80) };
-        broadcast({ t: 'user', user });
+        broadcastUser(user);
         persist();
         return;
       }
       case 'canvas': {
         const ch = db.channels[ev.channelId];
-        if (!ch || !canSee(ch, userId)) return;
+        if (!ch || !canSee(ch, userId) || typeof ev.content !== 'string') return;
+        if (!ch.members.includes(userId)) {
+          send(ws, { t: 'error', message: `Join #${ch.name} to edit its canvas.` });
+          return;
+        }
         db.canvases[ch.id] = ev.content.slice(0, 100_000);
         broadcastChannel(ch, { t: 'canvas', channelId: ch.id, content: db.canvases[ch.id] });
         persist();
@@ -717,9 +883,11 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'workflows': {
         if (db.users[userId]?.role === 'guest' || !Array.isArray(ev.list)) return;
-        db.workflows = ev.list.slice(0, 50).map((w) => cleanWorkflow(w, userId)).filter((w) => w !== null);
+        const merged = mergeWorkflows(db.workflows, ev.list.slice(0, 50).map((w) => cleanWorkflow(w, userId)).filter((w) => w !== null), { id: userId, admin: isAdmin(db.users[userId]) });
+        db.workflows = merged.list;
         broadcast({ t: 'workflows', list: db.workflows });
-        audit(userId, 'workflows.publish', `${db.workflows.length} workflows`);
+        if (merged.rejected) send(ws, { t: 'error', message: 'Workflows published by other people were left unchanged. Only their creator or an admin can edit them.' });
+        audit(userId, 'workflows.publish', `${db.workflows.length} workflows${merged.overrode ? `, changed ${merged.overrode} by other people` : ''}`);
         persist();
         return;
       }
@@ -768,18 +936,17 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
         }
         return;
       }
-      case 'list': {
+      case 'listItem': {
         const ch = db.channels[ev.channelId];
-        if (!ch || !canSee(ch, userId) || !Array.isArray(ev.items)) return;
-        db.lists[ch.id] = ev.items.slice(0, 500).map((it) => ({
-          id: String(it.id || randomUUID()).slice(0, 64),
-          title: String(it.title).slice(0, 200),
-          done: it.status === 'done',
-          assignee: db.users[it.assignee] ? it.assignee : '',
-          due: String(it.due).slice(0, 10),
-          status: it.status === 'doing' || it.status === 'done' ? it.status : 'todo',
-        }));
-        broadcastChannel(ch, { t: 'lists', channelId: ch.id, items: db.lists[ch.id] });
+        if (!ch || !canSee(ch, userId)) return;
+        if (!ch.members.includes(userId)) {
+          send(ws, { t: 'error', message: `Join #${ch.name} to edit its list.` });
+          return;
+        }
+        const next = applyListPatch(db.lists[ch.id] ?? [], ev, (id) => !!db.users[id] && ch.members.includes(id));
+        if (!next) return;
+        db.lists[ch.id] = next;
+        broadcastChannel(ch, { t: 'lists', channelId: ch.id, items: next });
         persist();
         return;
       }
@@ -790,7 +957,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
           name: String(sec.name).slice(0, 40) || 'Section',
           channelIds: (Array.isArray(sec.channelIds) ? sec.channelIds : []).filter((cid) => db.channels[cid] && canSee(db.channels[cid], userId)).slice(0, 500),
         }));
-        send(ws, { t: 'sections', sections: db.sections[userId] });
+        sendToUser(userId, { t: 'sections', sections: db.sections[userId] });
         persist();
         return;
       }
@@ -845,7 +1012,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       case 'role': {
         const actor = db.users[userId];
         const target = db.users[ev.userId];
-        if (!isAdmin(actor) || !target || target.bot || !['owner', 'admin', 'member', 'guest'].includes(ev.role)) return;
+        if (!isAdmin(actor) || !target || target.bot || target.inactive || !['owner', 'admin', 'member', 'guest'].includes(ev.role)) return;
         // Only owners can grant or revoke admin rights, and nobody can demote the last owner.
         if ((ev.role === 'owner' || target.role === 'owner' || target.role === 'admin' || ev.role === 'admin') && actor?.role !== 'owner') {
           send(ws, { t: 'error', message: 'Only an owner can change admin or owner roles.' });
@@ -857,7 +1024,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
           return;
         }
         target.role = ev.role;
-        broadcast({ t: 'user', user: target });
+        broadcastUser(target);
         audit(userId, 'user.role', `${target.name} → ${ev.role}`);
         resendInit(target.id);
         persist();
@@ -874,7 +1041,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'addMember': {
         const ch = db.channels[ev.channelId];
-        if (!ch || ch.kind === 'dm' || !db.users[ev.userId] || !ch.members.includes(userId)) return;
+        if (!ch || ch.kind === 'dm' || !db.users[ev.userId] || db.users[ev.userId].inactive || !ch.members.includes(userId)) return;
         if (db.users[ev.userId].role === 'guest' && !isAdmin(db.users[userId])) {
           send(ws, { t: 'error', message: 'Only admins can add guests to channels.' });
           return;
@@ -952,6 +1119,85 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
         persist();
         return;
       }
+      case 'leaveWorkspace': {
+        if (soleOwner(userId)) {
+          send(ws, { t: 'error', message: 'Make someone else an owner before you leave.' });
+          return;
+        }
+        audit(userId, 'member.leave', db.users[userId].name);
+        retire(userId, 'no-workspace', `You left ${db.meta.name}.`);
+        return;
+      }
+      case 'removeMember': {
+        const actor = db.users[userId];
+        const target = typeof ev.userId === 'string' ? db.users[ev.userId] : undefined;
+        const verdict = removeVerdict(actor, target);
+        if (verdict === 'owner-only') send(ws, { t: 'error', message: 'Only an owner can remove admins or owners.' });
+        if (verdict !== 'ok' || !target) return;
+        if (!db.removed.includes(target.id)) db.removed.push(target.id);
+        audit(userId, 'member.remove', target.name);
+        retire(target.id, 'removed', `You were removed from ${db.meta.name}.`);
+        return;
+      }
+      case 'restoreMember': {
+        if (!isAdmin(db.users[userId]) || typeof ev.userId !== 'string' || !db.removed.includes(ev.userId)) return;
+        db.removed = db.removed.filter((u) => u !== ev.userId);
+        audit(userId, 'member.restore', db.users[ev.userId]?.name ?? ev.userId);
+        persist();
+        return;
+      }
+      case 'deleteMyAccount': {
+        if (db.legalHolds.includes(userId)) {
+          send(ws, { t: 'error', message: 'Your account is under a legal hold and can’t be deleted right now. Ask an admin.' });
+          return;
+        }
+        if (soleOwner(userId)) {
+          send(ws, { t: 'error', message: 'Make someone else an owner before you delete your account.' });
+          return;
+        }
+        audit(userId, 'account.delete', db.users[userId].name);
+        evict(userId, 'no-workspace', `Your account in ${db.meta.name} was deleted.`);
+        forget(userId);
+        // Messages, channels and the user list changed under everyone, so refresh them.
+        for (const uid of onlineIds()) resendInit(uid);
+        broadcastAdmin();
+        persist();
+        return;
+      }
+      case 'history': {
+        const ch = db.channels[ev.channelId];
+        if (!ch || !canSee(ch, userId) || !isCursor(ev.before)) return;
+        send(ws, { t: 'history', channelId: ch.id, ...olderMessages(db.messages, ch.id, ev.before) });
+        return;
+      }
+      case 'markRead': {
+        const ch = db.channels[ev.channelId];
+        if (!ch || !canSee(ch, userId)) return;
+        setPrefs(userId, withRead(cleanPrefs(db.prefs[userId]), ch.id, Date.now()));
+        return;
+      }
+      case 'setLevel': {
+        const ch = db.channels[ev.channelId];
+        if (!ch || !canSee(ch, userId)) return;
+        const next = withLevel(cleanPrefs(db.prefs[userId]), ch.id, ev.level);
+        if (next) setPrefs(userId, next);
+        return;
+      }
+      case 'setDnd': {
+        const next = withDnd(cleanPrefs(db.prefs[userId]), ev.until, Date.now());
+        if (next) setPrefs(userId, next);
+        return;
+      }
+      case 'setEmail': {
+        const next = withEmail(cleanPrefs(db.prefs[userId]), ev.on);
+        if (next) setPrefs(userId, next);
+        return;
+      }
+      case 'importPrefs': {
+        const isChannel = (cid: string) => !!db.channels[cid] && canSee(db.channels[cid], userId);
+        setPrefs(userId, mergeImport(cleanPrefs(db.prefs[userId]), ev, isChannel, Date.now()));
+        return;
+      }
       case 'fileSummary': {
         const m = db.messages.find((x) => x.id === ev.id);
         const file = m?.files?.[ev.index];
@@ -967,6 +1213,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
       }
       case 'analytics': {
         if (!isAdmin(db.users[userId])) return;
+        audit(userId, 'analytics.view', 'Workspace analytics');
         send(ws, { t: 'analytics', data: computeAnalytics(db.messages, db.channels, db.users, Date.now()) });
         return;
       }
@@ -1118,6 +1365,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   }, 20_000));
 
   timers.push(setInterval(applyRetention, 60 * 60_000));
+  timers.push(setInterval(sendDueEmails, 30_000));
 
   function leave(ws: WebSocket): void {
     if (!clients.has(ws)) return;
@@ -1132,14 +1380,14 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>) {
   }
 
   function summary(): WorkspaceSummary {
-    return { id, name: db.meta.name, color: db.meta.color, members: Object.values(db.users).filter((u) => !u.bot).length, inviteOnly: !!db.settings.inviteOnly };
+    return { id, name: db.meta.name, color: db.meta.color, members: Object.values(db.users).filter((u) => !u.bot && !u.inactive).length, inviteOnly: !!db.settings.inviteOnly };
   }
 
   function stop(): void {
     for (const t of timers) clearInterval(t);
   }
 
-  return { id, db, join, handle, leave, summary, flush, stop, hasInvite: (code?: string) => validateInvite(code, db.invites) };
+  return { id, db, join, handle, leave, summary, flush, stop, isMember: (userId: string) => !!db.users[userId] && !db.users[userId].inactive, hasInvite: (code?: string) => validateInvite(code, db.invites) };
 }
 
 const mime: Record<string, string> = {
@@ -1193,7 +1441,18 @@ async function loadRuntime(id: string, fresh?: () => DB): Promise<Runtime> {
   const db = normalize((await st.load()) as Partial<DB> & Pick<DB, 'users' | 'channels' | 'messages'>);
   // A brand-new workspace is written straight away so a restart can't reseed it as a default one.
   if (fresh) await st.save(db);
-  const rt = createRuntime(id, db, (d) => st.save(d));
+  const rt = createRuntime(id, db, (d) => st.save(d), (ws) => {
+    // The runtime cut this socket off: forget its workspace and show the person their remaining ones.
+    const conn = conns.get(ws);
+    if (!conn) return;
+    conn.rt = undefined;
+    if (conn.identity) send(ws, { t: 'workspaces', ...workspacesFor(conn.identity.userId) });
+  }, {
+    mail,
+    appUrl,
+    // Connected to any workspace counts: someone with another one open will see it there.
+    isOnline: (userId) => [...conns.values()].some((c) => c.identity?.userId === userId && !!c.rt),
+  });
   runtimes.set(id, rt);
   return rt;
 }
@@ -1206,8 +1465,8 @@ function workspacesFor(userId: string): { mine: WorkspaceSummary[]; discover: Wo
   const mine: WorkspaceSummary[] = [];
   const discover: WorkspaceSummary[] = [];
   for (const rt of runtimes.values()) {
-    if (rt.db.users[userId]) mine.push(rt.summary());
-    else if (!rt.db.settings.inviteOnly) discover.push(rt.summary());
+    if (rt.isMember(userId)) mine.push(rt.summary());
+    else if (!rt.db.settings.inviteOnly && !rt.db.removed.includes(userId)) discover.push(rt.summary());
   }
   return { mine, discover };
 }
@@ -1217,7 +1476,7 @@ function workspacesFor(userId: string): { mine: WorkspaceSummary[]; discover: Wo
 function pickWorkspace(userId: string, wanted?: string, invite?: string): Runtime | undefined {
   if (invite) for (const rt of runtimes.values()) if (rt.hasInvite(invite)) return rt;
   if (wanted && runtimes.has(wanted)) return runtimes.get(wanted);
-  for (const rt of runtimes.values()) if (rt.db.users[userId]) return rt;
+  for (const rt of runtimes.values()) if (rt.isMember(userId)) return rt;
   const hq = runtimes.get(HQ);
   return hq && !hq.db.settings.inviteOnly ? hq : undefined;
 }
@@ -1243,6 +1502,10 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     }
     const result = rt.join(ws, identity, ev.invite);
     send(ws, { t: 'workspaces', ...workspacesFor(identity.userId) });
+    if (result === 'removed') {
+      send(ws, { t: 'error', message: `You were removed from ${rt.db.meta.name}.`, code: 'removed' });
+      return;
+    }
     if (result === 'invite-required') {
       send(ws, { t: 'error', message: `You need an invite to join ${rt.db.meta.name}.`, code: 'invite-required' });
       return;
@@ -1265,9 +1528,10 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     }
     const id = randomUUID().slice(0, 8);
     const createdBy = conn.identity.userId;
+    // The workspace row goes first: a directory entry without one would reseed as an open workspace.
+    await loadRuntime(id, () => seed(name, createdBy, true));
     directory.workspaces.push({ id, createdAt: Date.now(), createdBy });
     await dirStore.save(directory);
-    await loadRuntime(id, () => seed(name, createdBy, true));
     send(ws, { t: 'workspaceCreated', id });
     return;
   }

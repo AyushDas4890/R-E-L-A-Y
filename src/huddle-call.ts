@@ -7,11 +7,26 @@ import type { ClientEvent, HuddlePeer, RtcSignal, ServerEvent } from './types.ts
 
 // STUN lets each browser learn its public address. Browsers behind strict NATs (some office and
 // mobile networks) can't reach each other directly and need a TURN relay, set with VITE_TURN_*.
+// Without one, a shared public relay is used as a fallback so two people on different networks
+// can still hear and see each other. It is best-effort: set VITE_TURN_* for a dependable relay.
+const FALLBACK_TURN: RTCIceServer = {
+  urls: [
+    'turn:openrelay.metered.ca:80',
+    'turn:openrelay.metered.ca:443',
+    'turn:openrelay.metered.ca:443?transport=tcp',
+    'turns:openrelay.metered.ca:443?transport=tcp',
+  ],
+  username: 'openrelayproject',
+  credential: 'openrelayproject',
+};
+
 function iceServers(): RTCIceServer[] {
   const servers: RTCIceServer[] = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
   const { VITE_TURN_URL, VITE_TURN_USERNAME, VITE_TURN_CREDENTIAL } = import.meta.env;
   if (VITE_TURN_URL) {
     servers.push({ urls: VITE_TURN_URL.split(',').map((u) => u.trim()), username: VITE_TURN_USERNAME, credential: VITE_TURN_CREDENTIAL });
+  } else {
+    servers.push(FALLBACK_TURN);
   }
   return servers;
 }
@@ -239,6 +254,14 @@ export class MeshCall {
       p.state = pc.connectionState;
       if (p.state === 'failed') pc.restartIce();
       this.changed();
+    };
+    // A path that stalls (rather than fails outright) is retried too, so media resumes by itself.
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'disconnected') {
+        setTimeout(() => {
+          if (!this.closed && pc.iceConnectionState === 'disconnected') pc.restartIce();
+        }, 4000);
+      }
     };
 
     p.queue = this.ready.then(() => {

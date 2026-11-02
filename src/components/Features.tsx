@@ -1,0 +1,523 @@
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { Film, Clip, Win, Msg, Bot, Cursor, typeInto, eraseText, type Build, type Chapter } from './Film.tsx';
+import { Icon, type IconName } from './Icon.tsx';
+import { RouteLink, SiteFooter, SiteNav, type Route } from './Site.tsx';
+import '../apple.css';
+import '../features.css';
+
+gsap.registerPlugin(ScrollTrigger);
+
+// Layout position of an element inside the canvas, ignoring any transforms the film has set.
+function offsetIn(el: HTMLElement, canvas: HTMLElement) {
+  let x = 0, y = 0;
+  for (let n: HTMLElement | null = el; n && n !== canvas; n = n.offsetParent as HTMLElement | null) { x += n.offsetLeft; y += n.offsetTop; }
+  return { x, y };
+}
+
+// Point at an element on the canvas: the cursor glides there, then presses.
+function clickAt(tl: gsap.core.Timeline, q: (s: string) => Element[], target: string, at: number | string, dx = 0.5, dy = 0.5) {
+  const el = q(target)[0] as HTMLElement | undefined;
+  const canvas = el?.closest('.fm-canvas') as HTMLElement | null;
+  if (!el || !canvas) return tl;
+  const o = offsetIn(el, canvas);
+  const x = o.x + el.offsetWidth * dx, y = o.y + el.offsetHeight * dy;
+  return tl
+    .to(q('.fm-cursor'), { x, y, duration: 0.7, ease: 'power2.inOut' }, at)
+    .to(q('.fm-cursor'), { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1, transformOrigin: '20% 10%' })
+    .fromTo(el, { scale: 1 }, { scale: 0.96, duration: 0.08, yoyo: true, repeat: 1 }, '<');
+}
+
+// ======================= Overview =======================
+
+const OVERVIEW_CHAPTERS: Chapter[] = [
+  { title: 'Post in a channel', text: 'Every team and project gets a channel. Messages land in order, with names and times, for everyone in it.' },
+  { title: 'Branch into a thread', text: 'Reply to one message and the side conversation folds into a thread, so the channel stays readable.' },
+  { title: 'Mention a teammate', text: 'Type @ and a name. That person gets notified, and the mention stands out in the message.' },
+  { title: 'Get the recap', text: 'Press Recap and Relay Bot sums up who said what, so anyone catching up reads one message instead of fifty.' },
+];
+
+function OverviewMock() {
+  return (
+    <>
+      <Win channel="launch" topic="Launch prep for v2" actions={<><span className="fm-icon-btn"><Icon n="headphones" /></span><span className="fm-chip-btn ov-recap"><Icon n="sparkles" size={14} /> Recap</span></>}>
+        <div className="fm-feed">
+          <Msg className="ov-m1" who="Maya" c="#d7765a" l="M" text="Launch copy is ready for review" />
+          <Msg className="ov-m2" who="Ken" c="#3aa79b" l="K" text="Looks great. One question on pricing">
+            <span className="fm-replies ov-replies"><Icon n="message" size={14} /> 2 replies</span>
+          </Msg>
+          <Msg className="ov-m3" who="Priya" c="#8a6bd8" l="P" text="We ship at 4 PM if QA passes" />
+          <Msg className="ov-m4" who="You" c="#0071e3" l="Y" text={<><span className="fm-mention">@Priya</span> can you confirm QA by 3?</>} />
+          <Bot className="ov-recap-msg">
+            <p className="fm-recap"><b>Recap of #launch</b><span>Copy is approved, pricing stays the same, Priya owns QA, ship at 4 PM.</span></p>
+          </Bot>
+          <div className="fm-typing ov-typing"><i /><i /><i /></div>
+        </div>
+        <div className="fm-composer"><span className="ov-draft" /><i className="fm-caret" /></div>
+        <aside className="fm-thread ov-thread">
+          <header><b>Thread</b><small># launch</small></header>
+          <Msg who="Ken" c="#3aa79b" l="K" text="Looks great. One question on pricing" />
+          <div className="fm-thread-rule">2 replies</div>
+          <Msg className="ov-r1" who="Maya" c="#d7765a" l="M" text="Pricing stays the same as v1" />
+          <Msg className="ov-r2" who="Ken" c="#3aa79b" l="K" text="Perfect, thanks" />
+        </aside>
+      </Win>
+      <Cursor />
+    </>
+  );
+}
+
+const overviewBuild: Build = (q) => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  tl.set(q('.fm-cursor'), { x: 720, y: 470, scale: 1 })
+    .set(q('.ov-m4, .ov-recap-msg, .ov-typing, .ov-r1, .ov-r2'), { autoAlpha: 0 })
+    .set(q('.ov-thread'), { xPercent: 105 });
+  tl.addLabel('c0', 0)
+    .fromTo(q('.ov-m1, .ov-m2, .ov-m3'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.6 }, 0.3)
+    .to({}, { duration: 1 });
+  tl.addLabel('c1');
+  clickAt(tl, q, '.ov-replies', 'c1');
+  tl.to(q('.ov-thread'), { xPercent: 0, duration: 0.7, ease: 'expo.out' })
+    .fromTo(q('.ov-r1, .ov-r2'), { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.4, stagger: 0.5 })
+    .to({}, { duration: 1.2 })
+    .to(q('.ov-thread'), { xPercent: 105, duration: 0.5, ease: 'power2.in' });
+  tl.addLabel('c2');
+  clickAt(tl, q, '.fm-composer', 'c2', 0.2);
+  typeInto(tl, q('.ov-draft')[0], '@Priya can you confirm QA by 3?', '>');
+  eraseText(tl, q('.ov-draft')[0], '@Priya can you confirm QA by 3?', '+=0.3');
+  tl.fromTo(q('.ov-m4'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '<')
+    .fromTo(q('.ov-m4 .fm-mention'), { backgroundColor: 'rgba(0,113,227,0)' }, { backgroundColor: 'rgba(0,113,227,.16)', duration: 0.4 }, '+=0.1')
+    .to({}, { duration: 1 });
+  tl.addLabel('c3');
+  clickAt(tl, q, '.ov-recap', 'c3');
+  tl.fromTo(q('.ov-typing'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 })
+    .to(q('.ov-typing'), { autoAlpha: 0, duration: 0.2 }, '+=0.9')
+    .fromTo(q('.ov-recap-msg'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.6 }, '<')
+    .to({}, { duration: 2 });
+  return tl;
+};
+
+// ======================= Huddles =======================
+
+const HUDDLE_CHAPTERS: Chapter[] = [
+  { title: 'Start a huddle', text: 'Press the headphones in any channel header, or type /huddle. You are live in that channel straight away.' },
+  { title: 'Teammates join', text: 'Anyone in the channel can hop in. Each person lights up while they speak, up to six at a time.' },
+  { title: 'Share your screen', text: 'One click puts your screen in front of everyone, so you can walk through the work instead of describing it.' },
+  { title: 'Notes land in the channel', text: 'When the huddle ends, Relay Bot posts how long it ran, who joined, and any action items said in the chat.' },
+];
+
+function HuddleMock() {
+  return (
+    <>
+      <Win channel="design" topic="Product and brand design" actions={<span className="fm-chip-btn hd-start"><Icon n="headphones" size={14} /> Huddle</span>}>
+        <div className="fm-feed">
+          <Msg who="Maya" c="#d7765a" l="M" text="Can we look at the onboarding flow together?" />
+          <Msg who="Ken" c="#3aa79b" l="K" text="Sure, starting a huddle" />
+          <Msg className="hd-ken" who="Ken" c="#3aa79b" l="K" text="I will update the step 2 copy today" />
+          <Bot className="hd-note">
+            <p className="fm-recap"><b>Huddle notes · 18 min with Ken, Maya, Priya</b><span>1 message shared during the huddle.</span><span>Action items: Ken: I will update the step 2 copy today</span></p>
+          </Bot>
+        </div>
+        <div className="fm-composer"><span className="fm-placeholder">Message #design</span></div>
+        <div className="fm-screen hd-screen">
+          <div className="fm-screen-label"><Icon n="monitor" size={14} /> Ken is sharing</div>
+          <div className="fm-screen-doc">
+            <small>Onboarding · Step 2 of 4</small>
+            <b>Invite your team</b>
+            <span className="fm-screen-field" />
+            <span className="fm-screen-field short" />
+            <span className="fm-screen-btn">Send invites</span>
+          </div>
+        </div>
+        <div className="fm-huddle hd-bar">
+          <div className="fm-huddle-people">
+            {[['#3aa79b', 'K', 'hd-p1'], ['#d7765a', 'M', 'hd-p2'], ['#8a6bd8', 'P', 'hd-p3']].map(([c, l, k]) => (
+              <span key={k} className={`fm-person ${k}`}><i style={{ background: c }}>{l}</i><span className="fm-meter"><u /><u /><u /><u /></span></span>
+            ))}
+          </div>
+          <div className="fm-huddle-controls">
+            <span className="fm-ctl"><Icon n="mic" size={14} /> Mute</span>
+            <span className="fm-ctl hd-share"><Icon n="monitor" size={14} /> Share screen</span>
+            <span className="fm-ctl leave hd-leave">Leave</span>
+          </div>
+        </div>
+      </Win>
+      <Cursor />
+    </>
+  );
+}
+
+const huddleBuild: Build = (q) => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  tl.set(q('.fm-cursor'), { x: 520, y: 300, scale: 1 })
+    .set(q('.hd-bar'), { autoAlpha: 0, y: 30 })
+    .set(q('.hd-p2, .hd-p3, .hd-ken, .hd-note'), { autoAlpha: 0 })
+    .set(q('.hd-screen'), { autoAlpha: 0, scale: 0.92 });
+  tl.addLabel('c0', 0);
+  clickAt(tl, q, '.hd-start', 0.3);
+  tl.to(q('.hd-bar'), { autoAlpha: 1, y: 0, duration: 0.6, ease: 'expo.out' })
+    .fromTo(q('.hd-p1'), { scale: 0.4, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.45, ease: 'back.out(1.6)' }, '<0.1')
+    .to({}, { duration: 1 });
+  tl.addLabel('c1')
+    .fromTo(q('.hd-p2, .hd-p3'), { scale: 0.4, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.45, stagger: 0.5, ease: 'back.out(1.6)' }, 'c1+=0.2')
+    .fromTo(q('.fm-meter u'), { scaleY: 0.25 }, { scaleY: () => 0.35 + Math.random() * 0.65, duration: 0.18, yoyo: true, repeat: 9, stagger: { each: 0.02, from: 'random' }, ease: 'sine.inOut' }, '<0.3')
+    .fromTo(q('.hd-p2 i'), { boxShadow: '0 0 0 0 rgba(52,199,89,0)' }, { boxShadow: '0 0 0 3px rgba(52,199,89,1)', duration: 0.2, yoyo: true, repeat: 3 }, '<')
+    .to({}, { duration: 0.6 });
+  tl.addLabel('c2');
+  clickAt(tl, q, '.hd-share', 'c2');
+  tl.to(q('.hd-screen'), { autoAlpha: 1, scale: 1, duration: 0.7, ease: 'expo.out' })
+    .fromTo(q('.fm-screen-field'), { scaleX: 0 }, { scaleX: 1, duration: 0.5, stagger: 0.25, transformOrigin: 'left center' })
+    .fromTo(q('.fm-screen-btn'), { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.4 })
+    .fromTo(q('.hd-ken'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, '<')
+    .to({}, { duration: 1.2 });
+  tl.addLabel('c3');
+  clickAt(tl, q, '.hd-leave', 'c3');
+  tl.to(q('.hd-screen'), { autoAlpha: 0, scale: 0.96, duration: 0.4, ease: 'power2.in' })
+    .to(q('.hd-bar'), { autoAlpha: 0, y: 30, duration: 0.4, ease: 'power2.in' }, '<')
+    .fromTo(q('.hd-note'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.6 }, '+=0.2')
+    .to({}, { duration: 2 });
+  return tl;
+};
+
+// ======================= Workflows =======================
+
+const WORKFLOW_CHAPTERS: Chapter[] = [
+  { title: 'Pick a trigger', text: 'A workflow starts on a keyword like !incident, when someone joins a channel, or on a schedule such as weekdays at 9:30.' },
+  { title: 'Write the reply', text: 'Say what Relay Bot should post when it fires. It replies in the same channel, in a thread people can answer.' },
+  { title: 'Add a branch', text: 'Give one condition a different answer. If the message contains sev1, the bot escalates instead.' },
+  { title: 'Watch it run', text: 'Someone types the keyword and the bot answers in a second, every time, without anyone on call to copy and paste.' },
+];
+
+function WorkflowMock() {
+  return (
+    <>
+      <Win channel="incidents" topic="Production issues and on-call" actions={<span className="fm-chip-btn"><Icon n="zap" size={14} /> Workflows</span>}>
+        <div className="fm-feed">
+          <Msg who="Priya" c="#8a6bd8" l="P" text="Reminder: on-call this week is Ken" />
+          <Msg className="wf-trigger" who="Ken" c="#3aa79b" l="K" text={<><span className="fm-kw">!incident</span> sev1 checkout is down</>} />
+          <Bot className="wf-reply" text="SEV1 declared. Page the on-call now and open a huddle in this channel." />
+        </div>
+        <div className="fm-composer"><span className="wf-draft" /><i className="fm-caret" /></div>
+      </Win>
+      <div className="fm-scrim wf-scrim" />
+      <div className="fm-modal wf-modal">
+        <h4>New workflow</h4>
+        <div className="fm-row"><label>Name</label><span className="fm-input wf-name" /></div>
+        <div className="fm-row"><label>Trigger</label>
+          <div className="fm-seg"><span className="wf-kw"><i className="fm-seg-fill wf-kwfill" />Keyword</span><span>Someone joins</span><span>Schedule</span></div>
+        </div>
+        <div className="fm-row"><label>Keyword</label><span className="fm-input mono wf-key" /></div>
+        <div className="fm-row top"><label>Reply</label><span className="fm-input area wf-text" /></div>
+        <div className="fm-branch wf-branch">
+          <div><b>If the message contains</b><span className="fm-input mono sm wf-cond" /></div>
+          <div><b>reply</b><span className="fm-input area sm wf-alt" /></div>
+        </div>
+        <div className="fm-modal-foot"><span className="fm-chip-btn">Cancel</span><span className="fm-chip-btn primary wf-save">Save workflow</span></div>
+      </div>
+      <Cursor />
+    </>
+  );
+}
+
+const workflowBuild: Build = (q) => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  tl.set(q('.fm-cursor'), { x: 700, y: 120, scale: 1 })
+    .set(q('.wf-trigger, .wf-reply'), { autoAlpha: 0 })
+    .set(q('.wf-branch'), { autoAlpha: 0, y: 10 })
+    .set(q('.wf-kwfill'), { autoAlpha: 0 });
+  tl.addLabel('c0', 0)
+    .fromTo(q('.wf-scrim'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 0)
+    .fromTo(q('.wf-modal'), { autoAlpha: 0, y: 24, scale: 0.97 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, ease: 'expo.out' }, 0.1);
+  typeInto(tl, q('.wf-name')[0], 'Incident triage', 0.7);
+  clickAt(tl, q, '.wf-kw', '>');
+  tl.to(q('.wf-kwfill'), { autoAlpha: 1, duration: 0.2 });
+  typeInto(tl, q('.wf-key')[0], '!incident', '>+0.2');
+  tl.to({}, { duration: 0.6 });
+  tl.addLabel('c1');
+  typeInto(tl, q('.wf-text')[0], 'Incident logged. Post impact, start time and owner in this thread.', 'c1+=0.2', 2);
+  tl.to({}, { duration: 0.8 });
+  tl.addLabel('c2')
+    .to(q('.wf-branch'), { autoAlpha: 1, y: 0, duration: 0.5 }, 'c2+=0.1');
+  typeInto(tl, q('.wf-cond')[0], 'sev1', '>');
+  typeInto(tl, q('.wf-alt')[0], 'SEV1 declared. Page the on-call now and open a huddle.', '>+0.2', 1.6);
+  clickAt(tl, q, '.wf-save', '>+0.3');
+  tl.to(q('.wf-modal'), { autoAlpha: 0, y: 16, scale: 0.98, duration: 0.4, ease: 'power2.in' })
+    .to(q('.wf-scrim'), { autoAlpha: 0, duration: 0.3 }, '<');
+  tl.addLabel('c3');
+  clickAt(tl, q, '.fm-composer', 'c3', 0.2);
+  typeInto(tl, q('.wf-draft')[0], '!incident sev1 checkout is down', '>');
+  eraseText(tl, q('.wf-draft')[0], '!incident sev1 checkout is down', '+=0.3');
+  tl.fromTo(q('.wf-trigger'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '<')
+    .fromTo(q('.wf-reply'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '+=0.7')
+    .to({}, { duration: 2.2 });
+  return tl;
+};
+
+// ======================= Search =======================
+
+const SEARCH_CHAPTERS: Chapter[] = [
+  { title: 'Press Ctrl K', text: 'From anywhere in Relay, Ctrl K (⌘K on a Mac) opens search over everything you can see.' },
+  { title: 'Type to filter', text: 'Channels, people and messages narrow down with every letter you type. No filters to set.' },
+  { title: 'Ask a question', text: 'End your search with a question mark and Relay picks the message that best answers it.' },
+  { title: 'Jump to the message', text: 'Pick a result and Relay opens the channel or thread right at that message.' },
+];
+
+function SearchMock() {
+  return (
+    <>
+      <Win channel="launch" topic="Launch prep for v2">
+        <div className="fm-feed">
+          <Msg who="Maya" c="#d7765a" l="M" text="Launch copy is ready for review" />
+          <Msg who="Ken" c="#3aa79b" l="K" text="Pricing stays the same as v1" />
+          <Msg className="sr-target" who="Priya" c="#8a6bd8" l="P" text="We ship at 4 PM if QA passes" />
+          <Msg who="Maya" c="#d7765a" l="M" text="Press kit goes out tomorrow morning" />
+        </div>
+        <div className="fm-composer"><span className="fm-placeholder">Message #launch</span></div>
+      </Win>
+      <div className="fm-scrim sr-scrim" />
+      <div className="fm-keys sr-keys"><kbd className="sr-k1">Ctrl</kbd><kbd className="sr-k2">K</kbd></div>
+      <div className="fm-palette sr-palette">
+        <div className="fm-palette-input"><Icon n="search" /><span className="sr-q" /><i className="fm-caret" /></div>
+        <div className="fm-palette-list sr-list">
+          <small>Channels</small>
+          <div className="fm-res"><span className="fm-res-ico">#</span>launch</div>
+          <small>Messages</small>
+          <div className="fm-res"><span className="fm-res-ico"><Icon n="message" size={14} /></span><span><b>Maya</b> in #launch: <mark>Launch</mark> copy is ready for review</span></div>
+          <div className="fm-res"><span className="fm-res-ico"><Icon n="message" size={14} /></span><span><b>Ken</b> in #general: <mark>Launch</mark> retro on Friday</span></div>
+        </div>
+        <div className="fm-palette-list sr-answer">
+          <div className="fm-res best"><span className="fm-res-ico"><Icon n="sparkles" size={14} /></span><span><b>Best answer</b> from Priya in #launch<em>We ship at 4 PM if QA passes</em></span></div>
+          <small>Messages</small>
+          <div className="fm-res"><span className="fm-res-ico"><Icon n="message" size={14} /></span><span><b>Ken</b> in #launch: when do we freeze copy?</span></div>
+        </div>
+      </div>
+      <Cursor />
+    </>
+  );
+}
+
+const searchBuild: Build = (q) => {
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  tl.set(q('.fm-cursor'), { x: 760, y: 470, scale: 1 })
+    .set(q('.sr-scrim, .sr-palette, .sr-keys, .sr-answer'), { autoAlpha: 0 })
+    .set(q('.sr-list .fm-res, .sr-list small'), { autoAlpha: 0 })
+    .set(q('.sr-target'), { backgroundColor: 'rgba(255,214,10,0)' });
+  tl.addLabel('c0', 0)
+    .fromTo(q('.sr-keys'), { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 0.3)
+    .to(q('.sr-k1'), { y: 3, boxShadow: '0 0 0 rgba(0,0,0,.2)', duration: 0.1 }, '+=0.3')
+    .to(q('.sr-k2'), { y: 3, boxShadow: '0 0 0 rgba(0,0,0,.2)', duration: 0.1 }, '+=0.15')
+    .to(q('.sr-k1, .sr-k2'), { y: 0, boxShadow: '0 3px 0 rgba(0,0,0,.18)', duration: 0.15 }, '+=0.2')
+    .to(q('.sr-keys'), { autoAlpha: 0, y: 10, duration: 0.3 }, '+=0.1')
+    .to(q('.sr-scrim'), { autoAlpha: 1, duration: 0.3 }, '<')
+    .fromTo(q('.sr-palette'), { autoAlpha: 0, y: -16, scale: 0.98 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.5, ease: 'expo.out' }, '<')
+    .to({}, { duration: 0.6 });
+  tl.addLabel('c1');
+  typeInto(tl, q('.sr-q')[0], 'launch', 'c1+=0.2', 0.6);
+  tl.to(q('.sr-list small, .sr-list .fm-res'), { autoAlpha: 1, duration: 0.3, stagger: 0.12 }, '<0.2')
+    .to({}, { duration: 1.2 });
+  tl.addLabel('c2')
+    .to(q('.sr-list'), { autoAlpha: 0, duration: 0.25 }, 'c2');
+  typeInto(tl, q('.sr-q')[0], 'When do we ship?', 'c2+=0.2', 0.9);
+  tl.fromTo(q('.sr-answer'), { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '>+0.1')
+    .fromTo(q('.sr-answer .best'), { boxShadow: '0 0 0 0 rgba(0,113,227,0)' }, { boxShadow: '0 0 0 2px rgba(0,113,227,.5)', duration: 0.4 })
+    .to({}, { duration: 1 });
+  tl.addLabel('c3');
+  clickAt(tl, q, '.sr-answer .best', 'c3');
+  tl.to(q('.sr-palette'), { autoAlpha: 0, y: -10, duration: 0.3, ease: 'power2.in' })
+    .to(q('.sr-scrim'), { autoAlpha: 0, duration: 0.3 }, '<')
+    .to(q('.sr-target'), { backgroundColor: 'rgba(255,214,10,.28)', duration: 0.3 })
+    .to(q('.sr-target'), { backgroundColor: 'rgba(255,214,10,0)', duration: 1.4, ease: 'power1.in' }, '+=0.8')
+    .to({}, { duration: 0.6 });
+  return tl;
+};
+
+// ======================= Page content =======================
+
+interface Detail { chapter: number; eyebrow: string; title: string; text: string; points: string[] }
+interface Fact { icon: IconName; title: string; text: string }
+interface PageDef {
+  eyebrow: string;
+  title: ReactNode;
+  lede: string;
+  film: { label: string; chapters: Chapter[]; build: Build; Mock: () => ReactNode };
+  details: Detail[];
+  facts: Fact[];
+  next: Exclude<Route, 'home'>;
+}
+
+const PAGE_DEFS: Record<Exclude<Route, 'home'>, PageDef> = {
+  overview: {
+    eyebrow: 'Overview',
+    title: <>Every conversation,<br />in one calm place</>,
+    lede: 'Relay is team chat built around channels, with threads, huddles, canvases and a bot teammate that keeps the follow-ups from slipping.',
+    film: { label: 'A morning in #launch', chapters: OVERVIEW_CHAPTERS, build: overviewBuild, Mock: OverviewMock },
+    details: [
+      { chapter: 0, eyebrow: 'Channels', title: 'One room per team, project or topic', text: 'Public channels anyone can find, private channels for the few who need them, and direct messages for everything in between.', points: ['Public and private channels', 'Direct messages and group DMs', 'Starred channels and custom sidebar sections'] },
+      { chapter: 1, eyebrow: 'Threads', title: 'Side conversations stay on the side', text: 'Reply to any message to start a thread. The channel shows a reply count, and the full discussion opens in a panel beside it.', points: ['Reply counts on the parent message', 'Thread panel next to the channel', 'Pin and save any message'] },
+      { chapter: 2, eyebrow: 'Mentions', title: 'Reach the right person', text: 'An @mention notifies that teammate and shows up in their Activity view, so a question never gets lost in the scroll.', points: ['@mentions and reactions in Activity', 'Per-channel notification levels', 'Do not disturb with a schedule'] },
+      { chapter: 3, eyebrow: 'Relay Bot', title: 'Catch up in one message', text: 'Recap summarises a channel in seconds. The same bot answers questions, sends reminders and posts huddle notes.', points: ['Channel recaps and thread summaries', 'Daily recaps and file summaries', 'Answers from your own messages'] },
+    ],
+    facts: [
+      { icon: 'message', title: 'Unlimited history', text: 'Every message stays searchable. Nothing ages out.' },
+      { icon: 'headphones', title: 'Huddles', text: 'Voice and screen share in any channel.' },
+      { icon: 'file', title: 'Canvases', text: 'A document for every channel, beside the chat.' },
+      { icon: 'checkSquare', title: 'Lists', text: 'Track work by status and owner.' },
+      { icon: 'zap', title: 'Workflows', text: 'Keyword, join and schedule triggers.' },
+      { icon: 'clock', title: 'Reminders', text: 'Scheduled messages and /remind.' },
+      { icon: 'search', title: 'Search', text: 'Ctrl K, with answers to questions.' },
+      { icon: 'lock', title: 'Private channels', text: 'Plus guest access and user groups.' },
+      { icon: 'settings', title: 'Admin console', text: 'Roles, invites and moderation.' },
+    ],
+    next: 'huddles',
+  },
+  huddles: {
+    eyebrow: 'Huddles',
+    title: <>Talk it through<br />without leaving the channel</>,
+    lede: 'A huddle is a quick voice call that lives inside a channel. Start one in a click, share your screen, and the notes post themselves when you hang up.',
+    film: { label: 'A huddle in #design', chapters: HUDDLE_CHAPTERS, build: huddleBuild, Mock: HuddleMock },
+    details: [
+      { chapter: 0, eyebrow: 'Start', title: 'One click from any conversation', text: 'The headphones button sits in every channel header. Typing /huddle in the composer does the same. The channel shows a live indicator in the sidebar so others know where to find you.', points: ['Headphones button in the channel header', '/huddle from the message composer', 'Live indicator in the sidebar and the Huddles view'] },
+      { chapter: 1, eyebrow: 'Join', title: 'Up to six voices, peer to peer', text: 'Audio travels directly between browsers over WebRTC, so a huddle starts fast and stays clear. Speaking rings and level meters show who is talking.', points: ['Up to 6 people in a huddle', 'Direct browser-to-browser audio', 'Mute and unmute in one click'] },
+      { chapter: 2, eyebrow: 'Share', title: 'Show the work instead of describing it', text: 'Share your screen and everyone in the huddle sees it in a large tile, with your name on it. Stop sharing any time without leaving.', points: ['Full screen, window or tab', 'Shown to everyone in the huddle', 'Stop sharing without hanging up'] },
+      { chapter: 3, eyebrow: 'Notes', title: 'The conversation leaves a trace', text: 'When a huddle that ran longer than 30 seconds ends, Relay Bot posts its length, who joined, and any message from the huddle that reads like an action item.', points: ['Duration and participants', 'Messages shared during the huddle', 'Action items picked from the chat'] },
+    ],
+    facts: [
+      { icon: 'users', title: 'Up to 6 people', text: 'Room for a working session, not a town hall.' },
+      { icon: 'headphones', title: 'Peer to peer', text: 'WebRTC audio straight between browsers.' },
+      { icon: 'monitor', title: 'Screen share', text: 'One click, visible to everyone in the call.' },
+      { icon: 'micOff', title: 'Quick mute', text: 'A muted badge shows on your tile.' },
+      { icon: 'message', title: 'Chat alongside', text: 'The channel keeps working during the call.' },
+      { icon: 'file', title: 'Automatic notes', text: 'Posted when a huddle over 30 seconds ends.' },
+    ],
+    next: 'workflows',
+  },
+  workflows: {
+    eyebrow: 'Workflows',
+    title: <>Hand the busywork<br />to Relay Bot</>,
+    lede: 'Workflows let the bot welcome people, run standups, triage incidents and answer the same question for the hundredth time, while your team does the actual work.',
+    film: { label: 'Building an incident workflow', chapters: WORKFLOW_CHAPTERS, build: workflowBuild, Mock: WorkflowMock },
+    details: [
+      { chapter: 0, eyebrow: 'Triggers', title: 'Three ways to start', text: 'Fire on a keyword in any channel or one channel, when someone joins a channel, or at a set time, with an option for weekdays only.', points: ['Keyword, like !standup or !it', 'Someone joins a channel', 'Schedule, such as weekdays at 9:30'] },
+      { chapter: 1, eyebrow: 'Reply', title: 'Say it once, post it forever', text: 'Write the message the bot should send. It answers in the channel where the trigger happened, so people reply right there.', points: ['Posted by Relay Bot in the channel', 'Turn any workflow on or off', 'Edit or delete from the Workflow Builder'] },
+      { chapter: 2, eyebrow: 'Branches', title: 'A different answer when it matters', text: 'Add a condition and a second reply. If the triggering message contains a word, like sev1 or password, the bot sends that reply instead.', points: ['One condition per workflow', 'Matches words in the message', 'Escalate, route or redirect'] },
+      { chapter: 3, eyebrow: 'Run', title: 'Answers in a second, every time', text: 'Once saved, the workflow runs for everyone. Nobody has to remember the template, the on-call rota or the reset link.', points: ['Runs for the whole workspace', 'Works in threads and channels', 'Pairs with /remind and scheduled messages'] },
+    ],
+    facts: [
+      { icon: 'zap', title: 'Standup check-in', text: 'Keyword !standup asks the three standup questions.' },
+      { icon: 'clock', title: 'Daily standup', text: 'Weekdays at 9:30 in #general.' },
+      { icon: 'flag', title: 'Incident triage', text: '!incident, with a sev1 branch that escalates.' },
+      { icon: 'settings', title: 'IT help desk', text: '!it, with a branch for password resets.' },
+      { icon: 'star', title: 'Celebrate wins', text: '!win logs it to the wins board.' },
+      { icon: 'bell', title: 'Reminders', text: '/remind me stretch in 10m, and scheduled messages.' },
+    ],
+    next: 'search',
+  },
+  search: {
+    eyebrow: 'Search',
+    title: <>Find anything<br />in a keystroke</>,
+    lede: 'One shortcut searches every channel, person and message you can see, and when you ask a question, Relay points you to the answer.',
+    film: { label: 'Searching #launch', chapters: SEARCH_CHAPTERS, build: searchBuild, Mock: SearchMock },
+    details: [
+      { chapter: 0, eyebrow: 'Shortcut', title: 'Always one shortcut away', text: 'Ctrl K on Windows and Linux, ⌘K on a Mac, or the search bar at the top of the app. It opens over whatever you are doing and closes with Escape.', points: ['Ctrl K or ⌘K from anywhere', 'Search bar in the top bar', 'Escape to close'] },
+      { chapter: 1, eyebrow: 'Results', title: 'Channels, people and messages together', text: 'Results narrow with every letter. Channels and direct messages come first, then the most recent matching messages across the workspace.', points: ['Channels and DMs by name', 'Messages by their text', 'Newest matches first'] },
+      { chapter: 2, eyebrow: 'Answers', title: 'Ask, and get the message that answers', text: 'End a search with a question mark. Relay compares your question with what people have said and puts the best answer at the top.', points: ['Works on any question ending in ?', 'Answers from your own conversations', 'Shows who said it and where'] },
+      { chapter: 3, eyebrow: 'Jump', title: 'Straight to the moment', text: 'Pick any result and Relay opens that channel or thread at the message, so you see it with the conversation around it.', points: ['Opens threads in place', 'Keeps the surrounding context', 'Save messages for later with the star'] },
+    ],
+    facts: [
+      { icon: 'command', title: 'Ctrl K / ⌘K', text: 'Opens from anywhere in the app.' },
+      { icon: 'users', title: 'People and channels', text: 'Jump to a DM or channel by name.' },
+      { icon: 'message', title: 'Every message', text: 'Full history, nothing ages out.' },
+      { icon: 'sparkles', title: 'Best answer', text: 'Ask with a question mark.' },
+      { icon: 'bookmark', title: 'Saved for later', text: 'Star a message to keep it in Later.' },
+      { icon: 'pin', title: 'Pinned messages', text: 'Keep the important ones at hand.' },
+    ],
+    next: 'overview',
+  },
+};
+
+const NEXT_LABEL: Record<Exclude<Route, 'home'>, string> = { overview: 'Overview', huddles: 'Huddles', workflows: 'Workflows', search: 'Search' };
+
+export function FeaturePage({ page, go, onGetStarted }: { page: Exclude<Route, 'home'>; go: (r: Route) => void; onGetStarted: () => void }) {
+  const def = PAGE_DEFS[page];
+  const root = useRef<HTMLDivElement>(null);
+  const { Mock } = def.film;
+
+  useLayoutEffect(() => {
+    const scroller = root.current!;
+    scroller.scrollTop = 0;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const ctx = gsap.context(() => {
+      gsap.timeline({ defaults: { ease: 'expo.out' } })
+        .from('.ap-nav', { y: -16, opacity: 0, duration: 0.8 })
+        .from('.fp-eyebrow, .fp-title, .fp-lede, .fp-actions', { y: 24, opacity: 0, duration: 1, stagger: 0.08 }, 0.1)
+        .from('.fp-film', { y: 60, opacity: 0, duration: 1.2 }, 0.35);
+      gsap.utils.toArray<HTMLElement>('.ap-reveal').forEach((el) => {
+        gsap.from(el, { y: 40, opacity: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: el, scroller, start: 'top 88%' } });
+      });
+    }, root);
+    return () => ctx.revert();
+  }, [page]);
+
+  return (
+    <div className="ap fp" ref={root}>
+      <section className="ap-hero fp-hero">
+        <div className="ap-sky" aria-hidden />
+        <SiteNav route={page} go={go} onGetStarted={onGetStarted} />
+        <div className="fp-head">
+          <p className="fp-eyebrow">{def.eyebrow}</p>
+          <h1 className="fp-title">{def.title}</h1>
+          <p className="fp-lede">{def.lede}</p>
+          <div className="fp-actions">
+            <button className="ap-pill blue" onClick={onGetStarted}>Try it free</button>
+            <a className="ap-more" href="#film">Watch how it works <Icon n="chevron" size={14} /></a>
+          </div>
+        </div>
+        <div className="fp-film" id="film">
+          <Film key={page} label={def.film.label} chapters={def.film.chapters} build={def.film.build}><Mock /></Film>
+        </div>
+      </section>
+
+      <section className="fp-details">
+        {def.details.map((d, i) => (
+          <article key={d.title} className={`fp-detail ap-reveal ${i % 2 ? 'flip' : ''}`}>
+            <div className="fp-detail-copy">
+              <p className="fp-eyebrow">{d.eyebrow}</p>
+              <h2>{d.title}</h2>
+              <p>{d.text}</p>
+              <ul>{d.points.map((pt) => <li key={pt}><Icon n="check" size={16} />{pt}</li>)}</ul>
+            </div>
+            <div className="fp-detail-media">
+              <Clip key={`${page}-${d.chapter}`} build={def.film.build} chapter={d.chapter} count={def.film.chapters.length}><Mock /></Clip>
+              <p className="fp-clip-caption">{def.film.chapters[d.chapter].title}</p>
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section className="fp-facts ap-reveal">
+        <h2>{page === 'overview' ? 'Everything included, every plan' : `${def.eyebrow} at a glance`}</h2>
+        <div className="fp-fact-grid">
+          {def.facts.map((f) => (
+            <div key={f.title} className="fp-fact">
+              <Icon n={f.icon} size={22} />
+              <h3>{f.title}</h3>
+              <p>{f.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="ap-final ap-reveal">
+        <h2>Ready when your team is</h2>
+        <p>Free to start. Every feature unlocked.</p>
+        <div className="fp-final-actions">
+          <button className="ap-pill blue" onClick={onGetStarted}>Get started free</button>
+          <RouteLink to={def.next} go={go} className="ap-more">Next: {NEXT_LABEL[def.next]} <Icon n="chevron" size={14} /></RouteLink>
+        </div>
+      </section>
+
+      <SiteFooter go={go} />
+    </div>
+  );
+}
