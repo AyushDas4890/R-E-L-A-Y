@@ -34,6 +34,7 @@ const PATHS = {
   trash: 'M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2',
   flag: 'M4 22V4M4 4h14l-2 4 2 4H4',
   monitor: 'M2 4h20v12H2zM8 21h8M12 16v5',
+  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   volumeX: 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6',
   search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.3-4.3',
   command: 'M15 6a3 3 0 1 1 3 3h-12a3 3 0 1 1 3-3v12a3 3 0 1 1-3-3h12a3 3 0 1 1-3 3z',

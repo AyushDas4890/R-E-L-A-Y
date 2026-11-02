@@ -369,6 +369,7 @@ export default function App() {
               </div>
             )}
           </div>
+          <button className="rail-btn" title="Sign out" onClick={leave}><Icon n="logout" size={20} /><span>Sign out</span></button>
           <button className="rail-me" title="Profile and preferences" onClick={() => setModal('profile')}>
             <Avatar user={me} size={34} online={connected} />
             {dnd.active && <i className="dnd-badge" aria-hidden><Icon n="moon" size={12} /></i>}
