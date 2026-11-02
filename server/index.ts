@@ -1156,8 +1156,9 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
           return;
         }
         audit(userId, 'account.delete', db.users[userId].name);
-        evict(userId, 'no-workspace', `Your account in ${db.meta.name} was deleted.`);
+        // Erase first: evicting sends the person their workspace list, which must no longer include this one.
         forget(userId);
+        evict(userId, 'no-workspace', `Your account in ${db.meta.name} was deleted.`);
         // Messages, channels and the user list changed under everyone, so refresh them.
         for (const uid of onlineIds()) resendInit(uid);
         broadcastAdmin();

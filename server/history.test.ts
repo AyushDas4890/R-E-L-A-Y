@@ -43,6 +43,22 @@ test('messages sharing a timestamp are split cleanly by id', () => {
   assert.equal(page.cursor, null);
 });
 
+test('same-millisecond messages keep their arrival order, whatever their ids', () => {
+  // ids deliberately sort the opposite way to arrival order
+  const all = ['d', 'c', 'b', 'a'].map((id) => msg(id, 500));
+  const first = recentMessages(all, new Set(['c']), new Set(), 2);
+  assert.deepEqual(ids(first.messages), ['b', 'a']);
+  const page = olderMessages(all, 'c', first.history.c, 2);
+  assert.deepEqual(ids(page.messages), ['d', 'c']);
+  assert.equal(page.cursor, null);
+  assert.deepEqual(ids(recentMessages(all, new Set(['c']), new Set(), 10).messages), ['d', 'c', 'b', 'a']);
+});
+
+test('a bot reply in the same millisecond as its trigger stays below it', () => {
+  const all = [msg('zzz-question', 700), msg('aaa-botreply', 700, { threadId: 'zzz-question' })];
+  assert.deepEqual(ids(recentMessages(all, new Set(['c']), new Set()).messages), ['zzz-question', 'aaa-botreply']);
+});
+
 test('a reply brings its older parent along', () => {
   const all = [msg('old', 1), ...run(60), msg('reply', 5000, { threadId: 'old' })];
   const { messages } = recentMessages(all, new Set(['c']), new Set(), 50);
