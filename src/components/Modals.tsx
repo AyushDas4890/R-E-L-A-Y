@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PLAN_FEATURES } from '../types.ts';
-import type { Workflow } from '../types.ts';
+import type { SearchHit, Workflow } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { channelLabel, timeLabel } from '../format.tsx';
 import { searchAnswer, WORKFLOW_TEMPLATES } from '../premium.ts';
@@ -27,9 +27,24 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   );
 }
 
-export function SearchPalette({ onClose, onPick }: { onClose: () => void; onPick: (channelId: string, threadId?: string) => void }) {
-  const { snap } = useRelayCtx();
+export function SearchPalette({ onClose, onPick, onOpenPage }: { onClose: () => void; onPick: (channelId: string, threadId?: string) => void; onOpenPage?: (id: string) => void }) {
+  const { snap, send, listen } = useRelayCtx();
   const [q, setQ] = useState('');
+  const [pages, setPages] = useState<{ q: string; hits: SearchHit[] } | null>(null);
+  // Pages and database rows are searched on the server, so only what this person may open comes back.
+  useEffect(
+    () =>
+      listen((ev) => {
+        if (ev.t === 'searchResults') setPages({ q: ev.q, hits: ev.hits });
+      }),
+    [listen],
+  );
+  useEffect(() => {
+    const needle = q.trim();
+    if (needle.length < 2 || !onOpenPage) return;
+    const t = setTimeout(() => send({ t: 'search', q: needle }), 180);
+    return () => clearTimeout(t);
+  }, [q, send, onOpenPage]);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => inputRef.current?.focus(), []);
 
@@ -69,6 +84,12 @@ export function SearchPalette({ onClose, onPick }: { onClose: () => void; onPick
               </div>
             </button>
           )}
+          {onOpenPage && pages && pages.q === q.trim() && pages.hits.slice(0, 8).map((h) => (
+            <button key={h.id} onClick={() => { onOpenPage(h.id); onClose(); }}>
+              <span aria-hidden>{h.icon || (h.kind === 'database' ? '🗂️' : h.kind === 'row' ? '▫️' : '📄')}</span>
+              <div><strong>{h.title}</strong>{h.snippet && <small>{h.snippet.slice(0, 100)}</small>}</div>
+            </button>
+          ))}
           {results.channels.map(({ c, label }) => (
             <button key={c.id} onClick={() => onPick(c.id)}>
               <span>{c.kind === 'dm' ? '●' : c.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span> {label}
@@ -83,7 +104,7 @@ export function SearchPalette({ onClose, onPick }: { onClose: () => void; onPick
               </div>
             </button>
           ))}
-          {q && results.channels.length + results.messages.length === 0 && <p className="muted pad">No matches.</p>}
+          {q && results.channels.length + results.messages.length + (pages?.q === q.trim() ? pages.hits.length : 0) === 0 && <p className="muted pad">No matches.</p>}
         </div>
       </div>
     </div>

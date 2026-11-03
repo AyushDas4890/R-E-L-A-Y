@@ -52,6 +52,7 @@ import { digest, digestLine, enqueue, mayEmail, recipients, takeDue, type Outbox
 import { applyListPatch, mergeWorkflows, removeVerdict, userView } from './access.ts';
 import { cleanPrefs, mergeImport, visiblePrefs, withDnd, withEmail, withLevel, withRead } from './prefs.ts';
 import { createPageRuntime } from './pageRuntime.ts';
+import { NOT_FOUND_HTML, PUBLISH_HEADERS, renderPublished } from './publish.ts';
 import { createPageStore, type PagesIndex, type PageStore } from './pageStore.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -303,7 +304,15 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
     store: outside.pageStore,
     index: outside.pageIndex,
     clients: () => clients,
-    who: (userId) => db.users[userId],
+    workspaceId: id,
+    workspaceName: () => db.meta.name,
+    barred: (a, b) => barred(a, b, db.groups, db.settings.barriers),
+    groupMembers: (gid) => db.groups.find((g) => g.id === gid)?.members ?? [],
+    who: (userId) => {
+      const u = db.users[userId];
+      return u ? { id: u.id, role: u.role, inactive: u.inactive, bot: u.bot, groups: db.groups.filter((g) => g.members.includes(userId)).map((g) => g.id) } : undefined;
+    },
+    people: () => Object.fromEntries(Object.values(db.users).filter((u) => !u.inactive && !u.bot).map((u) => [u.id, u.name])),
     send,
     audit: (actor, action, detail) => audit(actor, action, detail),
   });
@@ -406,6 +415,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       admin: isAdmin(db.users[userId]) ? adminData() : undefined,
       pages: pages.nodesFor(userId),
       pageFavorites: pages.favoritesFor(userId),
+      teamspaces: pages.teamspacesFor(userId),
+      inbox: pages.inboxFor(userId),
     };
   }
 
@@ -1406,10 +1417,23 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
   }
 
   function stop(): void {
+    pages.stop();
     for (const t of timers) clearInterval(t);
   }
 
-  return { id, db, join, handle, leave, summary, flush, stop, isMember: (userId: string) => !!db.users[userId] && !db.users[userId].inactive, hasInvite: (code?: string) => validateInvite(code, db.invites) };
+  // A published page as HTML for anyone with the link, or null.
+  async function renderPublic(token: string): Promise<string | null> {
+    const found = await pages.published(token);
+    if (!found) return null;
+    const idx = outside.pageIndex.pages;
+    return renderPublished(found.page, { blocks: found.blocks, db: found.db }, {
+      siteName: db.meta.name,
+      linkFor: (pid) => { const p = Object.hasOwn(idx, pid) ? idx[pid] : undefined; return p?.publish && p.trashedAt === undefined ? `/p/${p.publish.token}` : null; },
+      titleFor: (pid) => { const p = Object.hasOwn(idx, pid) ? idx[pid] : undefined; return p && p.trashedAt === undefined && (p.parentId === found.page.id || p.publish) ? p.title : null; },
+    });
+  }
+
+  return { id, db, join, handle, leave, summary, flush, stop, renderPublic, isMember: (userId: string) => !!db.users[userId] && !db.users[userId].inactive, hasInvite: (code?: string) => validateInvite(code, db.invites) };
 }
 
 const mime: Record<string, string> = {
@@ -1420,11 +1444,38 @@ const mime: Record<string, string> = {
   '.json': 'application/json',
 };
 
+// Published pages are public, so they get their own small rate limit per address.
+const publicHits = new Map<string, { n: number; at: number }>();
+async function servePublished(req: http.IncomingMessage, res: http.ServerResponse, rawToken: string): Promise<void> {
+  const ip = req.socket.remoteAddress ?? '?';
+  const now = Date.now();
+  const hit = publicHits.get(ip);
+  if (!hit || now - hit.at > 60_000) publicHits.set(ip, { n: 1, at: now });
+  else if (++hit.n > 120) {
+    res.writeHead(429, { 'content-type': 'text/plain', 'retry-after': '60' });
+    res.end('Too many requests.');
+    return;
+  }
+  if (publicHits.size > 5000) publicHits.clear();
+  let token = '';
+  try {
+    token = decodeURIComponent(rawToken);
+  } catch { /* not a token */ }
+  const rt = runtimes.get(token.split('.')[0] ?? '');
+  const html = /^[A-Za-z0-9_.-]{1,120}$/.test(token) && rt ? await rt.renderPublic(token).catch(() => null) : null;
+  res.writeHead(html ? 200 : 404, PUBLISH_HEADERS);
+  res.end(req.method === 'HEAD' ? undefined : html ?? NOT_FOUND_HTML);
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (url.pathname === '/healthz') {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, workspaces: runtimes.size }));
+    return;
+  }
+  if (url.pathname.startsWith('/p/')) {
+    void servePublished(req, res, url.pathname.slice(3));
     return;
   }
   if (!fs.existsSync(distDir)) {

@@ -6,6 +6,8 @@ import './styles.css';
 import './minimal.css';
 import './notion.css';
 import './pages.css';
+import './db.css';
+import './collab.css';
 import './help.css';
 
 createRoot(document.getElementById('root')!).render(

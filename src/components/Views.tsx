@@ -33,7 +33,7 @@ function FeedRow({ m, verb }: { m: Message; verb: string }) {
 }
 
 // Activity: everything that's about you, with Slack-style tabs.
-export function ActivityView() {
+export function ActivityView({ embedded = false }: { embedded?: boolean } = {}) {
   const { snap } = useRelayCtx();
   const [tab, setTab] = useState<ActivityTab>('all');
   const items = useMemo(() => {
@@ -57,7 +57,7 @@ export function ActivityView() {
   return (
     <>
       <header className="channel-head">
-        <div className="channel-title"><h2>Activity</h2></div>
+        {!embedded && <div className="channel-title"><h2>Activity</h2></div>}
         <nav className="channel-tabs" aria-label="Activity filters">
           {(['all', 'mentions', 'threads', 'dms'] as ActivityTab[]).map((t) => (
             <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{{ all: 'All', mentions: 'Mentions', threads: 'Threads', dms: 'DMs' }[t]}</button>

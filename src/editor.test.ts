@@ -92,7 +92,8 @@ test('a / or @ right before the caret opens a menu, but not in the middle of a w
 
 test('date choices are real calendar days', () => {
   const d = dateChoices(new Date(2026, 10, 3));
-  assert.deepEqual(d.slice(0, 3).map((x) => x.id), ['2026-11-03', '2026-11-04', '2026-11-02']);
+  assert.deepEqual(d.filter((x) => !x.label.startsWith('Remind')).slice(0, 3).map((x) => x.id), ['2026-11-03', '2026-11-04', '2026-11-02']);
+  assert.ok(d.slice(0, 2).every((x) => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(x.id)));
   assert.equal(d.find((x) => x.label === 'Next Monday')?.id, '2026-11-09');
   assert.equal(d.find((x) => x.label === 'In a week')?.id, '2026-11-10');
 });

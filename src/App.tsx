@@ -33,12 +33,18 @@ import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, usePrefsMigrati
 import { clampSide, SIDE_DEFAULT, useAppearance } from './appearance.ts';
 import { Backdrop } from './components/Appearance.tsx';
 import { Icon } from './components/Icon.tsx';
-import { PageTree } from './components/pages/PageTree.tsx';
+import { PageTree, type NewPageOptions } from './components/pages/PageTree.tsx';
+import { CalendarApp } from './components/pages/CalendarApp.tsx';
+import { HomeView } from './components/pages/HomeView.tsx';
+import { InboxView } from './components/pages/InboxView.tsx';
+import { LibraryView } from './components/pages/LibraryView.tsx';
+import { TeamspaceModal } from './components/pages/TeamspaceModal.tsx';
+import { pushRecent } from './recent.ts';
 import { PageView } from './components/pages/PageView.tsx';
 
-type Modal = null | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'workflows' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
+type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'workflows' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
-type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page';
+type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page' | 'home' | 'calendar' | 'library';
 type Menu = null | 'workspace' | 'more' | 'create' | 'dnd' | 'bell' | 'addTab' | 'addChannel';
 interface Place { view: View; channel: string; page?: string }
 
@@ -51,7 +57,7 @@ if (params.get('ws')) try { localStorage.setItem('relay.workspace', params.get('
 // Back would drop the visitor mid-page, on a section they didn't ask for.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const LEVEL_LABEL: Record<ChannelLevel, string> = { all: 'All new posts', mentions: 'Just mentions', mute: 'Mute' };
-const VIEW_LABEL: Record<Exclude<View, 'channel' | 'page'>, string> = { activity: 'Inbox', dms: 'Direct messages', saved: 'Later', directory: 'People', huddles: 'Huddles' };
+const VIEW_LABEL: Record<Exclude<View, 'channel' | 'page'>, string> = { activity: 'Inbox', dms: 'Direct messages', saved: 'Later', directory: 'People', huddles: 'Huddles', home: 'Home', calendar: 'Calendar', library: 'Templates' };
 const remember = (key: string, value: string) => {
   try { localStorage.setItem(key, value); } catch { /* storage blocked: the setting just won't persist */ }
 };
@@ -299,10 +305,15 @@ export default function App() {
     setPanel(null);
   };
   const showView = (v: View) => go({ view: v });
-  const openPage = (id: string) => go({ view: 'page', page: id });
-  const createPage = (parentId: string | null, shared: boolean) => {
+  const openPage = (id: string) => {
+    pushRecent(id.split('.')[0]);
+    go({ view: 'page', page: id });
+  };
+  const createPage = (parentId: string | null, space: string | null, options: NewPageOptions = {}) => {
     openAfterCreate.current = true;
-    send({ t: 'pageCreate', parentId, shared });
+    const where = space ? { teamspaceId: space, shared: true } : {};
+    if (options.db) send({ t: 'dbCreate', parentId, ...where, title: '', ...(typeof options.db === 'string' ? { preset: options.db } : {}) });
+    else send({ t: 'pageCreate', parentId, ...where, ...(options.template ? { template: options.template } : {}) });
   };
   const toggleMenu = (m: Menu) => setMenu(menu === m ? null : m);
   const section = (key: string, label: string, actions?: ReactNode) => (
@@ -485,10 +496,12 @@ export default function App() {
           </header>
           <div className="side-top notion-only">
             <button className="side-item" onClick={() => setModal('search')}><span className="hash"><Icon n="search" /></span><span className="label">Search</span></button>
+            <button className={`side-item ${view === 'home' ? 'active' : ''}`} onClick={() => showView('home')}><span className="hash"><Icon n="home" /></span><span className="label">Home</span></button>
             <button className={`side-item ${view === 'activity' ? 'active' : ''}`} onClick={() => showView('activity')}>
               <span className="hash"><Icon n="inbox" /></span><span className="label">Inbox</span>
-              {totalUnread > 0 && <span className="count">{totalUnread}</span>}
+              {totalUnread + snap.inbox.filter((i) => !i.read).length > 0 && <span className="count">{totalUnread + snap.inbox.filter((i) => !i.read).length}</span>}
             </button>
+            <button className={`side-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => showView('calendar')}><span className="hash"><Icon n="clock" /></span><span className="label">Calendar</span></button>
           </div>
           <div className="side-scroll">
             {navItem('huddles', <Icon n="headphones" />, 'Huddles')}
@@ -496,7 +509,7 @@ export default function App() {
             {!notion && navItem('activity', '@', 'Mentions & reactions')}
             {navItem('saved', <Icon n="bookmark" />, 'Later')}
 
-            <PageTree nodes={snap.pages} favorites={snap.pageFavorites} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} />
+            <PageTree nodes={snap.pages} favorites={snap.pageFavorites} teamspaces={snap.teamspaces} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} onLibrary={() => showView('library')} onManageSpaces={() => setModal('spaces')} />
 
             {section('starred', notion ? 'Favorites' : 'Starred')}
             {!collapsed.starred && starred.map(sidebarItem)}
@@ -557,7 +570,10 @@ export default function App() {
           {!connected && <div className="banner">Reconnecting…</div>}
           {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
           {view === 'page' && place.page ? <PageView key={place.page} pageId={place.page} onOpen={openPage} onGone={() => go({ view: 'channel' })} />
-            : view === 'activity' ? <ActivityView />
+            : view === 'home' ? <HomeView onOpen={openPage} onNew={(db) => createPage(null, null, db ? { db: true } : {})} onLibrary={() => showView('library')} onCalendar={() => showView('calendar')} />
+            : view === 'calendar' ? <CalendarApp onOpen={openPage} />
+            : view === 'library' ? <LibraryView onOpen={openPage} />
+            : view === 'activity' ? (notion ? <InboxView onOpen={openPage} /> : <ActivityView />)
             : view === 'saved' ? <SavedView />
             : view === 'dms' ? <DmsView onNew={() => showView('directory')} />
             : view === 'directory' ? <DirectoryView onMessage={dmWith} />
@@ -697,6 +713,7 @@ export default function App() {
       {modal === 'search' && (
         <SearchPalette
           onClose={() => setModal(null)}
+          onOpenPage={openPage}
           onPick={(cid, tid) => {
             openChannel(cid);
             if (tid) setPanel({ kind: 'thread', id: tid });
@@ -704,6 +721,7 @@ export default function App() {
           }}
         />
       )}
+      {modal === 'spaces' && <TeamspaceModal onClose={() => setModal(null)} />}
       {modal === 'new' && <NewChannelModal onClose={() => setModal(null)} />}
       {modal === 'profile' && <ProfileModal onClose={() => setModal(null)} appearance={appearance} />}
       {modal === 'plan' && <PlanModal onClose={() => setModal(null)} />}

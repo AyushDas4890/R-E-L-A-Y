@@ -276,6 +276,9 @@ async function room() {
   const rt = createPageRuntime({
     store,
     index,
+    workspaceId: 'ws',
+    workspaceName: () => 'Test',
+    people: () => Object.fromEntries(Object.keys(users).map((k) => [k, k])),
     clients: () => tabs.map((t) => [t.ws, t.user] as [WebSocket, string]),
     who: (id) => users[id],
     send: (ws, ev) => tabs.find((t) => t.ws === ws)?.got.push(ev),
