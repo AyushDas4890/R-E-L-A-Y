@@ -1,6 +1,6 @@
 /* The public pages (landing, features, help, sign-in, workspace picker) in the Notion look:
    warm gray, near-black ink, one blue, flat surfaces, small radii, Inter. Loaded after apple.css,
-   so it only changes tokens and shapes. Follows the system light/dark setting. */
+   so it only changes tokens and shapes. Always white. */
 .ap, .ap-si, .ws-picker {
   --ap-ink: rgba(0, 0, 0, .95);
   --ap-ink-2: #615d59;
@@ -14,20 +14,8 @@
   --ap-card: #fff;
   --ap-card-2: #f9f9f8;
 }
-@media (prefers-color-scheme: dark) {
-  .ap, .ap-si, .ws-picker {
-    --ap-ink: rgba(255, 255, 255, .92);
-    --ap-ink-2: #b4afaa;
-    --ap-ink-3: #8f8a85;
-    --ap-bg: #191919;
-    --ap-line: #373634;
-    --ap-blue: #2383e2;
-    --ap-blue-hover: #4a9bea;
-    --ap-blue-ink: #4a9bea;
-    --ap-card: #202020;
-    --ap-card-2: #252525;
-  }
-}
+/* The public pages are always white, whatever the system setting. */
+.ap, .ap-si, .ws-picker { color-scheme: light; }
 .ap, .ap-si, .ws-picker { background: var(--ap-bg); }
 .ap :is(h1, h2, h3), .ap-si :is(h1, h2, h3), .ws-picker :is(h1, h2, h3) { letter-spacing: -.02em; }
 
