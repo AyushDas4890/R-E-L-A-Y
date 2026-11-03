@@ -1,6 +1,6 @@
 /* Minimal: the workspace in the same quiet language as the home page. One ink ramp, one blue,
    hairlines instead of boxes, and a sheet floating on a quiet frame. Two variants: light and dark. */
-[data-theme^='minimal'] {
+:is([data-theme^='minimal'], [data-theme^='notion']) {
   --font: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --display: var(--font);
   --signal: var(--accent); --on-accent: #fff;
@@ -28,121 +28,121 @@
   color-scheme: dark;
 }
 /* The photo/video backdrop belongs to the other themes. */
-[data-theme^='minimal'] .main-bg { display: none; }
-[data-theme^='minimal'] h1, [data-theme^='minimal'] h2, [data-theme^='minimal'] h3 { font-weight: 600; letter-spacing: -.02em; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .main-bg { display: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) h1, :is([data-theme^='minimal'], [data-theme^='notion']) h2, :is([data-theme^='minimal'], [data-theme^='notion']) h3 { font-weight: 600; letter-spacing: -.02em; }
 
 /* Controls */
-[data-theme^='minimal'] input, [data-theme^='minimal'] select, [data-theme^='minimal'] textarea { background: var(--surface); border-color: var(--input-line); }
-[data-theme^='minimal'] input:focus, [data-theme^='minimal'] select:focus, [data-theme^='minimal'] textarea:focus { border-color: var(--accent); box-shadow: var(--ring); }
-[data-theme^='minimal'] .ghost-btn { border: 0; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--edge); }
-[data-theme^='minimal'] .ghost-btn:hover:not(:disabled), [data-theme^='minimal'] .ghost-btn.on { background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge); }
-[data-theme^='minimal'] .send-btn { border-radius: 999px; font-weight: 500; }
-[data-theme^='minimal'] .send-btn:hover:not(:disabled) { filter: none; background: #0077ed; }
-[data-theme^='minimal'] .badge { background: rgba(0, 113, 227, .1); color: var(--accent-2); }
-[data-theme^='minimal'] .count { color: #fff; font-weight: 600; }
-[data-theme^='minimal'] .count.live { background: #34c759; color: #fff; }
-[data-theme^='minimal'] .pip { box-shadow: none; }
-[data-theme^='minimal'] .rail-badge { color: #fff; font-weight: 600; }
-[data-theme^='minimal'] .chip-btn { background: var(--accent); color: #fff; font-weight: 500; animation: none; }
-[data-theme^='minimal'] .icon-btn.lit { background: rgba(0, 113, 227, .1); color: var(--accent); }
+:is([data-theme^='minimal'], [data-theme^='notion']) input, :is([data-theme^='minimal'], [data-theme^='notion']) select, :is([data-theme^='minimal'], [data-theme^='notion']) textarea { background: var(--surface); border-color: var(--input-line); }
+:is([data-theme^='minimal'], [data-theme^='notion']) input:focus, :is([data-theme^='minimal'], [data-theme^='notion']) select:focus, :is([data-theme^='minimal'], [data-theme^='notion']) textarea:focus { border-color: var(--accent); box-shadow: var(--ring); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .ghost-btn { border: 0; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--edge); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .ghost-btn:hover:not(:disabled), :is([data-theme^='minimal'], [data-theme^='notion']) .ghost-btn.on { background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .send-btn { border-radius: 999px; font-weight: 500; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .send-btn:hover:not(:disabled) { filter: none; background: #0077ed; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .badge { background: rgba(0, 113, 227, .1); color: var(--accent-2); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .count { color: #fff; font-weight: 600; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .count.live { background: #34c759; color: #fff; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .pip { box-shadow: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-badge { color: #fff; font-weight: 600; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .chip-btn { background: var(--accent); color: #fff; font-weight: 500; animation: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .icon-btn.lit { background: rgba(0, 113, 227, .1); color: var(--accent); }
 
 /* Frame: rail, sidebar and top bar share the grey; the conversation is a white sheet. */
-[data-theme^='minimal'] .topbar { background: transparent; color: var(--text); }
-[data-theme^='minimal'] .topbar .icon-btn, [data-theme^='minimal'] .history-nav .icon-btn { color: var(--muted); }
-[data-theme^='minimal'] .topbar .icon-btn:hover, [data-theme^='minimal'] .history-nav .icon-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
-[data-theme^='minimal'] .omnibar { background: var(--surface); border: 0; border-radius: 999px; box-shadow: var(--hair); color: var(--muted); }
-[data-theme^='minimal'] .omnibar:hover { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--edge); }
-[data-theme^='minimal'] .omnibar kbd { border-color: var(--line); color: var(--muted); }
-[data-theme^='minimal'] .dnd-badge { background: var(--rail-bg); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .topbar { background: transparent; color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .topbar .icon-btn, :is([data-theme^='minimal'], [data-theme^='notion']) .history-nav .icon-btn { color: var(--muted); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .topbar .icon-btn:hover, :is([data-theme^='minimal'], [data-theme^='notion']) .history-nav .icon-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .omnibar { background: var(--surface); border: 0; border-radius: 999px; box-shadow: var(--hair); color: var(--muted); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .omnibar:hover { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--edge); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .omnibar kbd { border-color: var(--line); color: var(--muted); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .dnd-badge { background: var(--rail-bg); }
 
-[data-theme^='minimal'] .rail-btn, [data-theme^='minimal'] .ws-switch { color: var(--muted); }
-[data-theme^='minimal'] .rail-btn span { color: var(--muted); font-weight: 500; }
-[data-theme^='minimal'] .rail-btn:hover, [data-theme^='minimal'] .ws-switch:hover { background: var(--hover); color: var(--text); }
-[data-theme^='minimal'] .rail-btn:hover span, [data-theme^='minimal'] .rail-btn.active span { color: var(--text); }
-[data-theme^='minimal'] .rail-btn.active { background: var(--t3); color: var(--text); }
-[data-theme^='minimal'] .rail-btn.active::before { background: var(--accent); }
-[data-theme^='minimal'] .ws-switch.on::before { background: var(--text); }
-[data-theme^='minimal'] .ws-switch.add, [data-theme^='minimal'] .ws-switch.find { border-color: var(--edge); }
-[data-theme^='minimal'] .ws-tile { box-shadow: none; }
-[data-theme^='minimal'] .ws-tile.active { box-shadow: 0 0 0 2px var(--rail-bg), 0 0 0 4px var(--text); }
-[data-theme^='minimal'] .rail-divider { background: var(--line); }
-[data-theme^='minimal'] .rail-create { background: var(--t2); color: var(--text); }
-[data-theme^='minimal'] .rail-create:hover { background: var(--t4); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-btn, :is([data-theme^='minimal'], [data-theme^='notion']) .ws-switch { color: var(--muted); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-btn span { color: var(--muted); font-weight: 500; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-btn:hover, :is([data-theme^='minimal'], [data-theme^='notion']) .ws-switch:hover { background: var(--hover); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-btn:hover span, :is([data-theme^='minimal'], [data-theme^='notion']) .rail-btn.active span { color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-btn.active { background: var(--t3); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-btn.active::before { background: var(--accent); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .ws-switch.on::before { background: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .ws-switch.add, :is([data-theme^='minimal'], [data-theme^='notion']) .ws-switch.find { border-color: var(--edge); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .ws-tile { box-shadow: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .ws-tile.active { box-shadow: 0 0 0 2px var(--rail-bg), 0 0 0 4px var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-divider { background: var(--line); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-create { background: var(--t2); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .rail-create:hover { background: var(--t4); }
 
-[data-theme^='minimal'] .sidebar h2 { font-size: 16px; }
-[data-theme^='minimal'] .ws-menu-btn { color: var(--text); }
-[data-theme^='minimal'] .side-head-btn:hover { color: var(--text); }
-[data-theme^='minimal'] .compose-btn { background: var(--t2); color: var(--text); }
-[data-theme^='minimal'] .compose-btn:hover { background: var(--t4); color: var(--text); }
-[data-theme^='minimal'] .sidebar .badge { background: var(--t2); }
-[data-theme^='minimal'] .search-trigger { background: var(--t2); }
-[data-theme^='minimal'] .search-trigger kbd { border-color: var(--line); }
-[data-theme^='minimal'] .side-section { font-weight: 500; }
-[data-theme^='minimal'] .side-item.active, [data-theme^='minimal'] .side-quick button.on { background: var(--side-active) !important; color: var(--text); box-shadow: none; }
-[data-theme^='minimal'] .side-item.unread { font-weight: 600; }
-[data-theme^='minimal'] .side-item.add .hash { background: var(--t2); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .sidebar h2 { font-size: 16px; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .ws-menu-btn { color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .side-head-btn:hover { color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .compose-btn { background: var(--t2); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .compose-btn:hover { background: var(--t4); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .sidebar .badge { background: var(--t2); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .search-trigger { background: var(--t2); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .search-trigger kbd { border-color: var(--line); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .side-section { font-weight: 500; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .side-item.active, :is([data-theme^='minimal'], [data-theme^='notion']) .side-quick button.on { background: var(--side-active) !important; color: var(--text); box-shadow: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .side-item.unread { font-weight: 600; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .side-item.add .hash { background: var(--t2); }
 
 /* Conversation */
-[data-theme^='minimal'] .channel-head { border-bottom: 0; }
-[data-theme^='minimal'] .channel-title h2 { font-size: 17px; }
-[data-theme^='minimal'] .channel-tabs button { font-weight: 500; }
-[data-theme^='minimal'] .channel-tabs button::after { background: var(--text); }
-[data-theme^='minimal'] .huddle-btn, [data-theme^='minimal'] .member-stack { border: 0; box-shadow: var(--hair); border-radius: 999px; background: var(--surface); }
-[data-theme^='minimal'] .huddle-btn:hover, [data-theme^='minimal'] .member-stack:hover { box-shadow: 0 0 0 1px var(--edge); }
-[data-theme^='minimal'] .day-divider { font-weight: 500; }
-[data-theme^='minimal'] .day-divider span { border: 0; background: transparent; }
-[data-theme^='minimal'] .msg:hover { background: var(--t1); }
-[data-theme^='minimal'] .msg.pinned { background: var(--t1); box-shadow: inset 2px 0 var(--accent); }
-[data-theme^='minimal'] .meta strong { font-weight: 600; }
-[data-theme^='minimal'] .mention { background: rgba(0, 113, 227, .1); color: var(--accent-2); font-weight: 500; }
-[data-theme^='minimal'] .mention.group { background: rgba(0, 113, 227, .16); }
-[data-theme^='minimal'] .msg .actions { background: var(--surface); border: 0; box-shadow: var(--lift); backdrop-filter: none; }
-[data-theme^='minimal'] .actions button:hover { transform: none; }
-[data-theme^='minimal'] .reactions button { border: 0; background: var(--raised); }
-[data-theme^='minimal'] .reactions button:hover { border: 0; background: var(--t3); transform: none; }
-[data-theme^='minimal'] .reactions button.mine { background: rgba(0, 113, 227, .12); box-shadow: inset 0 0 0 1px rgba(0, 113, 227, .45); }
-[data-theme^='minimal'] .link-card, [data-theme^='minimal'] .attach-file, [data-theme^='minimal'] .pin-item { border: 0; box-shadow: var(--hair); }
-[data-theme^='minimal'] .link-card { border-radius: 12px; border-left: 0; }
-[data-theme^='minimal'] .link-card:hover { transform: none; box-shadow: 0 0 0 1px var(--edge); }
-[data-theme^='minimal'] .attach-img:hover { transform: none; box-shadow: none; }
-[data-theme^='minimal'] .composer-box { border: 0; border-radius: 16px; box-shadow: 0 0 0 1px var(--input-line); }
-[data-theme^='minimal'] .composer-box:focus-within { transform: none; box-shadow: 0 0 0 1px var(--accent), var(--ring); }
-[data-theme^='minimal'] .format-bar { border-bottom: 0; }
-[data-theme^='minimal'] .typing-dots b { background: var(--muted); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .channel-head { border-bottom: 0; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .channel-title h2 { font-size: 17px; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .channel-tabs button { font-weight: 500; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .channel-tabs button::after { background: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .huddle-btn, :is([data-theme^='minimal'], [data-theme^='notion']) .member-stack { border: 0; box-shadow: var(--hair); border-radius: 999px; background: var(--surface); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .huddle-btn:hover, :is([data-theme^='minimal'], [data-theme^='notion']) .member-stack:hover { box-shadow: 0 0 0 1px var(--edge); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .day-divider { font-weight: 500; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .day-divider span { border: 0; background: transparent; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .msg:hover { background: var(--t1); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .msg.pinned { background: var(--t1); box-shadow: inset 2px 0 var(--accent); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .meta strong { font-weight: 600; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .mention { background: rgba(0, 113, 227, .1); color: var(--accent-2); font-weight: 500; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .mention.group { background: rgba(0, 113, 227, .16); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .msg .actions { background: var(--surface); border: 0; box-shadow: var(--lift); backdrop-filter: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .actions button:hover { transform: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .reactions button { border: 0; background: var(--raised); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .reactions button:hover { border: 0; background: var(--t3); transform: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .reactions button.mine { background: rgba(0, 113, 227, .12); box-shadow: inset 0 0 0 1px rgba(0, 113, 227, .45); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .link-card, :is([data-theme^='minimal'], [data-theme^='notion']) .attach-file, :is([data-theme^='minimal'], [data-theme^='notion']) .pin-item { border: 0; box-shadow: var(--hair); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .link-card { border-radius: 12px; border-left: 0; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .link-card:hover { transform: none; box-shadow: 0 0 0 1px var(--edge); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .attach-img:hover { transform: none; box-shadow: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .composer-box { border: 0; border-radius: 16px; box-shadow: 0 0 0 1px var(--input-line); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .composer-box:focus-within { transform: none; box-shadow: 0 0 0 1px var(--accent), var(--ring); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .format-bar { border-bottom: 0; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .typing-dots b { background: var(--muted); }
 
 /* Surfaces that float */
-[data-theme^='minimal'] .menu, [data-theme^='minimal'] .popover { background: var(--menu-bg); border: 0; box-shadow: var(--lift); }
-[data-theme^='minimal'] .menu button:hover { background: var(--t2); color: var(--text); }
-[data-theme^='minimal'] .menu button.danger:hover { background: rgba(215, 0, 21, .08); color: var(--danger); }
-[data-theme^='minimal'] .scrim { background: var(--scrim); backdrop-filter: blur(8px); }
-[data-theme^='minimal'] .modal, [data-theme^='minimal'] .palette { border: 0; border-radius: 20px; box-shadow: var(--pop); }
-[data-theme^='minimal'] .palette input { font-size: 17px; }
-[data-theme^='minimal'] .palette-results .answer { background: rgba(0, 113, 227, .08); }
-[data-theme^='minimal'] .workflow, [data-theme^='minimal'] .stat, [data-theme^='minimal'] .list-item, [data-theme^='minimal'] .feed-item, [data-theme^='minimal'] .person-card, [data-theme^='minimal'] .huddle-card { border: 0; background: var(--raised); }
-[data-theme^='minimal'] .feed-item:hover, [data-theme^='minimal'] .person-card:hover { box-shadow: var(--hair); transform: none; }
-[data-theme^='minimal'] .plan-card, [data-theme^='minimal'] .alert-banner, [data-theme^='minimal'] .huddle, [data-theme^='minimal'] .huddle-stage { background: var(--raised); color: var(--text); box-shadow: none; }
-[data-theme^='minimal'] .alert-banner { border-radius: 14px; }
-[data-theme^='minimal'] .alert-banner .link-btn, [data-theme^='minimal'] .link-btn { color: var(--accent-2); }
-[data-theme^='minimal'] .empty-mark { background: var(--raised); color: var(--text); }
-[data-theme^='minimal'] .starter-card.c1, [data-theme^='minimal'] .starter-card.c2, [data-theme^='minimal'] .starter-card.c3 { background: var(--raised); color: var(--text); border: 0; }
-[data-theme^='minimal'] .starter-card small { color: var(--muted); opacity: 1; }
-[data-theme^='minimal'] .starter-card:hover { transform: none; box-shadow: var(--hair); }
-[data-theme^='minimal'] .starter-art { background: var(--surface); box-shadow: var(--hair); }
-[data-theme^='minimal'] .starter-card strong { font-family: var(--font); font-weight: 600; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .menu, :is([data-theme^='minimal'], [data-theme^='notion']) .popover { background: var(--menu-bg); border: 0; box-shadow: var(--lift); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .menu button:hover { background: var(--t2); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .menu button.danger:hover { background: rgba(215, 0, 21, .08); color: var(--danger); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .scrim { background: var(--scrim); backdrop-filter: blur(8px); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .modal, :is([data-theme^='minimal'], [data-theme^='notion']) .palette { border: 0; border-radius: 20px; box-shadow: var(--pop); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .palette input { font-size: 17px; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .palette-results .answer { background: rgba(0, 113, 227, .08); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .workflow, :is([data-theme^='minimal'], [data-theme^='notion']) .stat, :is([data-theme^='minimal'], [data-theme^='notion']) .list-item, :is([data-theme^='minimal'], [data-theme^='notion']) .feed-item, :is([data-theme^='minimal'], [data-theme^='notion']) .person-card, :is([data-theme^='minimal'], [data-theme^='notion']) .huddle-card { border: 0; background: var(--raised); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .feed-item:hover, :is([data-theme^='minimal'], [data-theme^='notion']) .person-card:hover { box-shadow: var(--hair); transform: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .plan-card, :is([data-theme^='minimal'], [data-theme^='notion']) .alert-banner, :is([data-theme^='minimal'], [data-theme^='notion']) .huddle, :is([data-theme^='minimal'], [data-theme^='notion']) .huddle-stage { background: var(--raised); color: var(--text); box-shadow: none; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .alert-banner { border-radius: 14px; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .alert-banner .link-btn, :is([data-theme^='minimal'], [data-theme^='notion']) .link-btn { color: var(--accent-2); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .empty-mark { background: var(--raised); color: var(--text); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .starter-card.c1, :is([data-theme^='minimal'], [data-theme^='notion']) .starter-card.c2, :is([data-theme^='minimal'], [data-theme^='notion']) .starter-card.c3 { background: var(--raised); color: var(--text); border: 0; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .starter-card small { color: var(--muted); opacity: 1; }
+:is([data-theme^='minimal'], [data-theme^='notion']) .starter-card:hover { transform: none; box-shadow: var(--hair); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .starter-art { background: var(--surface); box-shadow: var(--hair); }
+:is([data-theme^='minimal'], [data-theme^='notion']) .starter-card strong { font-family: var(--font); font-weight: 600; }
 
 /* Desktop only: on a phone the sidebar is a sheet and needs its own background. */
 @media (min-width: 769px) {
-  [data-theme^='minimal'] .shell > .app { margin: 0 12px 12px 0; background: transparent; }
-  [data-theme^='minimal'] .shell .sidebar { background: transparent; border-radius: 0; box-shadow: none; }
-  [data-theme^='minimal'] .shell .main, [data-theme^='minimal'] .shell .panel { border-radius: 16px; background: var(--surface); border-left: 0; box-shadow: var(--lift); }
-  [data-theme^='minimal'] .shell.has-panel .main { border-radius: 16px; }
-  [data-theme^='minimal'] .shell .panel { margin-left: 12px; }
-  [data-theme^='minimal'] .panel > header { border-bottom: 1px solid var(--line); }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .shell > .app { margin: 0 12px 12px 0; background: transparent; }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .shell .sidebar { background: transparent; border-radius: 0; box-shadow: none; }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .shell .main, :is([data-theme^='minimal'], [data-theme^='notion']) .shell .panel { border-radius: 16px; background: var(--surface); border-left: 0; box-shadow: var(--lift); }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .shell.has-panel .main { border-radius: 16px; }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .shell .panel { margin-left: 12px; }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .panel > header { border-bottom: 1px solid var(--line); }
 }
 @media (max-width: 768px) {
-  [data-theme^='minimal'] .shell .tabbar { background: var(--rail-bg); border-top: 1px solid var(--line); }
-  [data-theme^='minimal'] .tabbar button { color: var(--muted); }
-  [data-theme^='minimal'] .tabbar button.on { color: var(--text); }
-  [data-theme^='minimal'] .tabbar button.on::before { background: var(--accent); }
-  [data-theme^='minimal'] .shell .sidebar { background: var(--rail-bg); }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .shell .tabbar { background: var(--rail-bg); border-top: 1px solid var(--line); }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .tabbar button { color: var(--muted); }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .tabbar button.on { color: var(--text); }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .tabbar button.on::before { background: var(--accent); }
+  :is([data-theme^='minimal'], [data-theme^='notion']) .shell .sidebar { background: var(--rail-bg); }
 }

@@ -243,7 +243,109 @@ export interface Snapshot {
   termsAccepted: number;
   prefs: UserPrefs;
   admin?: AdminData;
+  // The page tree this person may see (no bodies), and their favorites.
+  pages: PageNode[];
+  pageFavorites: string[];
 }
+
+// ---- Pages: the Notion-style documents (see docs/notion/plan.md) ----
+
+export type PageLevel = 'none' | 'view' | 'comment' | 'edit' | 'full';
+
+// Inline text. One span per run of identical styling.
+export interface Rich {
+  t: string;
+  b?: 1;
+  i?: 1;
+  u?: 1;
+  s?: 1;
+  c?: 1;
+  link?: string;
+  color?: string;
+  mention?: { kind: 'user' | 'page' | 'date'; id: string };
+}
+
+export type BlockType =
+  | 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'todo' | 'toggle' | 'quote' | 'callout' | 'divider'
+  | 'code' | 'image' | 'file' | 'bookmark' | 'table' | 'columns' | 'column' | 'toc' | 'breadcrumb'
+  | 'pageLink' | 'subpage' | 'equation';
+
+export interface Block {
+  id: string;
+  type: BlockType;
+  text: Rich[];
+  children: Block[];
+  checked?: boolean;
+  open?: boolean;
+  language?: string;
+  color?: string;
+  bg?: string;
+  url?: string;
+  name?: string;
+  icon?: string;
+  // pageLink and subpage point at a page.
+  pageId?: string;
+  // Simple table: plain-text cells.
+  rows?: string[][];
+  header?: boolean;
+  // Bumps on every change to this block, so two people editing one block are noticed.
+  rev: number;
+}
+
+export type BlockPatch = Partial<Pick<Block, 'type' | 'text' | 'checked' | 'open' | 'language' | 'color' | 'bg' | 'url' | 'name' | 'icon' | 'pageId' | 'rows' | 'header'>>;
+
+// Blocks are addressed by id, never by position, so edits to different blocks never collide.
+// `after: null` puts the block first; an `after` that no longer exists puts it last.
+export type BlockOp =
+  | { op: 'insert'; parent: string | null; after: string | null; block: Block }
+  | { op: 'update'; id: string; patch: BlockPatch; baseRev: number; rev?: number }
+  | { op: 'move'; id: string; parent: string | null; after: string | null }
+  | { op: 'remove'; id: string };
+
+export interface PageShare {
+  who: { kind: 'user'; id: string } | { kind: 'workspace' };
+  level: Exclude<PageLevel, 'none'>;
+}
+
+export interface Page {
+  id: string;
+  parentId: string | null;
+  // Only on top-level pages. null = Private (its creator only); 'general' = the default teamspace.
+  teamspaceId: string | null;
+  title: string;
+  icon: string;
+  cover: string;
+  font: 'default' | 'serif' | 'mono';
+  smallText: boolean;
+  fullWidth: boolean;
+  locked: boolean;
+  // Position among siblings (fractional so a move rewrites one number).
+  order: number;
+  createdBy: string;
+  createdAt: number;
+  editedBy: string;
+  editedAt: number;
+  trashedAt?: number;
+  access: { entries: PageShare[]; restricted?: boolean };
+}
+
+// What the page tree needs: no body, no access list.
+export interface PageNode {
+  id: string;
+  parentId: string | null;
+  teamspaceId: string | null;
+  title: string;
+  icon: string;
+  order: number;
+  createdBy: string;
+  editedAt: number;
+  // This person's level on the page.
+  level: PageLevel;
+  // The page itself is in the trash (its children are hidden with it).
+  trashed?: boolean;
+}
+
+export type PageMeta = Omit<Page, 'access'>;
 
 export type ClientEvent =
   | { t: 'auth'; token: string; invite?: string; workspace?: string }
@@ -296,7 +398,19 @@ export type ClientEvent =
   | { t: 'importPrefs'; lastRead?: Record<string, number>; levels?: Record<string, string>; dndUntil?: number }
   | { t: 'fileSummary'; id: string; index: number }
   | { t: 'analytics' }
-  | { t: 'export' };
+  | { t: 'export' }
+  | { t: 'pageCreate'; parentId: string | null; shared?: boolean; title?: string; icon?: string }
+  | { t: 'pageUpdate'; id: string; patch: Partial<Pick<Page, 'title' | 'icon' | 'cover' | 'font' | 'smallText' | 'fullWidth' | 'locked'>> }
+  | { t: 'pageMove'; id: string; parentId: string | null; shared?: boolean; after: string | null }
+  | { t: 'pageTrash'; id: string }
+  | { t: 'pageRestore'; id: string }
+  | { t: 'pageDelete'; id: string }
+  | { t: 'pageDuplicate'; id: string }
+  | { t: 'pageFavorite'; id: string; on: boolean }
+  | { t: 'pageGet'; id: string }
+  | { t: 'pageClose'; id: string }
+  | { t: 'blockOps'; id: string; ops: BlockOp[] }
+  | { t: 'pagePresence'; id: string; cursor: string | null };
 
 export type ServerEvent =
   | { t: 'init'; snapshot: Snapshot }
@@ -329,6 +443,15 @@ export type ServerEvent =
   | { t: 'workspaceCreated'; id: string }
   | { t: 'workspace'; workspace: Snapshot['workspace'] }
   | { t: 'starred'; list: string[] }
+  | { t: 'pageNodes'; nodes: PageNode[]; gone: string[] }
+  | { t: 'pageCreated'; id: string }
+  | { t: 'pageBody'; id: string; page: PageMeta; level: PageLevel; blocks: Block[]; version: number }
+  | { t: 'pageMeta'; page: PageMeta }
+  | { t: 'blockOps'; id: string; ops: BlockOp[]; version: number; by: string; ack?: boolean }
+  | { t: 'blockConflict'; id: string; block: Block }
+  | { t: 'pagePresence'; id: string; userId: string; cursor: string | null }
+  | { t: 'pageRevoked'; id: string }
+  | { t: 'pageFavorites'; list: string[] }
   | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' };
 
 export interface Analytics {

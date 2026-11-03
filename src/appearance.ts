@@ -23,6 +23,8 @@ export const BACKGROUNDS: Background[] = [
 ];
 
 export const THEMES = [
+  { id: 'notion', label: 'Notion' },
+  { id: 'notion-dark', label: 'Notion dark' },
   { id: 'minimal', label: 'Minimal' },
   { id: 'minimal-dark', label: 'Minimal dark' },
   { id: 'plum', label: 'Plum' },
@@ -67,24 +69,31 @@ const write = (key: string, value: string | null) => {
   }
 };
 
-// Minimal is the workspace's new look. A browser that hasn't adopted it yet starts on it once, whatever
-// theme, background or accent it used before (a purple accent would repaint Minimal's blue); after that,
-// anything the person picks sticks. White or black follows the system setting.
-export function adoptMinimal(adopted: boolean, prefersDark: boolean): { theme: string; bg: string; accent: string } | null {
-  return adopted ? null : { theme: prefersDark ? 'minimal-dark' : 'minimal', bg: 'none', accent: '' };
+// The Notion look is the default for a browser that has never picked one: no photo background and the
+// theme's own accent (an old purple accent would repaint its blue). A browser that already adopted
+// Minimal, or chose anything else, is left alone, so nobody is moved twice. White or black follows
+// the system setting.
+export function firstLook(adopted: boolean, prefersDark: boolean): { theme: string; bg: string; accent: string } | null {
+  return adopted ? null : { theme: prefersDark ? 'notion-dark' : 'notion', bg: 'none', accent: '' };
 }
+
+// The Notion look lets people drag the sidebar edge. Anything unusable falls back to the default width.
+export const SIDE_MIN = 200;
+export const SIDE_MAX = 400;
+export const SIDE_DEFAULT = 248;
+export const clampSide = (n: number): number => (Number.isFinite(n) && n > 0 ? Math.min(SIDE_MAX, Math.max(SIDE_MIN, Math.round(n))) : SIDE_DEFAULT);
 
 export function useAppearance() {
   const [theme, setThemeState] = useState(() => {
     const prefersDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
-    const look = adoptMinimal(!!read('relay.look', ''), prefersDark);
+    const look = firstLook(!!read('relay.look', ''), prefersDark);
     if (look) {
       write('relay.theme', look.theme);
       write('relay.bg', look.bg);
       write('relay.accent', look.accent);
-      write('relay.look', 'minimal');
+      write('relay.look', 'notion');
     }
-    return read('relay.theme', 'minimal');
+    return read('relay.theme', 'notion');
   });
   const [bgId, setBgId] = useState(() => read('relay.bg', 'none'));
   const [accent, setAccentState] = useState(() => read('relay.accent', ''));

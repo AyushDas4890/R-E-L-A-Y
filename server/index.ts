@@ -51,6 +51,8 @@ import { createMailer, type EmailProvider } from './mailer.ts';
 import { digest, digestLine, enqueue, mayEmail, recipients, takeDue, type Outbox } from './notifications.ts';
 import { applyListPatch, mergeWorkflows, removeVerdict, userView } from './access.ts';
 import { cleanPrefs, mergeImport, visiblePrefs, withDnd, withEmail, withLevel, withRead } from './prefs.ts';
+import { createPageRuntime } from './pageRuntime.ts';
+import { createPageStore, type PagesIndex, type PageStore } from './pageStore.ts';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -239,6 +241,9 @@ interface Outside {
   mail: EmailProvider | null;
   isOnline: (userId: string) => boolean;
   appUrl?: string;
+  // Pages live beside the workspace document, not inside it (see server/pageStore.ts).
+  pageStore: PageStore;
+  pageIndex: PagesIndex;
 }
 
 function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEvict: (ws: WebSocket) => void, outside: Outside) {
@@ -271,6 +276,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
   // doesn't drop the last quarter-second of messages.
   async function flush(): Promise<void> {
     clearTimeout(saveTimer);
+    await pages.flush();
     if (!dirty) return;
     dirty = false;
     await save(db).catch((err) => {
@@ -292,6 +298,15 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       ws.send(payload);
     }
   }
+
+  const pages = createPageRuntime({
+    store: outside.pageStore,
+    index: outside.pageIndex,
+    clients: () => clients,
+    who: (userId) => db.users[userId],
+    send,
+    audit: (actor, action, detail) => audit(actor, action, detail),
+  });
 
   function canSee(ch: Channel, userId: string): boolean {
     if (db.users[userId]?.role === 'guest') return ch.members.includes(userId);
@@ -389,6 +404,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       termsAccepted: db.termsAccepted[userId] ?? 0,
       prefs: prefsFor(userId),
       admin: isAdmin(db.users[userId]) ? adminData() : undefined,
+      pages: pages.nodesFor(userId),
+      pageFavorites: pages.favoritesFor(userId),
     };
   }
 
@@ -657,6 +674,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
     delete db.sections[userId];
     delete db.starred[userId];
     delete db.termsAccepted[userId];
+    pages.forget(userId, DELETED_ID);
   }
 
   async function handle(ws: WebSocket, ev: ClientEvent): Promise<void> {
@@ -665,6 +683,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       send(ws, { t: 'error', message: 'Sign in to continue.', code: 'auth-required' });
       return;
     }
+
+    if (await pages.handle(ws, userId, ev)) return;
 
     switch (ev.t) {
       case 'send': {
@@ -1372,6 +1392,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
     if (!clients.has(ws)) return;
     // Drop the tab from its huddle while its user id is still known, then forget the socket.
     const left = dropFromCall(ws);
+    pages.drop(ws);
     clients.delete(ws);
     if (left) {
       syncCall(left);
@@ -1442,6 +1463,8 @@ async function loadRuntime(id: string, fresh?: () => DB): Promise<Runtime> {
   const db = normalize((await st.load()) as Partial<DB> & Pick<DB, 'users' | 'channels' | 'messages'>);
   // A brand-new workspace is written straight away so a restart can't reseed it as a default one.
   if (fresh) await st.save(db);
+  const pageStore = createPageStore(id, dataDir);
+  const pageIndex = await pageStore.loadIndex();
   const rt = createRuntime(id, db, (d) => st.save(d), (ws) => {
     // The runtime cut this socket off: forget its workspace and show the person their remaining ones.
     const conn = conns.get(ws);
@@ -1453,6 +1476,8 @@ async function loadRuntime(id: string, fresh?: () => DB): Promise<Runtime> {
     appUrl,
     // Connected to any workspace counts: someone with another one open will see it there.
     isOnline: (userId) => [...conns.values()].some((c) => c.identity?.userId === userId && !!c.rt),
+    pageStore,
+    pageIndex,
   });
   runtimes.set(id, rt);
   return rt;
