@@ -657,6 +657,8 @@ export type ClientEvent =
   | { t: 'dbLock'; id: string; locked: boolean }
   | { t: 'formSubmit'; id: string; values: Record<string, PropValue> }
   | { t: 'rowButton'; id: string; rowId: string; prop: string }
+  | { t: 'pageUpload'; id: string; blockId: string; file: FileAttachment }
+  | { t: 'unfurl'; url: string }
   | { t: 'pageAccess'; id: string }
   | { t: 'pageShare'; id: string; entries: PageShare[]; restricted: boolean }
   | { t: 'comment'; id: string; text: string; blockId?: string; parent?: string }
@@ -730,6 +732,8 @@ export type ServerEvent =
   | { t: 'dbDelta'; id: string; delta: DbDelta; by: string }
   | { t: 'comments'; id: string; comments: PageComment[] }
   | { t: 'suggestions'; id: string; suggestions: Suggestion[] }
+  | { t: 'pageUploaded'; id: string; blockId: string; url: string; name: string }
+  | { t: 'linkPreview'; url: string; preview: LinkPreview | null }
   | { t: 'pageAccess'; id: string; access: Page['access'] }
   | { t: 'pageHistory'; id: string; versions: PageVersion[]; preview?: { id: string; blocks: Block[] } }
   | { t: 'teamspaces'; list: Teamspace[] }

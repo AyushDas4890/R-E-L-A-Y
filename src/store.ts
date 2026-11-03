@@ -118,7 +118,7 @@ function reduce(state: State, action: Action): State {
 
 // Events about the page that is open (its text, its settings, who else is in it). They belong to the
 // editor's own copy of the page, so they go to listeners; the tree and favorites go through the reducer.
-const PAGE_DOC_EVENTS = new Set<string>(['pageBody', 'pageMeta', 'blockOps', 'blockConflict', 'pagePresence', 'pageRevoked', 'pageCreated', 'dbData', 'dbDelta', 'comments', 'pageAccess', 'pageHistory', 'searchResults', 'calendarFeed']);
+const PAGE_DOC_EVENTS = new Set<string>(['pageBody', 'pageMeta', 'blockOps', 'blockConflict', 'pagePresence', 'pageRevoked', 'pageCreated', 'dbData', 'dbDelta', 'comments', 'pageAccess', 'pageHistory', 'searchResults', 'calendarFeed', 'pageUploaded', 'linkPreview']);
 
 function downloadJson(data: unknown): void {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));

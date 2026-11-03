@@ -29,6 +29,10 @@ async function room() {
     index,
     workspaceId: 'ws',
     workspaceName: () => 'Test',
+    barred: (a, b) => (a === 'root' && b === 'gus') || (a === 'gus' && b === 'root'),
+    groupMembers: (g) => (g === 'g-gus' ? ['gus'] : []),
+    offload: async (f) => ({ name: f.name, type: f.type, size: f.size, url: `https://files.example/${f.name}` }),
+    unfurl: async (u) => (u.includes('bad') ? null : { url: u, title: 'A title' }),
     people: () => Object.fromEntries(Object.keys(users).map((k) => [k, k])),
     clients: () => tabs.map((t) => [t.ws, t.user] as [WebSocket, string]),
     who: (id) => users[id],
@@ -468,4 +472,132 @@ test('a template makes a page with its blocks; unknown template ids give a plain
   assert.ok(r.last(a, 'pageBody')!.blocks.length > 5);
   await r.say(a, { t: 'pageCreate', parentId: null, template: 'nope' });
   assert.equal(r.index.pages[r.last(a, 'pageCreated')!.id].title, '');
+});
+
+test('uploads need edit access, must be real data urls, and come back as a stored link', async () => {
+  const r = await room();
+  const a = r.join('ann');
+  const b = r.join('bob');
+  await r.say(a, { t: 'pageCreate', parentId: null, title: 'Doc' });
+  const id = r.last(a, 'pageCreated')!.id;
+  const file = { name: 'cat.png', type: 'image/png', size: 4, dataUrl: 'data:image/png;base64,AAAA' };
+  await r.say(a, { t: 'pageUpload', id, blockId: 'b1', file });
+  assert.equal(r.last(a, 'pageUploaded')!.url, 'https://files.example/cat.png');
+  const e = r.errors(a);
+  await r.say(a, { t: 'pageUpload', id, blockId: 'b1', file: { ...file, dataUrl: 'javascript:alert(1)' } });
+  assert.equal(r.errors(a), e + 1);
+  const eb = r.errors(b);
+  await r.say(b, { t: 'pageUpload', id, blockId: 'b1', file });
+  assert.equal(r.errors(b), eb + 1);
+  assert.equal(r.last(b, 'pageUploaded'), undefined);
+});
+
+test('link previews are fetched for http(s) links only and cached', async () => {
+  const r = await room();
+  const a = r.join('ann');
+  await r.say(a, { t: 'unfurl', url: 'https://example.com/x' });
+  assert.equal(r.last(a, 'linkPreview')!.preview!.title, 'A title');
+  await r.say(a, { t: 'unfurl', url: 'https://bad.example/' });
+  assert.equal(r.last(a, 'linkPreview')!.preview, null);
+  const n = a.got.length;
+  await r.say(a, { t: 'unfurl', url: 'javascript:alert(1)' });
+  await r.say(a, { t: 'unfurl', url: 'file:///etc/passwd' });
+  assert.equal(a.got.length, n);
+});
+
+test('suggested edits: commenters propose, editors accept (the text changes) or decline, authors withdraw', async () => {
+  const r = await room();
+  const a = r.join('ann');
+  const g = r.join('gus');
+  await r.say(a, { t: 'pageCreate', parentId: null, title: 'Doc' });
+  const id = r.last(a, 'pageCreated')!.id;
+  await r.say(a, { t: 'pageGet', id });
+  await r.say(a, { t: 'blockOps', id, ops: [{ op: 'insert', parent: null, after: null, block: text('b1', 'teh plan') }] });
+  await r.say(a, { t: 'pageShare', id, entries: [{ who: { kind: 'user', id: 'gus' }, level: 'comment' }], restricted: false });
+  await r.say(g, { t: 'pageGet', id });
+  await r.say(g, { t: 'suggest', id, blockId: 'b1', text: [{ t: 'the plan' }] });
+  const sug = r.last(a, 'suggestions')!.suggestions[0];
+  assert.equal(sug.was, 'teh plan');
+  const e = r.errors(g);
+  await r.say(g, { t: 'suggestResolve', id, suggestionId: sug.id, accept: true });
+  assert.equal(r.errors(g), e + 1, 'a commenter cannot accept');
+  await r.say(a, { t: 'suggestResolve', id, suggestionId: sug.id, accept: true });
+  const ops = (a.got.filter((x) => x.t === 'blockOps') as Extract<ServerEvent, { t: 'blockOps' }>[]).at(-1)!;
+  assert.equal(ops.ops[0].op, 'update');
+  assert.equal(r.last(g, 'suggestions')!.suggestions.length, 0);
+  assert.equal(r.last(g, 'inbox')!.items.at(-1)!.kind, 'suggestion');
+  await r.say(g, { t: 'suggest', id, blockId: 'b1', text: [{ t: 'nope' }] });
+  const s2 = r.last(g, 'suggestions')!.suggestions[0];
+  await r.say(g, { t: 'suggestResolve', id, suggestionId: s2.id, accept: false });
+  assert.equal(r.last(g, 'suggestions')!.suggestions.length, 0);
+});
+
+test('requesting access tells the owners once and never says whether the page exists', async () => {
+  const r = await room();
+  const a = r.join('ann');
+  const b = r.join('bob');
+  await r.say(a, { t: 'pageCreate', parentId: null, title: 'Secret' });
+  const id = r.last(a, 'pageCreated')!.id;
+  await r.say(b, { t: 'pageRequestAccess', id });
+  await r.say(b, { t: 'pageRequestAccess', id });
+  const sent = a.got.filter((x) => x.t === 'inbox').length;
+  assert.equal(r.rt.inboxFor('ann').filter((i) => i.kind === 'request').length, 1);
+  assert.ok(sent >= 1);
+  await r.say(b, { t: 'pageRequestAccess', id: 'does-not-exist' });
+  const msgs = b.got.filter((x) => x.t === 'error').map((x) => (x as { message: string }).message);
+  assert.equal(new Set(msgs).size, 1);
+});
+
+test('information barriers: a share across a barrier is dropped, with a generic message', async () => {
+  const r = await room();
+  const a = r.join('root');
+  await r.say(a, { t: 'pageCreate', parentId: null, title: 'Doc' });
+  const id = r.last(a, 'pageCreated')!.id;
+  const e = r.errors(a);
+  await r.say(a, { t: 'pageShare', id, entries: [{ who: { kind: 'user', id: 'bob' }, level: 'view' }, { who: { kind: 'user', id: 'gus' }, level: 'view' }, { who: { kind: 'group', id: 'g-gus' }, level: 'view' }], restricted: false });
+  assert.equal(r.errors(a), e + 1);
+  assert.deepEqual(r.index.pages[id].access.entries.map((x) => x.who), [{ kind: 'user', id: 'bob' }]);
+});
+
+test('edit-content on a database: rows yes, schema and views no; on a page it counts as edit', async () => {
+  const r = await room();
+  const a = r.join('ann');
+  const b = r.join('bob');
+  await r.say(a, { t: 'dbCreate', parentId: null, shared: false, title: 'Private', preset: 'tasks' });
+  const id = r.last(a, 'pageCreated')!.id;
+  await r.say(a, { t: 'dbGet', id });
+  const data = () => r.last(a, 'dbData')!.db;
+  await r.say(a, { t: 'pageShare', id, entries: [{ who: { kind: 'user', id: 'bob' }, level: 'edit-content' }], restricted: false });
+  await r.say(b, { t: 'dbGet', id });
+  assert.equal(r.last(b, 'dbData')!.level, 'edit-content');
+  await r.say(b, { t: 'rowCreate', id, props: { [data().props[0].id]: 'mine' } });
+  assert.equal(r.last(b, 'dbDelta')!.delta.rows![0].createdBy, 'bob');
+  const e = r.errors(b);
+  await r.say(b, { t: 'dbSchema', id, ops: [{ op: 'addProp', prop: { name: 'X', type: 'text' } }] });
+  await r.say(b, { t: 'dbView', id, op: { op: 'add', view: { layout: 'board' } } });
+  assert.equal(r.errors(b), e + 2);
+  // the row's own page is editable too
+  const rowId = r.last(b, 'dbDelta')!.delta.rows![0].id;
+  await r.say(b, { t: 'pageGet', id: `${id}.${rowId}` });
+  await r.say(b, { t: 'blockOps', id: `${id}.${rowId}`, ops: [{ op: 'insert', parent: null, after: null, block: text('x', 'hi') }] });
+  assert.equal(r.last(b, 'blockOps')!.ack, true);
+  // on an ordinary page it is just edit
+  await r.say(a, { t: 'pageCreate', parentId: null, title: 'P' });
+  const pid = r.last(a, 'pageCreated')!.id;
+  await r.say(a, { t: 'pageShare', id: pid, entries: [{ who: { kind: 'user', id: 'bob' }, level: 'edit-content' }], restricted: false });
+  assert.equal(r.rt.nodesFor('bob').find((n) => n.id === pid)!.level, 'edit');
+});
+
+test('a reminder fires into the writer’s inbox at its time, once', async () => {
+  const r = await room();
+  const a = r.join('ann');
+  await r.say(a, { t: 'pageCreate', parentId: null, title: 'Plans' });
+  const id = r.last(a, 'pageCreated')!.id;
+  await r.say(a, { t: 'pageGet', id });
+  // the room's clock reads 1000 ms after the epoch; remind at 00:01 on 1970-01-01
+  const blk: Block = { id: 'r1', type: 'text', text: [{ t: '@later', mention: { kind: 'date', id: '1970-01-01T00:01' } }], children: [], rev: 1 };
+  await r.say(a, { t: 'blockOps', id, ops: [{ op: 'insert', parent: null, after: null, block: blk }] });
+  assert.equal(r.index.reminders.length, 1);
+  await r.say(a, { t: 'blockOps', id, ops: [{ op: 'update', id: 'r1', patch: { text: blk.text }, baseRev: 1 }] });
+  assert.equal(r.index.reminders.length, 1, 'the same time is not queued twice');
 });
