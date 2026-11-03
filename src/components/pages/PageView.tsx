@@ -721,6 +721,20 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
     }
   };
 
+  // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y step through my edits across blocks, instead of the browser's per-line undo.
+  const onUndoKey = (e: RKE<HTMLDivElement>) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod || e.altKey || !editable) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'z' && k !== 'y') return;
+    const t = e.target as HTMLElement;
+    if (t.closest('input, textarea, select, .pg-title') || (t.isContentEditable && !t.closest('.pg-edit'))) return;
+    e.preventDefault();
+    doc.flush();
+    if (k === 'y' || e.shiftKey) doc.redo();
+    else doc.undo();
+  };
+
   const exportMd = () => {
     const md = toMarkdown(meta.title, blocks, (id) => nodeById.get(id)?.title || 'Untitled');
     const url = URL.createObjectURL(new Blob([md], { type: 'text/markdown' }));
@@ -738,7 +752,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
 
   return (
     <div className="pg-wrap">
-    <div className={`pg-page font-${font} ${meta.smallText ? 'small' : ''} ${meta.fullWidth ? 'wide' : ''}`} ref={root} tabIndex={-1} onKeyDown={onContainerKey} onClick={(e) => { if (!(e.target as HTMLElement).closest('.pg-menu')) setPopup((p) => (p && (p.kind === 'slash' || p.kind === 'mention' || p.kind === 'link') ? p : null)); }}>
+    <div className={`pg-page font-${font} ${meta.smallText ? 'small' : ''} ${meta.fullWidth ? 'wide' : ''}`} ref={root} tabIndex={-1} onKeyDown={onContainerKey} onKeyDownCapture={onUndoKey} onClick={(e) => { if (!(e.target as HTMLElement).closest('.pg-menu')) setPopup((p) => (p && (p.kind === 'slash' || p.kind === 'mention' || p.kind === 'link') ? p : null)); }}>
       {trashed && (
         <div className="pg-banner">
           <span>This page is in the trash.</span>

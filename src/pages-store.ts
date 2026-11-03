@@ -7,6 +7,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useRelayCtx } from './ctx.ts';
 import { applyApplied, applyOps, type PageBody } from '../server/pages.ts';
 import { emptyBlock, newBlockId } from './editor.ts';
+import { History } from './undo.ts';
 import type { Block, BlockOp, BlockPatch, PageComment, Suggestion, PageLevel, PageMeta } from './types.ts';
 
 export type DocState = 'loading' | 'ready' | 'denied';
@@ -57,6 +58,7 @@ export function usePageDoc(id: string | null) {
   const queue = useRef<BlockOp[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const openId = useRef<string | null>(null);
+  const hist = useRef(new History());
 
   const flush = useCallback(() => {
     clearTimeout(timer.current);
@@ -69,6 +71,7 @@ export function usePageDoc(id: string | null) {
     openId.current = id;
     body.current = null;
     queue.current = [];
+    hist.current = new History();
     setState('loading');
     setMeta(null);
     setPeers({});
@@ -139,8 +142,9 @@ export function usePageDoc(id: string | null) {
   }, [id]);
 
   // Apply edits to my copy now, queue them for the server.
-  function edit(ops: BlockOp[]): void {
+  function edit(ops: BlockOp[], remember = true): void {
     if (!body.current || !openId.current) return;
+    if (remember) hist.current.record(body.current.blocks, ops, Date.now());
     const res = applyOps(body.current, ops);
     for (const op of res.applied) {
       // `applied` has the revision the local copy chose; the server picks its own.
@@ -150,6 +154,15 @@ export function usePageDoc(id: string | null) {
     timer.current = setTimeout(flush, FLUSH_MS);
     redraw();
   }
+
+  // Steps back (or forward) through my own edits, across blocks. Other people's edits are not touched.
+  const step = (back: boolean): boolean => {
+    if (!body.current) return false;
+    const ops = back ? hist.current.takeUndo(body.current.blocks, Date.now()) : hist.current.takeRedo(body.current.blocks, Date.now());
+    if (!ops) return false;
+    edit(ops, false);
+    return true;
+  };
 
   const update = (blockId: string, patch: BlockPatch): void => {
     const b = body.current && findBlock(body.current.blocks, blockId);
@@ -180,6 +193,8 @@ export function usePageDoc(id: string | null) {
     dismissNotice: () => setNotice(null),
     canEdit,
     edit,
+    undo: () => step(true),
+    redo: () => step(false),
     update,
     patchMeta,
     presence,
