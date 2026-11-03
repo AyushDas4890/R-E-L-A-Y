@@ -27,7 +27,7 @@ function reduce(state: State, action: Action): State {
   }
   const ev = action.ev;
   // An older server sends no `history`: then the snapshot already holds everything.
-  if (ev.t === 'init') return { ...state, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {} }, authError: null };
+  if (ev.t === 'init') return { ...state, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {}, pages: ev.snapshot.pages ?? [], pageFavorites: ev.snapshot.pageFavorites ?? [] }, authError: null };
   // Auth/invite rejections block the session, so they are kept apart from transient errors.
   if (ev.t === 'error') return ev.code ? { ...state, authError: { message: ev.message, code: ev.code } } : { ...state, error: ev.message };
   if (ev.t === 'analytics') return { ...state, analytics: ev.data };
@@ -91,6 +91,14 @@ function reduce(state: State, action: Action): State {
     }
     case 'admin':
       return { ...state, snap: { ...snap, admin: ev.admin } };
+    case 'pageNodes': {
+      const byId = new Map(snap.pages.map((n) => [n.id, n]));
+      for (const id of ev.gone) byId.delete(id);
+      for (const n of ev.nodes) byId.set(n.id, n);
+      return { ...state, snap: { ...snap, pages: [...byId.values()] } };
+    }
+    case 'pageFavorites':
+      return { ...state, snap: { ...snap, pageFavorites: ev.list } };
     case 'typing':
       return {
         ...state,
@@ -103,6 +111,10 @@ function reduce(state: State, action: Action): State {
       return state;
   }
 }
+
+// Events about the page that is open (its text, its settings, who else is in it). They belong to the
+// editor's own copy of the page, so they go to listeners; the tree and favorites go through the reducer.
+const PAGE_DOC_EVENTS = new Set<string>(['pageBody', 'pageMeta', 'blockOps', 'blockConflict', 'pagePresence', 'pageRevoked', 'pageCreated']);
 
 function downloadJson(data: unknown): void {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
@@ -232,7 +244,7 @@ export function useRelay(session: Session | null) {
       };
       ws.onmessage = (e) => {
         const ev = JSON.parse(e.data as string) as ServerEvent;
-        if (ev.t === 'rtc' || ev.t === 'huddleCall') listeners.current.forEach((fn) => fn(ev));
+        if (ev.t === 'rtc' || ev.t === 'huddleCall' || PAGE_DOC_EVENTS.has(ev.t)) listeners.current.forEach((fn) => fn(ev));
         else if (ev.t === 'export') downloadJson(ev.data);
         else if (ev.t === 'workspaceCreated') {
           target.current = ev.id;

@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { HuddleCalls } from './huddle-call.ts';
-import type { Analytics, ClientEvent, Snapshot } from './types.ts';
+import type { Analytics, ClientEvent, ServerEvent, Snapshot } from './types.ts';
 
 export interface RelayCtx {
   snap: Snapshot;
@@ -10,6 +10,8 @@ export interface RelayCtx {
   openChannel: (id: string) => void;
   analytics: Analytics | null;
   calls: HuddleCalls;
+  // Events for the open page (see PAGE_DOC_EVENTS in store.ts).
+  listen: (fn: (ev: ServerEvent) => void) => () => void;
 }
 
 export const Ctx = createContext<RelayCtx | null>(null);

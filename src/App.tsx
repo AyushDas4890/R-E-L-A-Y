@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
 import { getDevSession, saveDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
@@ -30,15 +30,17 @@ import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './
 import { CreateWorkspaceModal, FindWorkspacesModal, InviteModal, WorkspacePicker, WorkspaceSwitcher, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
 import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, usePrefsMigration, type ChannelLevel } from './notify.ts';
-import { useAppearance } from './appearance.ts';
+import { clampSide, SIDE_DEFAULT, useAppearance } from './appearance.ts';
 import { Backdrop } from './components/Appearance.tsx';
 import { Icon } from './components/Icon.tsx';
+import { PageTree } from './components/pages/PageTree.tsx';
+import { PageView } from './components/pages/PageView.tsx';
 
 type Modal = null | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'workflows' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
-type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles';
+type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page';
 type Menu = null | 'workspace' | 'more' | 'create' | 'dnd' | 'bell' | 'addTab' | 'addChannel';
-interface Place { view: View; channel: string }
+interface Place { view: View; channel: string; page?: string }
 
 const untilLabel = (ts: number) => new Date(ts).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 const params = new URLSearchParams(window.location.search);
@@ -49,6 +51,13 @@ if (params.get('ws')) try { localStorage.setItem('relay.workspace', params.get('
 // Back would drop the visitor mid-page, on a section they didn't ask for.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const LEVEL_LABEL: Record<ChannelLevel, string> = { all: 'All new posts', mentions: 'Just mentions', mute: 'Mute' };
+const VIEW_LABEL: Record<Exclude<View, 'channel' | 'page'>, string> = { activity: 'Inbox', dms: 'Direct messages', saved: 'Later', directory: 'People', huddles: 'Huddles' };
+const remember = (key: string, value: string) => {
+  try { localStorage.setItem(key, value); } catch { /* storage blocked: the setting just won't persist */ }
+};
+const recall = (key: string) => {
+  try { return localStorage.getItem(key); } catch { return null; }
+};
 
 export default function App() {
   const { token, ready, signOut } = useAuthToken();
@@ -102,9 +111,30 @@ export default function App() {
   const [modal, setModal] = useState<Modal>(null);
   const [menu, setMenu] = useState<Menu>(null);
   const appearance = useAppearance();
+  // The Notion look keeps its sidebar open or closed (Ctrl+\) and lets people drag its edge.
+  const notion = appearance.theme.startsWith('notion');
+  const [sideCollapsed, setSideCollapsed] = useState(() => recall('relay.sideCollapsed') === '1');
+  const [sideW, setSideW] = useState(() => clampSide(Number(recall('relay.sideW'))));
+  const [resizing, setResizing] = useState(false);
+  useEffect(() => remember('relay.sideCollapsed', sideCollapsed ? '1' : '0'), [sideCollapsed]);
+  useEffect(() => remember('relay.sideW', String(sideW)), [sideW]);
+  const startResize = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    setResizing(true);
+    const onMove = (ev: PointerEvent) => setSideW(clampSide(ev.clientX));
+    const onUp = () => {
+      setResizing(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
   // Phone layout: the channel list is its own screen, opened from the header or tab bar.
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // A page I just asked for opens as soon as the server says it exists.
+  const openAfterCreate = useRef(false);
   const [showBrowse, setShowBrowse] = useState(false);
   const [bannerHidden, setBannerHidden] = useState(() => localStorage.getItem('relay.alertBanner') === 'hidden');
   const dnd = useDnd(snap, send);
@@ -114,7 +144,7 @@ export default function App() {
   const go = (to: Partial<Place>) => {
     setHistory(({ stack, at }) => {
       const next = { ...stack[at], ...to };
-      if (next.view === stack[at].view && next.channel === stack[at].channel) return { stack, at };
+      if (next.view === stack[at].view && next.channel === stack[at].channel && next.page === stack[at].page) return { stack, at };
       const kept = stack.slice(0, at + 1).concat(next).slice(-50);
       return { stack: kept, at: kept.length - 1 };
     });
@@ -132,11 +162,35 @@ export default function App() {
         e.preventDefault();
         setModal('search');
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && document.documentElement.dataset.theme?.startsWith('notion')) {
+        e.preventDefault();
+        setSideCollapsed((c) => !c);
+      }
       if (e.key === 'Escape') setMenu(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  useEffect(
+    () =>
+      listen((ev) => {
+        if (ev.t === 'pageCreated' && openAfterCreate.current) {
+          openAfterCreate.current = false;
+          go({ view: 'page', page: ev.id });
+        }
+      }),
+    [listen],
+  );
+  // ?p=<page id> links open that page once the workspace has loaded.
+  const deepLink = useRef(params.get('p'));
+  useEffect(() => {
+    if (!snap || !deepLink.current) return;
+    const id = deepLink.current;
+    deepLink.current = null;
+    // After the effect below that resets history for a new workspace.
+    setTimeout(() => go({ view: 'page', page: id }), 0);
+  }, [snap?.workspace.id]);
 
   // A new workspace starts at #general with a clean history.
   useEffect(() => {
@@ -245,6 +299,11 @@ export default function App() {
     setPanel(null);
   };
   const showView = (v: View) => go({ view: v });
+  const openPage = (id: string) => go({ view: 'page', page: id });
+  const createPage = (parentId: string | null, shared: boolean) => {
+    openAfterCreate.current = true;
+    send({ t: 'pageCreate', parentId, shared });
+  };
   const toggleMenu = (m: Menu) => setMenu(menu === m ? null : m);
   const section = (key: string, label: string, actions?: ReactNode) => (
     <div className="side-section">
@@ -257,7 +316,7 @@ export default function App() {
   const openThread = (id: string | null) => setPanel(id ? { kind: 'thread', id } : null);
   const togglePanel = (kind: 'canvas' | 'list' | 'details') => setPanel(panel?.kind === kind ? null : { kind });
 
-  const ctx = { snap, send, typing, openThread, openChannel, analytics, calls };
+  const ctx = { snap, send, typing, openThread, openChannel, analytics, calls, listen };
   const admin = isAdmin(me);
   const sectioned = new Set(snap.sections.flatMap((sec) => sec.channelIds));
   const addSection = () => {
@@ -304,13 +363,22 @@ export default function App() {
 
   return (
     <Ctx.Provider value={ctx}>
-      <div className={`shell ${navOpen ? 'nav-open' : ''} ${panel ? 'has-panel' : ''}`} onClick={() => menu && setMenu(null)}>
+      <div
+        className={`shell ${navOpen ? 'nav-open' : ''} ${panel ? 'has-panel' : ''} ${notion && sideCollapsed ? 'side-collapsed' : ''}`}
+        style={notion ? ({ '--side': `${sideW}px` } as CSSProperties) : undefined}
+        onClick={() => menu && setMenu(null)}
+      >
         <header className="topbar">
           <button className="icon-btn nav-toggle" aria-label="Show channels" onClick={() => setNavOpen(!navOpen)}><Icon n="menu" /></button>
+          <button className="icon-btn side-toggle-top notion-only" aria-label="Open sidebar" title="Open sidebar (Ctrl+\)" onClick={() => setSideCollapsed(false)}><Icon n="panelLeft" /></button>
           <div className="history-nav">
             <button className="icon-btn" aria-label="Back" disabled={history.at === 0} onClick={() => setHistory((h) => ({ ...h, at: Math.max(0, h.at - 1) }))}>←</button>
             <button className="icon-btn" aria-label="Forward" disabled={history.at >= history.stack.length - 1} onClick={() => setHistory((h) => ({ ...h, at: Math.min(h.stack.length - 1, h.at + 1) }))}>→</button>
           </div>
+          <nav className="crumbs notion-only" aria-label="Where you are">
+            <span>{snap.workspace.name}</span><i aria-hidden>/</i>
+            <span>{view === 'page' ? (() => { const pn = snap.pages.find((x) => x.id === place.page); return pn ? `${pn.icon || '📄'} ${pn.title || 'Untitled'}` : 'Page'; })() : view === 'channel' ? (ch ? `${ch.kind === 'dm' ? '' : '# '}${channelLabel(ch, snap.users, snap.me)}` : '') : VIEW_LABEL[view]}</span>
+          </nav>
           <button className="omnibar" onClick={() => setModal('search')}>
             <span aria-hidden>⌕</span>
             <span className="grow">Search {snap.workspace.name}</span>
@@ -411,16 +479,26 @@ export default function App() {
               )}
             </div>
             <span className="spacer" />
+            <button className="icon-btn side-head-btn notion-only" aria-label="Close sidebar" title="Close sidebar (Ctrl+\)" onClick={() => setSideCollapsed(true)}><Icon n="panelLeft" /></button>
             <button className="icon-btn side-head-btn" title="New sidebar section" onClick={addSection}><Icon n="grid" /></button>
             <button className="icon-btn side-head-btn compose-btn" title="New channel" onClick={() => setModal('new')}><Icon n="pencil" /></button>
           </header>
+          <div className="side-top notion-only">
+            <button className="side-item" onClick={() => setModal('search')}><span className="hash"><Icon n="search" /></span><span className="label">Search</span></button>
+            <button className={`side-item ${view === 'activity' ? 'active' : ''}`} onClick={() => showView('activity')}>
+              <span className="hash"><Icon n="inbox" /></span><span className="label">Inbox</span>
+              {totalUnread > 0 && <span className="count">{totalUnread}</span>}
+            </button>
+          </div>
           <div className="side-scroll">
             {navItem('huddles', <Icon n="headphones" />, 'Huddles')}
             {navItem('directory', <Icon n="users" />, 'People')}
-            {navItem('activity', '@', 'Mentions & reactions')}
+            {!notion && navItem('activity', '@', 'Mentions & reactions')}
             {navItem('saved', <Icon n="bookmark" />, 'Later')}
 
-            {section('starred', 'Starred')}
+            <PageTree nodes={snap.pages} favorites={snap.pageFavorites} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} />
+
+            {section('starred', notion ? 'Favorites' : 'Starred')}
             {!collapsed.starred && starred.map(sidebarItem)}
             {!collapsed.starred && starred.length === 0 && <p className="muted small side-hint">Star a channel from its header to pin it here.</p>}
 
@@ -463,6 +541,14 @@ export default function App() {
               </button>
             )}
           </div>
+          <div className="side-bottom notion-only">
+            <button className="side-item" onClick={() => setModal('workflows')}><span className="hash"><Icon n="zap" /></span><span className="label">Workflows</span></button>
+            <button className="side-item" onClick={() => setModal('scheduled')}><span className="hash"><Icon n="clock" /></span><span className="label">Scheduled messages</span>{snap.scheduled.length > 0 && <span className="count">{snap.scheduled.length}</span>}</button>
+            {admin && <button className="side-item" onClick={() => setModal('admin')}><span className="hash"><Icon n="settings" /></span><span className="label">Admin console</span>{(snap.admin?.flags.length ?? 0) > 0 && <span className="count">{snap.admin?.flags.length}</span>}</button>}
+            <button className="side-item" onClick={() => setModal('plan')}><span className="hash"><Icon n="gem" /></span><span className="label">Plan</span></button>
+            <button className="side-item" onClick={() => setModal('profile')}><span className="hash"><Icon n="user" /></span><span className="label">Preferences</span></button>
+          </div>
+          <div className={`side-resize notion-only ${resizing ? 'drag' : ''}`} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" onPointerDown={startResize} onDoubleClick={() => setSideW(SIDE_DEFAULT)} />
         </aside>
         <button className="nav-scrim" aria-label="Close channels" tabIndex={-1} onClick={() => setNavOpen(false)} />
 
@@ -470,7 +556,8 @@ export default function App() {
           <Backdrop bg={appearance.background} dim={appearance.dim} />
           {!connected && <div className="banner">Reconnecting…</div>}
           {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
-          {view === 'activity' ? <ActivityView />
+          {view === 'page' && place.page ? <PageView key={place.page} pageId={place.page} onOpen={openPage} onGone={() => go({ view: 'channel' })} />
+            : view === 'activity' ? <ActivityView />
             : view === 'saved' ? <SavedView />
             : view === 'dms' ? <DmsView onNew={() => showView('directory')} />
             : view === 'directory' ? <DirectoryView onMessage={dmWith} />
