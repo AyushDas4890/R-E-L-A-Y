@@ -67,13 +67,24 @@ const write = (key: string, value: string | null) => {
   }
 };
 
+// Minimal is the workspace's new look. A browser that hasn't adopted it yet starts on it once, whatever
+// theme, background or accent it used before (a purple accent would repaint Minimal's blue); after that,
+// anything the person picks sticks. White or black follows the system setting.
+export function adoptMinimal(adopted: boolean, prefersDark: boolean): { theme: string; bg: string; accent: string } | null {
+  return adopted ? null : { theme: prefersDark ? 'minimal-dark' : 'minimal', bg: 'none', accent: '' };
+}
+
 export function useAppearance() {
-  // Plum was the old default, so a browser still on it moves to Minimal once; choosing Plum again sticks.
   const [theme, setThemeState] = useState(() => {
-    const saved = read('relay.theme', 'minimal');
-    const seen = read('relay.minimalSeen', '');
-    write('relay.minimalSeen', '1');
-    return !seen && saved === 'plum' ? 'minimal' : saved;
+    const prefersDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+    const look = adoptMinimal(!!read('relay.look', ''), prefersDark);
+    if (look) {
+      write('relay.theme', look.theme);
+      write('relay.bg', look.bg);
+      write('relay.accent', look.accent);
+      write('relay.look', 'minimal');
+    }
+    return read('relay.theme', 'minimal');
   });
   const [bgId, setBgId] = useState(() => read('relay.bg', 'none'));
   const [accent, setAccentState] = useState(() => read('relay.accent', ''));
