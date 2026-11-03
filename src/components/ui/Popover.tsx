@@ -85,7 +85,11 @@ export function usePopover() {
   return {
     anchor,
     isOpen: anchor !== null,
-    toggle: (e: { currentTarget: HTMLElement }) => setAnchor((a) => (a ? null : e.currentTarget)),
+    toggle: (e: { currentTarget: HTMLElement }) => {
+      // Read the element now: the event's currentTarget is gone by the time React runs the updater.
+      const el = e.currentTarget;
+      setAnchor((a) => (a ? null : el));
+    },
     openAt: (el: HTMLElement) => setAnchor(el),
     close: () => setAnchor(null),
   };

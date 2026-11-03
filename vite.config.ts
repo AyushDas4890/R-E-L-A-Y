@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    proxy: { '/ws': { target: 'ws://localhost:8787', ws: true } },
+    proxy: { '/ws': { target: 'ws://localhost:8787', ws: true }, '/p': { target: 'http://localhost:8787' } },
   },
   build: {
     rollupOptions: {
