@@ -51,3 +51,9 @@
 /* Sign-in and workspace picker */
 .ap-si input, .ws-picker input { border-radius: 6px; }
 .ws-picker :is(button, a) { border-radius: 8px; }
+
+/* No visible scrollbar on the public pages; scrolling still works. */
+.ap, .ap-si, .ws-picker, .hp-hero, .ld-stage, .db-body { scrollbar-width: none; -ms-overflow-style: none; }
+.ap::-webkit-scrollbar, .ap-si::-webkit-scrollbar, .ws-picker::-webkit-scrollbar, .ld-stage::-webkit-scrollbar { display: none; width: 0; height: 0; }
+html:has(.ap), html:has(.ap-si), html:has(.ws-picker), html:has(.hp-hero) { scrollbar-width: none; }
+html:has(.ap)::-webkit-scrollbar, html:has(.ap-si)::-webkit-scrollbar, html:has(.ws-picker)::-webkit-scrollbar, html:has(.hp-hero)::-webkit-scrollbar { display: none; }
