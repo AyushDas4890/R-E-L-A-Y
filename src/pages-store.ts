@@ -7,7 +7,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useRelayCtx } from './ctx.ts';
 import { applyApplied, applyOps, type PageBody } from '../server/pages.ts';
 import { emptyBlock, newBlockId } from './editor.ts';
-import type { Block, BlockOp, BlockPatch, PageLevel, PageMeta } from './types.ts';
+import type { Block, BlockOp, BlockPatch, PageComment, PageLevel, PageMeta } from './types.ts';
 
 export type DocState = 'loading' | 'ready' | 'denied';
 
@@ -50,6 +50,7 @@ export function usePageDoc(id: string | null) {
   const [level, setLevel] = useState<PageLevel>('none');
   const [peers, setPeers] = useState<Record<string, string | null>>({});
   const [notice, setNotice] = useState<string | null>(null);
+  const [comments, setComments] = useState<PageComment[]>([]);
   const [, redraw] = useReducer((n: number) => n + 1, 0);
   const body = useRef<PageBody | null>(null);
   const queue = useRef<BlockOp[]>([]);
@@ -71,6 +72,7 @@ export function usePageDoc(id: string | null) {
     setMeta(null);
     setPeers({});
     setNotice(null);
+    setComments([]);
     if (!id) return;
     send({ t: 'pageGet', id });
     const off = listen((ev) => {
@@ -78,7 +80,10 @@ export function usePageDoc(id: string | null) {
         body.current = { id, version: ev.version, blocks: ev.blocks };
         setMeta(ev.page);
         setLevel(ev.level);
+        setComments(ev.comments ?? []);
         setState('ready');
+      } else if (ev.t === 'comments' && ev.id === id) {
+        setComments(ev.comments);
       } else if (ev.t === 'pageMeta' && ev.page.id === id) {
         setMeta(ev.page);
       } else if (ev.t === 'blockOps' && ev.id === id && body.current) {
@@ -164,6 +169,7 @@ export function usePageDoc(id: string | null) {
     level,
     blocks: body.current?.blocks ?? [],
     peers,
+    comments,
     notice,
     dismissNotice: () => setNotice(null),
     canEdit,

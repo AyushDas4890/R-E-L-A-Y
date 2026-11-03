@@ -1,6 +1,6 @@
 // Pure logic for pages: who may see what, the page tree, and block edits. No I/O, so it can be
 // unit-tested in isolation (see docs/notion/plan.md for the model and the merge rule).
-import type { Block, BlockOp, BlockPatch, BlockType, Page, PageLevel, PageNode, Rich, User } from '../src/types.ts';
+import type { Block, BlockOp, BlockPatch, BlockType, DbData, Page, PageComment, PageLevel, PageNode, Rich, Teamspace, User } from '../src/types.ts';
 
 export const MAX_PAGES = 20_000;
 export const MAX_BLOCKS = 5000;
@@ -14,12 +14,23 @@ export const GENERAL = 'general';
 export const BLOCK_TYPES: readonly BlockType[] = [
   'text', 'h1', 'h2', 'h3', 'bullet', 'number', 'todo', 'toggle', 'quote', 'callout', 'divider',
   'code', 'image', 'file', 'bookmark', 'table', 'columns', 'column', 'toc', 'breadcrumb',
-  'pageLink', 'subpage', 'equation',
+  'pageLink', 'subpage', 'equation', 'database',
 ];
 
 export type Pages = Record<string, Page>;
-export interface Who { id: string; role?: User['role']; inactive?: boolean; bot?: boolean }
-export interface PageBody { id: string; version: number; blocks: Block[] }
+export interface Who { id: string; role?: User['role']; inactive?: boolean; bot?: boolean; groups?: string[] }
+export interface StoredVersion { id: string; at: number; by: string; title: string; blocks: Block[] }
+export interface PageBody {
+  id: string;
+  version: number;
+  blocks: Block[];
+  // Present when the page is a database: its schema, views and rows.
+  db?: DbData;
+  comments?: PageComment[];
+  // The last few snapshots of the blocks, for page history.
+  versions?: StoredVersion[];
+}
+export type Spaces = Record<string, Teamspace>;
 
 const RANK: Record<PageLevel, number> = { none: 0, view: 1, comment: 2, edit: 3, full: 4 };
 const LEVELS: PageLevel[] = ['none', 'view', 'comment', 'edit', 'full'];
@@ -53,7 +64,7 @@ export function isTrashed(pages: Pages, page: Page): boolean {
 // - Guests only get what was shared with them by name. Bots only ever view.
 // - An explicit share applies down the tree until a page marks itself restricted.
 // - A trashed page (or one under a trashed page) is visible only to people with full access.
-export function levelFor(pages: Pages, page: Page, who: Who | undefined): PageLevel {
+export function levelFor(pages: Pages, page: Page, who: Who | undefined, spaces?: Spaces): PageLevel {
   if (!who || who.inactive) return 'none';
   const up = chain(pages, page);
   const guest = who.role === 'guest';
@@ -61,17 +72,32 @@ export function levelFor(pages: Pages, page: Page, who: Who | undefined): PageLe
   let restricted = false;
   for (const node of up) {
     for (const e of node.access.entries) {
-      if ((e.who.kind === 'user' && e.who.id === who.id) || (e.who.kind === 'workspace' && !guest)) best = Math.max(best, RANK[e.level]);
+      if ((e.who.kind === 'user' && e.who.id === who.id) || (e.who.kind === 'workspace' && !guest) || (e.who.kind === 'group' && !!who.groups?.includes(e.who.id))) best = Math.max(best, RANK[e.level]);
     }
     if (node.access.restricted) {
       restricted = true;
       break;
     }
   }
-  if (page.createdBy === who.id) best = RANK.full;
-  const inTeamspace = up[up.length - 1].teamspaceId !== null;
-  if (inTeamspace && !guest && !restricted) best = Math.max(best, RANK.edit);
-  if (inTeamspace && (who.role === 'owner' || who.role === 'admin')) best = RANK.full;
+  const ts = up[up.length - 1].teamspaceId;
+  const space = ts !== null && ts !== GENERAL && spaces ? spaces[ts] : undefined;
+  const admin = who.role === 'owner' || who.role === 'admin';
+  if (ts !== null && ts !== GENERAL && spaces && !space) {
+    // The teamspace is gone: only its pages' creators keep them.
+    if (page.createdBy !== who.id) best = 0;
+  } else if (space) {
+    // Teamspaces other than the default: members edit, owners manage, and the kind decides what outsiders see.
+    const mine = space.members[who.id];
+    if (mine === 'owner') best = RANK.full;
+    else if (mine && !restricted) best = Math.max(best, RANK.edit);
+    else if (space.kind !== 'private' && admin) best = RANK.full;
+    else if (space.kind === 'open' && !guest && !restricted) best = Math.max(best, RANK.view);
+    else if (space.kind === 'private' && !mine && page.createdBy !== who.id) best = 0;
+  } else if (ts !== null) {
+    if (!guest && !restricted) best = Math.max(best, RANK.edit);
+    if (admin) best = RANK.full;
+  }
+  if (page.createdBy === who.id && (!space || space.members[who.id] || space.kind === 'default')) best = RANK.full;
   if (who.bot) best = Math.min(best, RANK.view);
   if (up.some((p) => p.trashedAt !== undefined) && best < RANK.full) best = 0;
   return LEVELS[best];
@@ -79,8 +105,8 @@ export function levelFor(pages: Pages, page: Page, who: Who | undefined): PageLe
 
 // What the sidebar shows for one page, or null when this person may not see it. Pages under a
 // trashed page are hidden; the trashed page itself shows (flagged) so it can be restored.
-export function nodeFor(pages: Pages, page: Page, who: Who | undefined): PageNode | null {
-  const level = levelFor(pages, page, who);
+export function nodeFor(pages: Pages, page: Page, who: Who | undefined, spaces?: Spaces): PageNode | null {
+  const level = levelFor(pages, page, who, spaces);
   if (level === 'none') return null;
   const up = chain(pages, page);
   if (up.slice(1).some((p) => p.trashedAt !== undefined)) return null;
@@ -96,13 +122,16 @@ export function nodeFor(pages: Pages, page: Page, who: Who | undefined): PageNod
     level,
   };
   if (page.trashedAt !== undefined) node.trashed = true;
+  if (page.kind === 'database') node.kind = 'database';
+  if (page.source) node.source = page.source;
+  if (page.publish) node.published = true;
   return node;
 }
 
-export function visibleNodes(pages: Pages, who: Who | undefined): PageNode[] {
+export function visibleNodes(pages: Pages, who: Who | undefined, spaces?: Spaces): PageNode[] {
   const out: PageNode[] = [];
   for (const page of Object.values(pages)) {
-    const node = nodeFor(pages, page, who);
+    const node = nodeFor(pages, page, who, spaces);
     if (node) out.push(node);
   }
   return out;
@@ -164,7 +193,7 @@ export function orderAfter(pages: Pages, parentId: string | null, teamspaceId: s
   return i === list.length - 1 ? list[i].order + 1 : (list[i].order + list[i + 1].order) / 2;
 }
 
-export interface NewPage { parentId: string | null; shared: boolean; title?: unknown; icon?: unknown }
+export interface NewPage { parentId: string | null; shared: boolean; teamspaceId?: string; title?: unknown; icon?: unknown; kind?: 'page' | 'database'; source?: unknown }
 
 // Builds a page, or returns a reason it can't be made. `who` must be allowed to create where asked.
 export function newPage(pages: Pages, input: NewPage, who: Who, id: string, now: number): Page | string {
@@ -176,7 +205,7 @@ export function newPage(pages: Pages, input: NewPage, who: Who, id: string, now:
     if (chain(pages, parent).length >= 30) return 'Pages can be nested up to 30 levels.';
   } else {
     if (who.role === 'guest') return 'Guests can’t create top-level pages.';
-    teamspaceId = input.shared ? GENERAL : null;
+    teamspaceId = input.teamspaceId ?? (input.shared ? GENERAL : null);
   }
   return {
     id,
@@ -195,6 +224,8 @@ export function newPage(pages: Pages, input: NewPage, who: Who, id: string, now:
     editedBy: who.id,
     editedAt: now,
     access: { entries: [] },
+    ...(input.kind === 'database' ? { kind: 'database' as const } : {}),
+    ...(typeof input.source === 'string' && /^[a-z]{1,12}:[A-Za-z0-9_-]{1,64}$/.test(input.source) ? { source: input.source } : {}),
   };
 }
 

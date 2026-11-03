@@ -151,6 +151,8 @@ export const BLOCK_CHOICES: BlockChoice[] = [
   { type: 'subpage', label: 'Page', hint: 'Embed a sub-page in this page', keys: 'page subpage new', group: 'Basic' },
   { type: 'pageLink', label: 'Link to page', hint: 'Link to an existing page', keys: 'link page reference', group: 'Basic' },
   { type: 'table', label: 'Table', hint: 'A simple grid of text', keys: 'table grid rows columns simple', group: 'Basic', extra: { rows: [['', ''], ['', '']], header: true } },
+  { type: 'database', label: 'Table view', hint: 'Create a new database in this page', keys: 'database table view db new inline board gallery calendar', group: 'Database', extra: { name: 'new' } },
+  { type: 'database', label: 'Linked view of database', hint: 'Show an existing database here', keys: 'database linked view embed existing', group: 'Database', extra: { name: 'link' } },
   { type: 'columns', label: '2 columns', hint: 'Two blocks side by side', keys: 'columns column layout two', group: 'Layout' },
   { type: 'code', label: 'Code', hint: 'A block of code', keys: 'code snippet pre', group: 'Media', extra: { language: 'plain' } },
   { type: 'image', label: 'Image', hint: 'Embed an image from a link', keys: 'image picture photo', group: 'Media' },
@@ -371,3 +373,18 @@ export const LISTY: ReadonlySet<BlockType> = new Set<BlockType>(['bullet', 'numb
 
 export const newBlockId = (): string => crypto.randomUUID();
 export const emptyBlock = (type: BlockType = 'text', extra: Partial<Block> = {}): Block => ({ id: newBlockId(), type, text: [], children: [], rev: 1, ...extra });
+
+// Nests parsed lines into blocks by their indentation (deeper than four levels is flattened).
+export function draftsToBlocks(drafts: Draft[]): Block[] {
+  const root: Block[] = [];
+  const stack: { depth: number; block: Block }[] = [];
+  for (const d of drafts) {
+    const depth = Math.min(d.depth, 4);
+    const block = emptyBlock(d.type, { text: d.text, ...(d.checked !== undefined ? { checked: d.checked } : {}), ...(d.language ? { language: d.language } : {}) });
+    while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop();
+    if (stack.length && depth > 0) stack[stack.length - 1].block.children.push(block);
+    else root.push(block);
+    stack.push({ depth, block });
+  }
+  return root;
+}

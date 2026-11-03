@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { createFileStore, createSupabaseStore, type Store } from './store.ts';
-import type { Page } from '../src/types.ts';
+import type { InboxItem, Page, Teamspace } from '../src/types.ts';
 import type { PageBody } from './pages.ts';
 
 export interface PagesIndex {
@@ -16,6 +16,10 @@ export interface PagesIndex {
   pages: Record<string, Page>;
   // User id -> favorite page ids.
   favorites: Record<string, string[]>;
+  // Teamspaces other than the default one (id `general`).
+  teamspaces: Record<string, Teamspace>;
+  // User id -> notifications about pages.
+  inbox: Record<string, InboxItem[]>;
 }
 
 export interface PageStore {
@@ -26,11 +30,12 @@ export interface PageStore {
   removeBody(id: string): Promise<void>;
 }
 
-export const emptyIndex = (): PagesIndex => ({ v: 1, pages: {}, favorites: {} });
+export const emptyIndex = (): PagesIndex => ({ v: 1, pages: {}, favorites: {}, teamspaces: {}, inbox: {} });
 export const emptyBody = (id: string): PageBody => ({ id, version: 0, blocks: [] });
 
 // Page ids are made by the server (uuids). Anything else never reaches a file name or a row id.
-const SAFE_ID = /^[A-Za-z0-9-]{1,64}$/;
+// A row's page id is `<database id>.<row id>`; each part is a plain id, so nothing reaches a path.
+const SAFE_ID = /^[A-Za-z0-9-]{1,64}(.[A-Za-z0-9-]{1,64})?$/;
 const safe = (id: string): string => {
   if (!SAFE_ID.test(id)) throw new Error('bad page id');
   return id;
@@ -52,12 +57,12 @@ export function createPageStore(workspaceId: string, dataDir: string): PageStore
   return {
     async loadIndex() {
       const raw = (await indexStore.load()) as Partial<PagesIndex>;
-      return { v: 1, pages: raw.pages ?? {}, favorites: raw.favorites ?? {} };
+      return { v: 1, pages: raw.pages ?? {}, favorites: raw.favorites ?? {}, teamspaces: raw.teamspaces ?? {}, inbox: raw.inbox ?? {} };
     },
     saveIndex: (index) => indexStore.save(index),
     async loadBody(id) {
       const raw = (await bodyStore(id).load()) as Partial<PageBody>;
-      return { id, version: raw.version ?? 0, blocks: raw.blocks ?? [] };
+      return { ...raw, id, version: raw.version ?? 0, blocks: raw.blocks ?? [] };
     },
     saveBody: (body) => bodyStore(body.id).save(body),
     async removeBody(id) {

@@ -27,7 +27,7 @@ function reduce(state: State, action: Action): State {
   }
   const ev = action.ev;
   // An older server sends no `history`: then the snapshot already holds everything.
-  if (ev.t === 'init') return { ...state, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {}, pages: ev.snapshot.pages ?? [], pageFavorites: ev.snapshot.pageFavorites ?? [] }, authError: null };
+  if (ev.t === 'init') return { ...state, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {}, pages: ev.snapshot.pages ?? [], pageFavorites: ev.snapshot.pageFavorites ?? [], teamspaces: ev.snapshot.teamspaces ?? [], inbox: ev.snapshot.inbox ?? [] }, authError: null };
   // Auth/invite rejections block the session, so they are kept apart from transient errors.
   if (ev.t === 'error') return ev.code ? { ...state, authError: { message: ev.message, code: ev.code } } : { ...state, error: ev.message };
   if (ev.t === 'analytics') return { ...state, analytics: ev.data };
@@ -99,6 +99,10 @@ function reduce(state: State, action: Action): State {
     }
     case 'pageFavorites':
       return { ...state, snap: { ...snap, pageFavorites: ev.list } };
+    case 'teamspaces':
+      return { ...state, snap: { ...snap, teamspaces: ev.list } };
+    case 'inbox':
+      return { ...state, snap: { ...snap, inbox: ev.items } };
     case 'typing':
       return {
         ...state,
@@ -114,7 +118,7 @@ function reduce(state: State, action: Action): State {
 
 // Events about the page that is open (its text, its settings, who else is in it). They belong to the
 // editor's own copy of the page, so they go to listeners; the tree and favorites go through the reducer.
-const PAGE_DOC_EVENTS = new Set<string>(['pageBody', 'pageMeta', 'blockOps', 'blockConflict', 'pagePresence', 'pageRevoked', 'pageCreated']);
+const PAGE_DOC_EVENTS = new Set<string>(['pageBody', 'pageMeta', 'blockOps', 'blockConflict', 'pagePresence', 'pageRevoked', 'pageCreated', 'dbData', 'dbDelta', 'comments', 'pageAccess', 'pageHistory', 'searchResults', 'calendarFeed']);
 
 function downloadJson(data: unknown): void {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));

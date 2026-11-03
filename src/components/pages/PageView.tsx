@@ -8,7 +8,13 @@ import {
 } from '../../editor.ts';
 import { findBlock, locateBlock, usePageDoc, type PageDocApi } from '../../pages-store.ts';
 import type { Block, BlockType, PageNode, Rich } from '../../types.ts';
+import { useDatabase } from '../../db-store.ts';
 import { Icon } from '../Icon.tsx';
+import { DatabaseView } from '../db/DatabaseView.tsx';
+import { RowProps } from '../db/RowProps.tsx';
+import { usePopover } from '../ui/Popover.tsx';
+import { ShareMenu } from './ShareMenu.tsx';
+import { AssistantPanel, CommentsPanel, HistoryPanel } from './SidePanels.tsx';
 import { Editable, caretLine, formatSelection, selectionIn, setSelection, type CaretInfo, type MentionLabel } from './Editable.tsx';
 
 const COLORS = ['gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'];
@@ -19,7 +25,7 @@ const NUMBER_MARK = (n: number) => `${n}.`;
 
 type Popup =
   | { kind: 'slash' | 'mention' | 'link'; blockId: string; from: number; query: string; rect: DOMRect }
-  | { kind: 'pages' | 'turn' | 'handle' | 'color' | 'callout'; blockId: string; rect: DOMRect }
+  | { kind: 'pages' | 'turn' | 'handle' | 'color' | 'callout'; blockId: string; rect: DOMRect; dbOnly?: boolean }
   | { kind: 'icon' | 'cover' | 'pageMenu'; rect: DOMRect };
 
 interface Item { key: string; label: string; hint?: string; icon?: string; run: () => void; danger?: boolean }
@@ -39,12 +45,26 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
   const els = useRef(new Map<string, HTMLElement>());
   const want = useRef<{ id: string; at: number | 'end' } | null>(null);
   const pendingSub = useRef<string | null>(null);
+  const pendingDb = useRef<string | null>(null);
+  // A page id with a dot is a row of a database: `<database>.<row>`.
+  const rowRef = pageId.includes('.') ? { dbId: pageId.split('.')[0], rowId: pageId.split('.')[1] } : null;
+  const rowDb = useDatabase(rowRef?.dbId ?? null);
+  // A row's title and icon live in the database, not on a page of their own.
+  const patchMeta = (patch: Parameters<typeof doc.patchMeta>[0]): void => {
+    if (!rowRef) return doc.patchMeta(patch);
+    const tp = rowDb.db?.props.find((p) => p.type === 'title');
+    if (patch.title !== undefined && tp) rowDb.updateRow(rowRef.rowId, { [tp.id]: patch.title });
+    if (patch.icon !== undefined) rowDb.setIcon(rowRef.rowId, patch.icon);
+  };
   const [popup, setPopup] = useState<Popup | null>(null);
   const [sel, setSel] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [drag, setDrag] = useState<{ from: string; over: string; below: boolean } | null>(null);
   const [bar, setBar] = useState<{ rect: DOMRect; el: HTMLElement } | null>(null);
   const [title, setTitle] = useState('');
+  const [panel, setPanel] = useState<'comments' | 'history' | 'assistant' | null>(null);
+  const [aboutBlock, setAboutBlock] = useState<string | null>(null);
+  const share = usePopover();
   const titleFocus = useRef(false);
 
   const nodes = snap.pages;
@@ -68,7 +88,11 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
   useEffect(
     () =>
       listen((ev) => {
-        if (ev.t === 'pageCreated' && pendingSub.current) {
+        if (ev.t === 'pageCreated' && pendingDb.current) {
+          const id = pendingDb.current;
+          pendingDb.current = null;
+          doc.update(id, { type: 'database', pageId: ev.id, name: '' });
+        } else if (ev.t === 'pageCreated' && pendingSub.current) {
           const id = pendingSub.current;
           pendingSub.current = null;
           doc.update(id, { type: 'subpage', pageId: ev.id });
@@ -388,8 +412,8 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       return list.slice(0, 12);
     }
     if (popup.kind === 'pages') {
-      return nodes.filter((n) => !n.trashed && n.id !== pageId).slice(0, 30).map((n) => ({
-        key: n.id, label: `${n.icon || '📄'} ${n.title || 'Untitled'}`, run: () => { doc.update(popup.blockId, { type: 'pageLink', pageId: n.id }); close(); },
+      return nodes.filter((n) => !n.trashed && n.id !== pageId && (!popup.dbOnly || n.kind === 'database')).slice(0, 30).map((n) => ({
+        key: n.id, label: `${n.icon || (n.kind === 'database' ? '🗂️' : '📄')} ${n.title || 'Untitled'}`, run: () => { doc.update(popup.blockId, popup.dbOnly ? { type: 'database', pageId: n.id, name: '' } : { type: 'pageLink', pageId: n.id }); close(); },
       }));
     }
     if (popup.kind === 'turn') {
@@ -410,6 +434,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       const out: Item[] = [];
       if (b && (TEXTY.has(b.type) || b.type === 'code')) out.push({ key: 'turn', label: 'Turn into…', run: () => setPopup({ kind: 'turn', blockId: b.id, rect: popup.rect }) });
       out.push({ key: 'color', label: 'Color…', run: () => setPopup({ kind: 'color', blockId: popup.blockId, rect: popup.rect }) });
+      out.push({ key: 'comment', label: 'Comment', run: () => { setAboutBlock(popup.blockId); setPanel('comments'); close(); } });
       out.push({ key: 'dup', label: 'Duplicate', run: () => { duplicate(popup.blockId); close(); } });
       out.push({ key: 'link', label: 'Copy link to block', run: () => { void navigator.clipboard?.writeText(`${location.origin}/?p=${pageId}#${popup.blockId}`); close(); } });
       out.push({ key: 'del', label: 'Delete', danger: true, run: () => { remove(popup.blockId); close(); } });
@@ -417,15 +442,15 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
     }
     if (popup.kind === 'icon') {
       return [
-        ...EMOJI.map((e) => ({ key: e, label: e, run: () => { doc.patchMeta({ icon: e }); close(); } })),
-        { key: 'none', label: 'Remove icon', run: () => { doc.patchMeta({ icon: '' }); close(); } },
+        ...EMOJI.map((e) => ({ key: e, label: e, run: () => { patchMeta({ icon: e }); close(); } })),
+        { key: 'none', label: 'Remove icon', run: () => { patchMeta({ icon: '' }); close(); } },
       ];
     }
     if (popup.kind === 'cover') {
       return [
-        ...COVERS.map((c) => ({ key: c, label: c[0].toUpperCase() + c.slice(1), run: () => { doc.patchMeta({ cover: `preset:${c}` }); close(); } })),
-        { key: 'url', label: 'Image link…', run: () => { const u = window.prompt('Image link (https://…)', 'https://'); if (u) doc.patchMeta({ cover: u }); close(); } },
-        { key: 'none', label: 'Remove cover', run: () => { doc.patchMeta({ cover: '' }); close(); } },
+        ...COVERS.map((c) => ({ key: c, label: c[0].toUpperCase() + c.slice(1), run: () => { patchMeta({ cover: `preset:${c}` }); close(); } })),
+        { key: 'url', label: 'Image link…', run: () => { const u = window.prompt('Image link (https://…)', 'https://'); if (u) patchMeta({ cover: u }); close(); } },
+        { key: 'none', label: 'Remove cover', run: () => { patchMeta({ cover: '' }); close(); } },
       ];
     }
     return [];
@@ -444,9 +469,18 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       return;
     }
     const extra = { ...(c.extra ?? {}) };
+    const dbMode = c.type === 'database' ? extra.name : undefined;
+    if (c.type === 'database') delete extra.name;
+    const startDb = (id: string) => {
+      if (dbMode === 'new') {
+        pendingDb.current = id;
+        send({ t: 'dbCreate', parentId: pageId, title: '', layout: 'table' });
+      } else setPopup({ kind: 'pages', blockId: id, rect: popup?.rect ?? new DOMRect(), dbOnly: true });
+    };
     if (emptyAfter) {
       doc.update(b.id, { type: c.type, text, ...extra });
-      if (c.type === 'subpage') {
+      if (c.type === 'database') startDb(b.id);
+      else if (c.type === 'subpage') {
         pendingSub.current = b.id;
         send({ t: 'pageCreate', parentId: pageId, title: '' });
       } else if (c.type === 'pageLink') setPopup({ kind: 'pages', blockId: b.id, rect: popup?.rect ?? new DOMRect() });
@@ -454,7 +488,8 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
     } else {
       const nb = make(c.type, extra);
       doc.edit([{ op: 'update', id: b.id, patch: { text }, baseRev: b.rev }, { op: 'insert', parent: at?.parent?.id ?? null, after: b.id, block: nb }]);
-      if (c.type === 'subpage') {
+      if (c.type === 'database') startDb(nb.id);
+      else if (c.type === 'subpage') {
         pendingSub.current = nb.id;
         send({ t: 'pageCreate', parentId: pageId, title: '' });
       } else if (c.type === 'pageLink') setPopup({ kind: 'pages', blockId: nb.id, rect: popup?.rect ?? new DOMRect() });
@@ -606,6 +641,9 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
           ? <button className="pg-pagelink" onClick={() => onOpen(target.id)}><span>{target.icon || '📄'}</span><span>{target.title || 'Untitled'}</span></button>
           : <span className="pg-pagelink muted">No access to this page</span>;
       }
+      case 'database':
+        if (!b.pageId) return <span className="muted">{pendingDb.current === b.id ? 'Creating database…' : 'Choose a database…'}</span>;
+        return nodeById.get(b.pageId) ? <DatabaseView dbId={b.pageId} inline onOpenRow={(d, r) => onOpen(r ? `${d}.${r}` : d)} /> : <span className="pg-pagelink muted">No access to this database</span>;
       case 'column':
         return renderList(b.children, depth);
       default:
@@ -685,7 +723,10 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
   const trashed = !!meta.trashedAt;
   const font = meta.font === 'serif' ? 'serif' : meta.font === 'mono' ? 'mono' : 'default';
 
+  const scrollToBlock = (id: string) => els.current.get(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
   return (
+    <div className="pg-wrap">
     <div className={`pg-page font-${font} ${meta.smallText ? 'small' : ''} ${meta.fullWidth ? 'wide' : ''}`} ref={root} tabIndex={-1} onKeyDown={onContainerKey} onClick={(e) => { if (!(e.target as HTMLElement).closest('.pg-menu')) setPopup((p) => (p && (p.kind === 'slash' || p.kind === 'mention' || p.kind === 'link') ? p : null)); }}>
       {trashed && (
         <div className="pg-banner">
@@ -698,18 +739,23 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       {doc.notice && <div className="pg-banner warn" role="status"><span>{doc.notice}</span><button className="icon-btn" aria-label="Dismiss" onClick={doc.dismissNotice}>×</button></div>}
 
       <div className="pg-actions">
+        {meta.verified && meta.verified.until > Date.now() && <span className="pg-verified" title={`Verified by ${snap.users[meta.verified.by]?.name ?? 'someone'} until ${new Date(meta.verified.until).toLocaleDateString()}`}>✔ Verified</span>}
+        {meta.verified && meta.verified.until <= Date.now() && <span className="pg-verified expired">Verification expired</span>}
         <span className="muted pg-edited">Edited {new Date(meta.editedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-        <button className={`icon-btn ${isFav ? 'lit' : ''}`} aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={isFav} onClick={() => send({ t: 'pageFavorite', id: pageId, on: !isFav })}><Icon n="star" fill={isFav} /></button>
+        {!rowRef && !trashed && <button className="ghost-btn pg-share" aria-haspopup="dialog" onClick={share.toggle}>Share</button>}
+        <button className={`icon-btn ${panel === 'comments' ? 'lit' : ''}`} aria-label="Comments" aria-pressed={panel === 'comments'} onClick={() => setPanel(panel === 'comments' ? null : 'comments')}>💬{doc.comments.filter((c) => !c.parent && !c.resolved).length > 0 && <sup>{doc.comments.filter((c) => !c.parent && !c.resolved).length}</sup>}</button>
+        <button className={`icon-btn ${panel === 'assistant' ? 'lit' : ''}`} aria-label="Assistant" aria-pressed={panel === 'assistant'} onClick={() => setPanel(panel === 'assistant' ? null : 'assistant')}>✨</button>
+        {!rowRef && <button className={`icon-btn ${isFav ? 'lit' : ''}`} aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={isFav} onClick={() => send({ t: 'pageFavorite', id: pageId, on: !isFav })}><Icon n="star" fill={isFav} /></button>}
         <button className="icon-btn" aria-label="Page options" onClick={(e) => setPopup({ kind: 'pageMenu', rect: rectOf(e.currentTarget) })}><Icon n="more" /></button>
       </div>
 
       {meta.cover && <div className={`pg-cover ${meta.cover.startsWith('preset:') ? `cv-${meta.cover.slice(7)}` : ''}`} style={meta.cover.startsWith('preset:') ? undefined : { backgroundImage: `url("${meta.cover.replace(/"/g, '%22')}")` }} />}
       <div className="pg-head">
         {meta.icon && <button className="pg-icon" aria-label="Change icon" disabled={!editable} onClick={(e) => setPopup({ kind: 'icon', rect: rectOf(e.currentTarget) })}>{meta.icon}</button>}
-        {editable && (!meta.icon || !meta.cover) && (
+        {editable && (!meta.icon || (!meta.cover && !rowRef)) && (
           <div className="pg-add">
             {!meta.icon && <button className="ghost-btn" onClick={(e) => setPopup({ kind: 'icon', rect: rectOf(e.currentTarget) })}>☺ Add icon</button>}
-            {!meta.cover && <button className="ghost-btn" onClick={(e) => setPopup({ kind: 'cover', rect: rectOf(e.currentTarget) })}>▣ Add cover</button>}
+            {!meta.cover && !rowRef && <button className="ghost-btn" onClick={(e) => setPopup({ kind: 'cover', rect: rectOf(e.currentTarget) })}>▣ Add cover</button>}
           </div>
         )}
         <h1
@@ -725,7 +771,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
           onInput={(e) => {
             const t = e.currentTarget.textContent ?? '';
             setTitle(t);
-            doc.patchMeta({ title: t });
+            patchMeta({ title: t });
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -738,6 +784,9 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
           onPaste={(e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain').replace(/\s+/g, ' ')); }}
         />
       </div>
+
+      {meta.kind === 'database' && !rowRef && <DatabaseView dbId={pageId} onOpenRow={(d, r) => onOpen(r ? `${d}.${r}` : d)} />}
+      {rowRef && <RowProps dbId={rowRef.dbId} rowId={rowRef.rowId} onBack={() => onOpen(rowRef.dbId)} />}
 
       <div className="pg-body">
         {renderList(blocks, 0)}
@@ -758,15 +807,18 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       {popup?.kind === 'pageMenu' && (
         <div className="pg-menu menu" role="menu" style={menuPos(popup.rect, 250)} onClick={(e) => e.stopPropagation()}>
           <p className="menu-title">Style</p>
-          <div className="pg-fonts">{(['default', 'serif', 'mono'] as const).map((f) => <button key={f} role="menuitemradio" aria-checked={meta.font === f} className={`pg-font-${f} ${meta.font === f ? 'on' : ''}`} disabled={!editable} onClick={() => doc.patchMeta({ font: f })}><b>Ag</b><small>{f[0].toUpperCase() + f.slice(1)}</small></button>)}</div>
-          <label className="pg-switch"><span>Small text</span><input type="checkbox" checked={meta.smallText} disabled={!editable} onChange={(e) => doc.patchMeta({ smallText: e.target.checked })} /></label>
-          <label className="pg-switch"><span>Full width</span><input type="checkbox" checked={meta.fullWidth} disabled={!editable} onChange={(e) => doc.patchMeta({ fullWidth: e.target.checked })} /></label>
-          <label className="pg-switch"><span>Lock page</span><input type="checkbox" checked={meta.locked} disabled={doc.level !== 'full'} onChange={(e) => doc.patchMeta({ locked: e.target.checked })} /></label>
+          <div className="pg-fonts">{(['default', 'serif', 'mono'] as const).map((f) => <button key={f} role="menuitemradio" aria-checked={meta.font === f} className={`pg-font-${f} ${meta.font === f ? 'on' : ''}`} disabled={!editable} onClick={() => patchMeta({ font: f })}><b>Ag</b><small>{f[0].toUpperCase() + f.slice(1)}</small></button>)}</div>
+          <label className="pg-switch"><span>Small text</span><input type="checkbox" checked={meta.smallText} disabled={!editable} onChange={(e) => patchMeta({ smallText: e.target.checked })} /></label>
+          <label className="pg-switch"><span>Full width</span><input type="checkbox" checked={meta.fullWidth} disabled={!editable} onChange={(e) => patchMeta({ fullWidth: e.target.checked })} /></label>
+          <label className="pg-switch"><span>Lock page</span><input type="checkbox" checked={meta.locked} disabled={doc.level !== 'full'} onChange={(e) => patchMeta({ locked: e.target.checked })} /></label>
           <hr />
-          <button role="menuitem" onClick={() => { send({ t: 'pageDuplicate', id: pageId }); setPopup(null); }}>Duplicate</button>
+          {!rowRef && <button role="menuitem" onClick={() => { send({ t: 'pageDuplicate', id: pageId }); setPopup(null); }}>Duplicate</button>}
           <button role="menuitem" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}/?p=${pageId}`); setPopup(null); }}>Copy link</button>
           <button role="menuitem" onClick={() => { exportMd(); setPopup(null); }}>Export as Markdown</button>
-          {doc.level === 'full' && !trashed && <button role="menuitem" className="danger" onClick={() => { send({ t: 'pageTrash', id: pageId }); setPopup(null); }}>Move to trash</button>}
+          {editable && <button role="menuitem" onClick={() => { setPanel('history'); setPopup(null); }}>Page history</button>}
+          {doc.level === 'full' && !rowRef && <button role="menuitem" onClick={() => { send({ t: 'pageVerify', id: pageId, days: meta.verified && meta.verified.until > Date.now() ? 0 : 90 }); setPopup(null); }}>{meta.verified && meta.verified.until > Date.now() ? 'Remove verification' : 'Verify page (90 days)'}</button>}
+          {doc.level === 'full' && !trashed && !rowRef && <button role="menuitem" className="danger" onClick={() => { send({ t: 'pageTrash', id: pageId }); setPopup(null); }}>Move to trash</button>}
+          {rowRef && editable && <button role="menuitem" className="danger" onClick={() => { rowDb.removeRow(rowRef.rowId); setPopup(null); onOpen(rowRef.dbId); }}>Delete row</button>}
           <hr />
           <p className="menu-note">{stats.words} words · {stats.chars} characters</p>
         </div>
@@ -774,6 +826,11 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       {Object.entries(doc.peers).filter(([u, c]) => u !== me && c).length > 0 && (
         <div className="pg-peers" aria-live="polite">{Object.entries(doc.peers).filter(([u, c]) => u !== me && c).map(([u]) => snap.users[u]?.name).filter(Boolean).join(', ')} editing</div>
       )}
+      {share.isOpen && <ShareMenu pageId={pageId} meta={meta} level={doc.level} anchor={share.anchor} onClose={share.close} />}
+    </div>
+    {panel === 'comments' && <CommentsPanel pageId={pageId} comments={doc.comments} blocks={blocks} level={doc.level} aboutBlock={aboutBlock} onClearBlock={() => setAboutBlock(null)} onGoTo={scrollToBlock} onClose={() => setPanel(null)} />}
+    {panel === 'history' && <HistoryPanel pageId={pageId} canRestore={editable} onClose={() => setPanel(null)} />}
+    {panel === 'assistant' && <AssistantPanel doc={doc} onClose={() => setPanel(null)} onOpen={onOpen} />}
     </div>
   );
 }

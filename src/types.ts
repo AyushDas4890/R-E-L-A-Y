@@ -246,6 +246,37 @@ export interface Snapshot {
   // The page tree this person may see (no bodies), and their favorites.
   pages: PageNode[];
   pageFavorites: string[];
+  teamspaces: Teamspace[];
+  inbox: InboxItem[];
+}
+
+// A change to a database, as the people who have it open receive it. Every list holds whole items
+// that changed (or the ids that went); the receiver merges them into its copy.
+export interface DbDelta {
+  props?: Property[];
+  propsRemoved?: string[];
+  // The full order of property ids, when it changed.
+  propOrder?: string[];
+  views?: View[];
+  viewsRemoved?: string[];
+  rows?: Row[];
+  rowsRemoved?: string[];
+  templates?: RowTemplate[];
+  templatesRemoved?: string[];
+  automations?: Automation[];
+  automationsRemoved?: string[];
+  form?: FormConfig;
+  locked?: boolean;
+}
+
+export interface CalendarItem {
+  rowId: string;
+  dbId: string;
+  dbTitle: string;
+  title: string;
+  start: string;
+  end?: string;
+  prop: string;
 }
 
 // ---- Pages: the Notion-style documents (see docs/notion/plan.md) ----
@@ -268,7 +299,7 @@ export interface Rich {
 export type BlockType =
   | 'text' | 'h1' | 'h2' | 'h3' | 'bullet' | 'number' | 'todo' | 'toggle' | 'quote' | 'callout' | 'divider'
   | 'code' | 'image' | 'file' | 'bookmark' | 'table' | 'columns' | 'column' | 'toc' | 'breadcrumb'
-  | 'pageLink' | 'subpage' | 'equation';
+  | 'pageLink' | 'subpage' | 'equation' | 'database';
 
 export interface Block {
   id: string;
@@ -303,8 +334,193 @@ export type BlockOp =
   | { op: 'remove'; id: string };
 
 export interface PageShare {
-  who: { kind: 'user'; id: string } | { kind: 'workspace' };
+  who: { kind: 'user'; id: string } | { kind: 'workspace' } | { kind: 'group'; id: string };
   level: Exclude<PageLevel, 'none'>;
+}
+
+// ---- Databases ----
+
+export type PropType =
+  | 'title' | 'text' | 'number' | 'select' | 'status' | 'multi' | 'date' | 'person' | 'file' | 'checkbox'
+  | 'url' | 'email' | 'phone' | 'formula' | 'relation' | 'rollup' | 'createdTime' | 'createdBy'
+  | 'editedTime' | 'editedBy' | 'button' | 'id' | 'place';
+
+export interface SelectOption {
+  id: string;
+  name: string;
+  color: string;
+  // Status options sit in one of three groups.
+  group?: 'todo' | 'progress' | 'done';
+}
+
+export interface DateValue {
+  // `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm` when it has a time.
+  start: string;
+  end?: string;
+}
+
+export type PropValue = string | number | boolean | string[] | DateValue | null;
+
+export type RollupFn =
+  | 'count' | 'countValues' | 'countUnique' | 'countEmpty' | 'countNotEmpty' | 'percentEmpty' | 'percentNotEmpty'
+  | 'sum' | 'avg' | 'min' | 'max' | 'median' | 'range' | 'showOriginal' | 'checked' | 'unchecked' | 'percentChecked'
+  | 'earliest' | 'latest' | 'dateRange';
+
+export interface Action {
+  kind: 'setProp' | 'notify';
+  // setProp: which property and the value to set. notify: a person id or `creator`, and the text.
+  prop?: string;
+  value?: PropValue;
+  user?: string;
+  text?: string;
+}
+
+export interface Property {
+  id: string;
+  name: string;
+  type: PropType;
+  options?: SelectOption[];
+  // Number display: plain, commas, percent, usd, eur, gbp, inr.
+  format?: string;
+  relation?: { dbId: string; twoWay?: string };
+  rollup?: { relation: string; prop: string; fn: RollupFn };
+  formula?: string;
+  button?: { label: string; actions: Action[] };
+}
+
+export type FilterOp =
+  | 'is' | 'isNot' | 'contains' | 'notContains' | 'startsWith' | 'endsWith' | 'empty' | 'notEmpty'
+  | 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'before' | 'after' | 'onOrBefore' | 'onOrAfter'
+  | 'checked' | 'unchecked' | 'pastWeek' | 'pastMonth' | 'thisWeek' | 'nextWeek' | 'nextMonth';
+
+export interface FilterRule { prop: string; op: FilterOp; value?: PropValue }
+export interface FilterGroup { op: 'and' | 'or'; items: (FilterRule | FilterGroup)[] }
+export interface SortRule { prop: string; dir: 'asc' | 'desc' }
+export interface ColorRule { prop: string; op: FilterOp; value?: PropValue; color: string }
+
+export type ViewLayout = 'table' | 'board' | 'list' | 'gallery' | 'calendar' | 'timeline' | 'chart' | 'feed';
+
+export interface View {
+  id: string;
+  name: string;
+  layout: ViewLayout;
+  // Property ids shown, in order. The title is always shown.
+  visible: string[];
+  filter: FilterGroup;
+  sorts: SortRule[];
+  // Board columns / table groups.
+  group?: string;
+  // Calendar and timeline: the date property (and the end date property).
+  dateProp?: string;
+  endProp?: string;
+  // Footer calculations in a table: property id -> function.
+  calc: Record<string, string>;
+  wrap?: boolean;
+  cardSize?: 'small' | 'medium' | 'large';
+  cardCover?: string;
+  colors: ColorRule[];
+  chart?: { kind: 'bar' | 'line' | 'donut'; x: string; y?: string; fn: 'count' | 'sum' | 'avg' };
+}
+
+export interface Row {
+  id: string;
+  props: Record<string, PropValue>;
+  icon?: string;
+  createdBy: string;
+  createdAt: number;
+  editedBy: string;
+  editedAt: number;
+  order: number;
+  trashedAt?: number;
+}
+
+export interface RowTemplate { id: string; name: string; props: Record<string, PropValue>; blocks: Block[] }
+
+export interface Automation {
+  id: string;
+  name: string;
+  on: boolean;
+  trigger: { kind: 'rowAdded' } | { kind: 'propChanged'; prop: string; to?: PropValue };
+  actions: Action[];
+}
+
+export interface FormConfig {
+  enabled: boolean;
+  title: string;
+  description: string;
+  // Property ids asked for, in order, and which of them must be answered.
+  fields: string[];
+  required: string[];
+  submitLabel: string;
+}
+
+export interface DbData {
+  props: Property[];
+  views: View[];
+  rows: Row[];
+  templates: RowTemplate[];
+  automations: Automation[];
+  form: FormConfig;
+  locked: boolean;
+}
+
+export type SchemaOp =
+  | { op: 'addProp'; prop: Partial<Property> & { type: PropType; name: string } }
+  | { op: 'patchProp'; id: string; patch: Partial<Omit<Property, 'id'>> }
+  | { op: 'removeProp'; id: string }
+  | { op: 'moveProp'; id: string; after: string | null };
+
+export type ViewOp =
+  | { op: 'add'; view: Partial<View> & { layout: ViewLayout } }
+  | { op: 'patch'; viewId: string; patch: Partial<Omit<View, 'id'>> }
+  | { op: 'remove'; viewId: string }
+  | { op: 'duplicate'; viewId: string };
+
+// A comment is anchored to a block (or the whole page) and may have replies.
+export interface PageComment {
+  id: string;
+  parent?: string;
+  blockId?: string;
+  by: string;
+  at: number;
+  text: string;
+  resolved?: boolean;
+}
+
+export interface PageVersion { id: string; at: number; by: string; title: string }
+
+export interface Teamspace {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  // default: everyone. open: any member may join. closed: visible, join by request. private: members only.
+  kind: 'default' | 'open' | 'closed' | 'private';
+  // Member user id -> role in this teamspace.
+  members: Record<string, 'owner' | 'member'>;
+}
+
+export interface InboxItem {
+  id: string;
+  kind: 'mention' | 'comment' | 'reply' | 'share' | 'assigned' | 'reminder' | 'notify';
+  pageId: string;
+  by: string;
+  at: number;
+  text: string;
+  read?: boolean;
+  archived?: boolean;
+}
+
+export interface SearchHit {
+  id: string;
+  kind: 'page' | 'database' | 'row';
+  title: string;
+  icon: string;
+  snippet: string;
+  // The page or database it lives in, for rows.
+  parentId: string | null;
+  editedAt: number;
+  score: number;
 }
 
 export interface Page {
@@ -327,6 +543,13 @@ export interface Page {
   editedAt: number;
   trashedAt?: number;
   access: { entries: PageShare[]; restricted?: boolean };
+  // A database is a page too. Its rows are kept in its body, not in the tree.
+  kind?: 'page' | 'database';
+  // Where a page was made from, e.g. `canvas:<channelId>`, so a migration is not done twice.
+  source?: string;
+  // Read-only public link.
+  publish?: { token: string; at: number; duplicate: boolean };
+  verified?: { by: string; until: number };
 }
 
 // What the page tree needs: no body, no access list.
@@ -343,6 +566,9 @@ export interface PageNode {
   level: PageLevel;
   // The page itself is in the trash (its children are hidden with it).
   trashed?: boolean;
+  kind?: 'page' | 'database';
+  source?: string;
+  published?: boolean;
 }
 
 export type PageMeta = Omit<Page, 'access'>;
@@ -399,9 +625,38 @@ export type ClientEvent =
   | { t: 'fileSummary'; id: string; index: number }
   | { t: 'analytics' }
   | { t: 'export' }
-  | { t: 'pageCreate'; parentId: string | null; shared?: boolean; title?: string; icon?: string }
+  | { t: 'pageCreate'; parentId: string | null; shared?: boolean; teamspaceId?: string; title?: string; icon?: string; template?: string; source?: string }
+  | { t: 'dbCreate'; parentId: string | null; shared?: boolean; teamspaceId?: string; title?: string; icon?: string; preset?: string; layout?: ViewLayout; source?: string; props?: Partial<Property>[]; rows?: Record<string, PropValue>[] }
+  | { t: 'dbGet'; id: string }
+  | { t: 'dbClose'; id: string }
+  | { t: 'dbSchema'; id: string; ops: SchemaOp[] }
+  | { t: 'dbView'; id: string; op: ViewOp }
+  | { t: 'rowCreate'; id: string; props?: Record<string, PropValue>; template?: string; after?: string | null }
+  | { t: 'rowUpdate'; id: string; rowId: string; props?: Record<string, PropValue>; icon?: string }
+  | { t: 'rowRemove'; id: string; rowId: string; restore?: boolean }
+  | { t: 'rowMove'; id: string; rowId: string; after: string | null }
+  | { t: 'dbTemplate'; id: string; op: { op: 'set'; template: { id?: string; name: string; props: Record<string, PropValue>; blocks?: Block[] } } | { op: 'remove'; templateId: string } }
+  | { t: 'dbAutomation'; id: string; op: { op: 'set'; automation: Omit<Automation, 'id'> & { id?: string } } | { op: 'remove'; automationId: string } }
+  | { t: 'dbForm'; id: string; patch: Partial<FormConfig> }
+  | { t: 'dbLock'; id: string; locked: boolean }
+  | { t: 'formSubmit'; id: string; values: Record<string, PropValue> }
+  | { t: 'rowButton'; id: string; rowId: string; prop: string }
+  | { t: 'pageAccess'; id: string }
+  | { t: 'pageShare'; id: string; entries: PageShare[]; restricted: boolean }
+  | { t: 'comment'; id: string; text: string; blockId?: string; parent?: string }
+  | { t: 'commentResolve'; id: string; commentId: string; on: boolean }
+  | { t: 'commentDelete'; id: string; commentId: string }
+  | { t: 'pageHistory'; id: string; versionId?: string }
+  | { t: 'pageRestoreVersion'; id: string; versionId: string }
+  | { t: 'pageVerify'; id: string; days: number }
+  | { t: 'pagePublish'; id: string; on: boolean; duplicate?: boolean }
+  | { t: 'teamspace'; op: 'create' | 'update' | 'delete' | 'join' | 'leave' | 'setMember' | 'removeMember'; id?: string; name?: string; icon?: string; description?: string; kind?: Teamspace['kind']; userId?: string; role?: 'owner' | 'member' }
+  | { t: 'search'; q: string }
+  | { t: 'inboxRead'; id: string }
+  | { t: 'inboxArchive'; id: string }
+  | { t: 'calendarFeed' }
   | { t: 'pageUpdate'; id: string; patch: Partial<Pick<Page, 'title' | 'icon' | 'cover' | 'font' | 'smallText' | 'fullWidth' | 'locked'>> }
-  | { t: 'pageMove'; id: string; parentId: string | null; shared?: boolean; after: string | null }
+  | { t: 'pageMove'; id: string; parentId: string | null; shared?: boolean; teamspaceId?: string; after: string | null }
   | { t: 'pageTrash'; id: string }
   | { t: 'pageRestore'; id: string }
   | { t: 'pageDelete'; id: string }
@@ -445,13 +700,22 @@ export type ServerEvent =
   | { t: 'starred'; list: string[] }
   | { t: 'pageNodes'; nodes: PageNode[]; gone: string[] }
   | { t: 'pageCreated'; id: string }
-  | { t: 'pageBody'; id: string; page: PageMeta; level: PageLevel; blocks: Block[]; version: number }
+  | { t: 'pageBody'; id: string; page: PageMeta; level: PageLevel; blocks: Block[]; version: number; comments: PageComment[] }
   | { t: 'pageMeta'; page: PageMeta }
   | { t: 'blockOps'; id: string; ops: BlockOp[]; version: number; by: string; ack?: boolean }
   | { t: 'blockConflict'; id: string; block: Block }
   | { t: 'pagePresence'; id: string; userId: string; cursor: string | null }
   | { t: 'pageRevoked'; id: string }
   | { t: 'pageFavorites'; list: string[] }
+  | { t: 'dbData'; id: string; page: PageMeta; level: PageLevel; db: DbData; version: number }
+  | { t: 'dbDelta'; id: string; delta: DbDelta; by: string }
+  | { t: 'comments'; id: string; comments: PageComment[] }
+  | { t: 'pageAccess'; id: string; access: Page['access'] }
+  | { t: 'pageHistory'; id: string; versions: PageVersion[]; preview?: { id: string; blocks: Block[] } }
+  | { t: 'teamspaces'; list: Teamspace[] }
+  | { t: 'inbox'; items: InboxItem[] }
+  | { t: 'searchResults'; q: string; hits: SearchHit[] }
+  | { t: 'calendarFeed'; items: CalendarItem[] }
   | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' };
 
 export interface Analytics {
