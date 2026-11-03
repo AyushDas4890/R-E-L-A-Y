@@ -13,6 +13,8 @@ const VERB: Record<InboxItem['kind'], string> = {
   assigned: 'assigned you',
   reminder: 'reminder:',
   notify: 'notified you about',
+  request: 'asked for access to',
+  suggestion: 'suggested an edit on',
 };
 const ago = (t: number): string => {
   const m = Math.round((Date.now() - t) / 60_000);

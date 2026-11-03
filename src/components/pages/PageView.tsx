@@ -81,7 +81,12 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
     if (!titleFocus.current) setTitle(meta?.title ?? '');
   }, [meta?.title]);
   useEffect(() => {
-    if (doc.state === 'denied') onGone();
+  }, [doc.state]);
+
+  // Access taken away while the page was open: leave it.
+  useEffect(() => {
+    if (doc.state === 'denied' && meta) onGone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.state]);
 
   // Page created for a sub-page block I asked for.
@@ -515,6 +520,12 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
   };
 
   // ---- Rendering ----
+  if (doc.state === 'denied' && !meta) {
+    return (
+      <div className="pg-page"><div className="empty-card pg-denied"><p><b>You don’t have access to this page.</b></p><p className="muted">Ask the people who own it to share it with you.</p><button className="primary" onClick={() => send({ t: 'pageRequestAccess', id: pageId })}>Request access</button> <button className="ghost-btn" onClick={onGone}>Go back</button></div></div>
+    );
+  }
+  if (doc.state === 'denied') return null;
   if (doc.state === 'loading' || !meta) return <div className="pg-page"><p className="muted pg-loading">Opening page…</p></div>;
 
   const editable = canEdit;
@@ -828,7 +839,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       )}
       {share.isOpen && <ShareMenu pageId={pageId} meta={meta} level={doc.level} anchor={share.anchor} onClose={share.close} />}
     </div>
-    {panel === 'comments' && <CommentsPanel pageId={pageId} comments={doc.comments} blocks={blocks} level={doc.level} aboutBlock={aboutBlock} onClearBlock={() => setAboutBlock(null)} onGoTo={scrollToBlock} onClose={() => setPanel(null)} />}
+    {panel === 'comments' && <CommentsPanel pageId={pageId} comments={doc.comments} suggestions={doc.suggestions} blocks={blocks} level={doc.level} aboutBlock={aboutBlock} onClearBlock={() => setAboutBlock(null)} onGoTo={scrollToBlock} onClose={() => setPanel(null)} />}
     {panel === 'history' && <HistoryPanel pageId={pageId} canRestore={editable} onClose={() => setPanel(null)} />}
     {panel === 'assistant' && <AssistantPanel doc={doc} onClose={() => setPanel(null)} onOpen={onOpen} />}
     </div>

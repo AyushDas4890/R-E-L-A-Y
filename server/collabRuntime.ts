@@ -2,12 +2,12 @@
 // the inbox and search. Every event checks the person's level on the page first (see pages.ts).
 import { randomBytes } from 'node:crypto';
 import type { Block, BlockOp, Page, PageComment, PageShare, SearchHit, Teamspace, ClientEvent } from '../src/types.ts';
-import { GENERAL, atLeast, nodeFor, plainText, subtree, type PageBody } from './pages.ts';
+import { GENERAL, applyOps, atLeast, cleanRich, getPage, nodeFor, plainText, subtree, type PageBody } from './pages.ts';
 import type { Core, Handler } from './pageCore.ts';
 import { titleOfRow } from './dbRuntime.ts';
 
 const COLLAB_EVENTS = new Set<string>([
-  'pageAccess', 'pageShare', 'comment', 'commentResolve', 'commentDelete', 'pageHistory', 'pageRestoreVersion', 'pageVerify',
+  'pageAccess', 'pageRequestAccess', 'suggest', 'suggestResolve', 'pageShare', 'comment', 'commentResolve', 'commentDelete', 'pageHistory', 'pageRestoreVersion', 'pageVerify',
   'pagePublish', 'teamspace', 'search', 'inboxRead', 'inboxArchive',
 ]);
 const MAX_COMMENTS = 500;
@@ -17,7 +17,7 @@ const SNAPSHOT_EVERY_MS = 10 * 60_000;
 const MAX_SNAPSHOT_BYTES = 400_000;
 const MAX_SPACES = 50;
 const MAX_SEARCH_LOADS = 400;
-const LEVELS = new Set(['view', 'comment', 'edit', 'full']);
+const LEVELS = new Set(['view', 'comment', 'edit-content', 'edit', 'full']);
 const MENTION = /@\[([A-Za-z0-9_-]{1,64})\]/g;
 
 // The teamspaces a person can see: the default one, open and closed ones, and private ones they belong to.
@@ -48,6 +48,8 @@ function mentionsIn(blocks: Block[]): string[] {
 export function createCollabRuntime(core: Core): Handler {
   const { index } = core;
   const texts = new Map<string, { version: number; text: string }>();
+  // Access requests already sent (one per person per page until restart).
+  const asked = new Set<string>();
 
   function pushSpaces(): void {
     for (const [ws, uid] of core.deps.clients()) core.deps.send(ws, { t: 'teamspaces', list: visibleSpaces(core, uid) });
@@ -72,10 +74,28 @@ export function createCollabRuntime(core: Core): Handler {
   };
   core.hooks.afterEdit = (page, id, _body, userId, ops: BlockOp[]) => {
     const named = new Set<string>();
+    const texts: Block[] = [];
     for (const op of ops) {
-      if (op.op === 'insert') for (const m of mentionsIn([op.block])) named.add(m);
-      else if (op.op === 'update' && op.patch.text) for (const m of mentionsIn([{ id: '', type: 'text', text: op.patch.text, children: [], rev: 0 }])) named.add(m);
+      if (op.op === 'insert') texts.push(op.block);
+      else if (op.op === 'update' && op.patch.text) texts.push({ id: op.id, type: 'text', text: op.patch.text, children: [], rev: 0 });
     }
+    for (const m of mentionsIn(texts)) named.add(m);
+    // A date with a time, mentioned in the text, is a reminder for the person who wrote it.
+    const walk = (list: Block[]) => {
+      for (const b of list) {
+        for (const r of b.text) {
+          const m = r.mention?.kind === 'date' ? /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/.exec(r.mention.id) : null;
+          const at = m ? Date.parse(`${m[1]}T${m[2]}:00Z`) : NaN;
+          if (!Number.isFinite(at) || at <= core.now() || at > core.now() + 366 * 86_400_000) continue;
+          const mine = index.reminders.filter((x) => x.userId === userId);
+          if (mine.length >= 200 || mine.some((x) => x.pageId === id && x.at === at)) continue;
+          index.reminders.push({ id: core.newId(), userId, pageId: id, at, text: page.title || 'Untitled' });
+          core.touchIndex();
+        }
+        walk(b.children);
+      }
+    };
+    walk(texts);
     for (const uid of named) {
       const recent = (index.inbox[uid] ?? []).some((i) => i.kind === 'mention' && i.pageId === id && i.by === userId && !i.read && core.now() - i.at < 30 * 60_000);
       if (!recent) core.notify(uid, { kind: 'mention', pageId: id, by: userId, text: page.title || 'Untitled' });
@@ -154,7 +174,7 @@ export function createCollabRuntime(core: Core): Handler {
       else if (who.kind === 'group' && typeof who.id === 'string' && who.id.length > 0 && who.id.length <= 64) out.push({ who: { kind: 'group', id: who.id }, level: lv });
     }
     // One entry per person or group; the highest level wins.
-    const rank = { view: 1, comment: 2, edit: 3, full: 4 } as const;
+    const rank = { view: 1, comment: 2, 'edit-content': 3, edit: 4, full: 5 } as const;
     const merged = new Map<string, PageShare>();
     for (const e of out) {
       const key = e.who.kind === 'workspace' ? 'w' : `${e.who.kind}:${(e.who as { id: string }).id}`;
@@ -174,6 +194,65 @@ export function createCollabRuntime(core: Core): Handler {
     if (!who) return true;
 
     switch (ev.t) {
+      case 'pageRequestAccess': {
+        // The same quiet answer whether or not the page exists, so ids can't be probed.
+        const page = getPage(index.pages, ev.id);
+        const key = `${userId}:${typeof ev.id === 'string' ? ev.id : ''}`;
+        if (page && core.levelOf(page, userId) === 'none' && who.role !== 'guest' && !asked.has(key) && asked.size < 5000) {
+          asked.add(key);
+          const holders = new Set<string>([page.createdBy]);
+          for (const uid of Object.keys(core.deps.people())) if (core.levelOf(page, uid) === 'full') holders.add(uid);
+          for (const uid of [...holders].slice(0, 20)) core.notify(uid, { kind: 'request', pageId: page.id, by: userId, text: page.title || 'Untitled' });
+        }
+        core.deps.send(ws, { t: 'error', message: 'If that page exists, its owners have been asked.' });
+        return true;
+      }
+      case 'suggest': {
+        const t = await core.target(ws, userId, ev.id, 'comment');
+        if (!t) return true;
+        const body = await core.bodyOf(t.id);
+        const text = cleanRich(ev.text);
+        const find = (list: Block[]): Block | undefined => { for (const b of list) { if (b.id === ev.blockId) return b; const x = find(b.children); if (x) return x; } return undefined; };
+        const block = typeof ev.blockId === 'string' ? find(body.blocks) : undefined;
+        const list = body.suggestions ?? (body.suggestions = []);
+        if (!block || !text || list.length >= 200) {
+          core.deps.send(ws, { t: 'error', message: 'That suggestion couldn’t be saved.' });
+          return true;
+        }
+        list.push({ id: core.newId(), blockId: block.id, by: userId, at: core.now(), was: block.text.map((r) => r.t).join(''), text });
+        body.version += 1;
+        core.touchBody(t.id);
+        core.broadcastToOpen(t.id, { t: 'suggestions', id: t.id, suggestions: list });
+        core.notify(t.page.createdBy, { kind: 'suggestion', pageId: t.id, by: userId, text: t.meta.title || 'Untitled' });
+        return true;
+      }
+      case 'suggestResolve': {
+        const t = await core.target(ws, userId, ev.id, 'comment');
+        if (!t) return true;
+        const body = await core.bodyOf(t.id);
+        const s = body.suggestions?.find((x) => x.id === ev.suggestionId);
+        if (!s) return true;
+        // Anyone may withdraw their own; accepting or rejecting others' needs edit access.
+        const canJudge = atLeast(core.levelOf(t.page, userId), 'edit') && !t.page.locked;
+        if (!(canJudge || (s.by === userId && ev.accept !== true))) return core.denied(ws), true;
+        if (ev.accept === true) {
+          const cur = (function find(list: Block[]): Block | undefined { for (const b of list) { if (b.id === s.blockId) return b; const x = find(b.children); if (x) return x; } return undefined; })(body.blocks);
+          if (cur) {
+            const res = applyOps(body, [{ op: 'update', id: cur.id, patch: { text: s.text }, baseRev: cur.rev }]);
+            for (const op of res.applied) {
+              core.broadcastToOpen(t.id, { t: 'blockOps', id: t.id, ops: [op], version: body.version, by: userId });
+            }
+            if (!t.row) core.edited(t.page, userId);
+          }
+        }
+        body.suggestions = (body.suggestions ?? []).filter((x) => x.id !== s.id);
+        body.version += 1;
+        core.touchBody(t.id);
+        core.touchIndex();
+        core.broadcastToOpen(t.id, { t: 'suggestions', id: t.id, suggestions: body.suggestions });
+        if (s.by !== userId) core.notify(s.by, { kind: 'suggestion', pageId: t.id, by: userId, text: `${ev.accept === true ? 'Accepted' : 'Declined'}: ${t.meta.title || 'Untitled'}` });
+        return true;
+      }
       case 'pageAccess': {
         const page = core.need(ws, userId, ev.id, 'full');
         if (page) core.deps.send(ws, { t: 'pageAccess', id: page.id, access: page.access });
@@ -182,7 +261,18 @@ export function createCollabRuntime(core: Core): Handler {
       case 'pageShare': {
         const page = core.need(ws, userId, ev.id, 'full');
         if (!page) return true;
-        const entries = cleanShares(ev.entries);
+        let entries = cleanShares(ev.entries);
+        if (entries && core.deps.barred) {
+          // Nobody may be connected to the page's creator across an information barrier.
+          const barred = core.deps.barred;
+          const before = entries.length;
+          entries = entries.filter((e) => {
+            if (e.who.kind === 'user') return !barred(page.createdBy, e.who.id);
+            if (e.who.kind === 'group') return !(core.deps.groupMembers?.(e.who.id) ?? []).some((m) => barred(page.createdBy, m));
+            return true;
+          });
+          if (entries.length < before) core.deps.send(ws, { t: 'error', message: 'Some people couldn’t be added because of an information barrier.' });
+        }
         if (!entries) {
           core.deps.send(ws, { t: 'error', message: 'That share list isn’t valid.' });
           return true;
@@ -291,7 +381,7 @@ export function createCollabRuntime(core: Core): Handler {
           core.touchIndex();
         }
         for (const tab of core.openTabs(t.id)) {
-          core.deps.send(tab, { t: 'pageBody', id: t.id, page: t.meta, level: core.levelOf(t.page, [...core.deps.clients()].find(([w]) => w === tab)?.[1] ?? userId), blocks: body.blocks, version: body.version, comments: body.comments ?? [] });
+          core.deps.send(tab, { t: 'pageBody', id: t.id, page: t.meta, level: core.levelOf(t.page, [...core.deps.clients()].find(([w]) => w === tab)?.[1] ?? userId), blocks: body.blocks, version: body.version, comments: body.comments ?? [], suggestions: body.suggestions ?? [] });
         }
         core.deps.audit(userId, 'page.restoreVersion', t.meta.title || 'Untitled');
         return true;

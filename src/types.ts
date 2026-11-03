@@ -281,7 +281,8 @@ export interface CalendarItem {
 
 // ---- Pages: the Notion-style documents (see docs/notion/plan.md) ----
 
-export type PageLevel = 'none' | 'view' | 'comment' | 'edit' | 'full';
+// `edit-content` (databases only) may add and change rows but not the schema or views.
+export type PageLevel = 'none' | 'view' | 'comment' | 'edit-content' | 'edit' | 'full';
 
 // Inline text. One span per run of identical styling.
 export interface Rich {
@@ -487,6 +488,17 @@ export interface PageComment {
   resolved?: boolean;
 }
 
+// A proposed replacement for one block's text, from someone who can comment but not edit.
+export interface Suggestion {
+  id: string;
+  blockId: string;
+  by: string;
+  at: number;
+  // What the block said when the suggestion was made, and what it should say.
+  was: string;
+  text: Rich[];
+}
+
 export interface PageVersion { id: string; at: number; by: string; title: string }
 
 export interface Teamspace {
@@ -500,9 +512,13 @@ export interface Teamspace {
   members: Record<string, 'owner' | 'member'>;
 }
 
+export interface Reminder { id: string; userId: string; pageId: string; at: number; text: string }
+
+export interface Reminder { id: string; userId: string; pageId: string; at: number; text: string }
+
 export interface InboxItem {
   id: string;
-  kind: 'mention' | 'comment' | 'reply' | 'share' | 'assigned' | 'reminder' | 'notify';
+  kind: 'mention' | 'comment' | 'reply' | 'share' | 'assigned' | 'reminder' | 'notify' | 'request' | 'suggestion';
   pageId: string;
   by: string;
   at: number;
@@ -646,6 +662,9 @@ export type ClientEvent =
   | { t: 'comment'; id: string; text: string; blockId?: string; parent?: string }
   | { t: 'commentResolve'; id: string; commentId: string; on: boolean }
   | { t: 'commentDelete'; id: string; commentId: string }
+  | { t: 'suggest'; id: string; blockId: string; text: Rich[] }
+  | { t: 'suggestResolve'; id: string; suggestionId: string; accept: boolean }
+  | { t: 'pageRequestAccess'; id: string }
   | { t: 'pageHistory'; id: string; versionId?: string }
   | { t: 'pageRestoreVersion'; id: string; versionId: string }
   | { t: 'pageVerify'; id: string; days: number }
@@ -700,7 +719,7 @@ export type ServerEvent =
   | { t: 'starred'; list: string[] }
   | { t: 'pageNodes'; nodes: PageNode[]; gone: string[] }
   | { t: 'pageCreated'; id: string }
-  | { t: 'pageBody'; id: string; page: PageMeta; level: PageLevel; blocks: Block[]; version: number; comments: PageComment[] }
+  | { t: 'pageBody'; id: string; page: PageMeta; level: PageLevel; blocks: Block[]; version: number; comments: PageComment[]; suggestions: Suggestion[] }
   | { t: 'pageMeta'; page: PageMeta }
   | { t: 'blockOps'; id: string; ops: BlockOp[]; version: number; by: string; ack?: boolean }
   | { t: 'blockConflict'; id: string; block: Block }
@@ -710,6 +729,7 @@ export type ServerEvent =
   | { t: 'dbData'; id: string; page: PageMeta; level: PageLevel; db: DbData; version: number }
   | { t: 'dbDelta'; id: string; delta: DbDelta; by: string }
   | { t: 'comments'; id: string; comments: PageComment[] }
+  | { t: 'suggestions'; id: string; suggestions: Suggestion[] }
   | { t: 'pageAccess'; id: string; access: Page['access'] }
   | { t: 'pageHistory'; id: string; versions: PageVersion[]; preview?: { id: string; blocks: Block[] } }
   | { t: 'teamspaces'; list: Teamspace[] }

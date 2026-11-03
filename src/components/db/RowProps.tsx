@@ -19,7 +19,7 @@ export function RowProps({ dbId, rowId, onBack }: { dbId: string; rowId: string;
       </div>
     );
   }
-  const canSchema = api.canEdit && (!db.locked || api.canManage);
+  const canSchema = api.canDesign && (!db.locked || api.canManage);
   return (
     <div className="db-rowprops">
       <button className="ghost-btn db-back" onClick={onBack}>← {api.meta?.icon || '🗂️'} {api.meta?.title || 'Untitled'}</button>

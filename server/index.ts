@@ -306,6 +306,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
     clients: () => clients,
     workspaceId: id,
     workspaceName: () => db.meta.name,
+    barred: (a, b) => barred(a, b, db.groups, db.settings.barriers),
+    groupMembers: (gid) => db.groups.find((g) => g.id === gid)?.members ?? [],
     who: (userId) => {
       const u = db.users[userId];
       return u ? { id: u.id, role: u.role, inactive: u.inactive, bot: u.bot, groups: db.groups.filter((g) => g.members.includes(userId)).map((g) => g.id) } : undefined;
@@ -1415,6 +1417,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
   }
 
   function stop(): void {
+    pages.stop();
     for (const t of timers) clearInterval(t);
   }
 

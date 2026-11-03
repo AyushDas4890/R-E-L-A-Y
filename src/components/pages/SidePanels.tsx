@@ -4,7 +4,7 @@ import { useRelayCtx } from '../../ctx.ts';
 import { emptyBlock } from '../../editor.ts';
 import { actionItems, answer, keyPoints, lines, suggestTitle, summarize } from '../../localAi.ts';
 import type { PageDocApi } from '../../pages-store.ts';
-import type { Block, PageComment, PageLevel, PageVersion, SearchHit } from '../../types.ts';
+import type { Block, PageComment, PageLevel, PageVersion, SearchHit, Suggestion } from '../../types.ts';
 
 const ago = (t: number): string => {
   const m = Math.round((Date.now() - t) / 60_000);
@@ -27,6 +27,7 @@ const blockText = (blocks: Block[], id: string): string => {
 interface CommentsProps {
   pageId: string;
   comments: PageComment[];
+  suggestions: Suggestion[];
   blocks: Block[];
   level: PageLevel;
   // A block the next comment is about (from the block menu).
@@ -36,7 +37,7 @@ interface CommentsProps {
   onClose: () => void;
 }
 
-export function CommentsPanel({ pageId, comments, blocks, level, aboutBlock, onClearBlock, onGoTo, onClose }: CommentsProps) {
+export function CommentsPanel({ pageId, comments, suggestions, blocks, level, aboutBlock, onClearBlock, onGoTo, onClose }: CommentsProps) {
   const { snap, send } = useRelayCtx();
   const [text, setText] = useState('');
   const [reply, setReply] = useState<{ id: string; text: string } | null>(null);
@@ -98,6 +99,21 @@ export function CommentsPanel({ pageId, comments, blocks, level, aboutBlock, onC
           <div className="cm-row">{mentionPicker((t) => setText(text + t))}<button className="primary" disabled={!text.trim()}>Comment</button></div>
         </form>
       ) : <p className="muted db-note">You can read comments but not add them.</p>}
+      {can && <SuggestForm pageId={pageId} blocks={blocks} />}
+      {suggestions.length > 0 && (
+        <ul className="cm-list" aria-label="Suggested edits">
+          {suggestions.map((s) => (
+            <li key={s.id} className="cm-thread">
+              <div className="cm-msg"><header><b>{snap.users[s.by]?.name ?? 'Someone'}</b><time className="muted">{ago(s.at)}</time></header>
+                <p><s>{s.was || '(empty)'}</s><br />{s.text.map((r) => r.t).join('') || '(empty)'}</p></div>
+              <div className="cm-actions">
+                {(level === 'edit' || level === 'full') && <button className="ghost-btn" onClick={() => send({ t: 'suggestResolve', id: pageId, suggestionId: s.id, accept: true })}>Accept</button>}
+                {(level === 'edit' || level === 'full' || s.by === snap.me) && <button className="ghost-btn" onClick={() => send({ t: 'suggestResolve', id: pageId, suggestionId: s.id, accept: false })}>{s.by === snap.me ? 'Withdraw' : 'Decline'}</button>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
       {open.length === 0 && <p className="muted db-note">No open comments.</p>}
       <ul className="cm-list">{open.map(thread)}</ul>
       {done.length > 0 && (
@@ -107,6 +123,29 @@ export function CommentsPanel({ pageId, comments, blocks, level, aboutBlock, onC
         </>
       )}
     </aside>
+  );
+}
+
+// Propose new text for one block; people with edit access accept or decline it.
+function SuggestForm({ pageId, blocks }: { pageId: string; blocks: Block[] }) {
+  const { send } = useRelayCtx();
+  const flat: Block[] = [];
+  const walk = (list: Block[]) => { for (const b of list) { if (b.text.length) flat.push(b); walk(b.children); } };
+  walk(blocks);
+  const [id, setId] = useState('');
+  const [text, setText] = useState('');
+  return (
+    <details className="cm-suggest">
+      <summary>Suggest an edit</summary>
+      <form className="cm-form" onSubmit={(e) => { e.preventDefault(); if (id) { send({ t: 'suggest', id: pageId, blockId: id, text: [{ t: text }] }); setId(''); setText(''); } }}>
+        <select aria-label="Block to change" value={id} onChange={(e) => { setId(e.target.value); setText(flat.find((b) => b.id === e.target.value)?.text.map((r) => r.t).join('') ?? ''); }}>
+          <option value="">Choose a line…</option>
+          {flat.slice(0, 200).map((b) => <option key={b.id} value={b.id}>{b.text.map((r) => r.t).join('').slice(0, 50)}</option>)}
+        </select>
+        <textarea rows={3} aria-label="New text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.stopPropagation()} />
+        <button className="primary" disabled={!id}>Suggest</button>
+      </form>
+    </details>
   );
 }
 

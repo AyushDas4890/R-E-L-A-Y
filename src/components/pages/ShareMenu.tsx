@@ -5,7 +5,7 @@ import type { PageLevel, PageMeta, PageShare } from '../../types.ts';
 import { Popover } from '../ui/Popover.tsx';
 
 type Level = Exclude<PageLevel, 'none'>;
-const LEVELS: [Level, string][] = [['view', 'Can view'], ['comment', 'Can comment'], ['edit', 'Can edit'], ['full', 'Full access']];
+const LEVELS: [Level, string][] = [['view', 'Can view'], ['comment', 'Can comment'], ['edit-content', 'Can edit content (databases)'], ['edit', 'Can edit'], ['full', 'Full access']];
 const levelLabel = (l: PageLevel): string => (l === 'none' ? 'No access' : LEVELS.find(([id]) => id === l)?.[1] ?? l);
 
 interface Props {

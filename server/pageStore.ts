@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import { createFileStore, createSupabaseStore, type Store } from './store.ts';
-import type { InboxItem, Page, Teamspace } from '../src/types.ts';
+import type { InboxItem, Page, Reminder, Teamspace } from '../src/types.ts';
 import type { PageBody } from './pages.ts';
 
 export interface PagesIndex {
@@ -20,6 +20,8 @@ export interface PagesIndex {
   teamspaces: Record<string, Teamspace>;
   // User id -> notifications about pages.
   inbox: Record<string, InboxItem[]>;
+  // Times people asked to be reminded about a page (a date with a time, @-mentioned in it).
+  reminders: Reminder[];
 }
 
 export interface PageStore {
@@ -30,7 +32,7 @@ export interface PageStore {
   removeBody(id: string): Promise<void>;
 }
 
-export const emptyIndex = (): PagesIndex => ({ v: 1, pages: {}, favorites: {}, teamspaces: {}, inbox: {} });
+export const emptyIndex = (): PagesIndex => ({ v: 1, pages: {}, favorites: {}, teamspaces: {}, inbox: {}, reminders: [] });
 export const emptyBody = (id: string): PageBody => ({ id, version: 0, blocks: [] });
 
 // Page ids are made by the server (uuids). Anything else never reaches a file name or a row id.
@@ -57,7 +59,7 @@ export function createPageStore(workspaceId: string, dataDir: string): PageStore
   return {
     async loadIndex() {
       const raw = (await indexStore.load()) as Partial<PagesIndex>;
-      return { v: 1, pages: raw.pages ?? {}, favorites: raw.favorites ?? {}, teamspaces: raw.teamspaces ?? {}, inbox: raw.inbox ?? {} };
+      return { v: 1, pages: raw.pages ?? {}, favorites: raw.favorites ?? {}, teamspaces: raw.teamspaces ?? {}, inbox: raw.inbox ?? {}, reminders: raw.reminders ?? [] };
     },
     saveIndex: (index) => indexStore.save(index),
     async loadBody(id) {

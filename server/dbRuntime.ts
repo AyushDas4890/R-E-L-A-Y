@@ -27,7 +27,7 @@ interface Open { page: Page; body: PageBody; db: DbData }
 export function createDbRuntime(core: Core): Handler {
   const { index } = core;
 
-  async function openDb(ws: WebSocket, userId: string, id: unknown, level: 'view' | 'edit' | 'full', opts: { live?: boolean } = {}): Promise<Open | null> {
+  async function openDb(ws: WebSocket, userId: string, id: unknown, level: 'view' | 'edit-content' | 'edit' | 'full', opts: { live?: boolean } = {}): Promise<Open | null> {
     const page = core.need(ws, userId, id, level);
     if (!page) return null;
     if (page.kind !== 'database') {

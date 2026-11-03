@@ -161,7 +161,8 @@ export function createPageRuntime(deps: PageDeps) {
       const page = need(ws, userId, id, level);
       return page ? { page, id: page.id, meta: metaOf(page), level: levelOf(page, userId) } : null;
     }
-    const page = need(ws, userId, id.slice(0, dot), level);
+    // Rows can be edited by people who may edit a database's content.
+    const page = need(ws, userId, id.slice(0, dot), level === 'edit' ? 'edit-content' : level);
     if (!page || page.kind !== 'database') {
       if (page) denied(ws);
       return null;
@@ -231,7 +232,7 @@ export function createPageRuntime(deps: PageDeps) {
   const inboxFor = (userId: string): InboxItem[] => (index.inbox[userId] ?? []).filter((i) => !i.archived);
   function notify(userId: string, item: Omit<InboxItem, 'id' | 'at'>): void {
     const who = deps.who(userId);
-    if (!who || who.inactive || who.bot || userId === item.by) return;
+    if (!who || who.inactive || who.bot || (userId === item.by && item.kind !== 'reminder')) return;
     // A person only hears about pages they can open.
     const page = getPage(index.pages, item.pageId.split('.')[0]);
     if (!page || levelOf(page, userId) === 'none') return;
@@ -446,7 +447,7 @@ export function createPageRuntime(deps: PageDeps) {
         }
         openTabs(t.id).add(ws);
         const comments = (body.comments ?? []).slice(-500);
-        deps.send(ws, { t: 'pageBody', id: t.id, page: t.meta, level, blocks: body.blocks, version: body.version, comments });
+        deps.send(ws, { t: 'pageBody', id: t.id, page: t.meta, level, blocks: body.blocks, version: body.version, comments, suggestions: body.suggestions ?? [] });
         return true;
       }
       case 'pageClose': {
@@ -547,7 +548,18 @@ export function createPageRuntime(deps: PageDeps) {
     syncNodes([...ids]);
   }
 
+  // Reminders fire when their time comes; checked twice a minute.
+  const tick = setInterval(() => {
+    const due = index.reminders.filter((r) => r.at <= now());
+    if (!due.length) return;
+    index.reminders = index.reminders.filter((r) => r.at > now());
+    touchIndex();
+    for (const r of due) notify(r.userId, { kind: 'reminder', pageId: r.pageId, by: r.userId, text: r.text });
+  }, 30_000);
+  tick.unref();
+
   return {
+    stop: () => clearInterval(tick),
     handle,
     flush,
     drop,

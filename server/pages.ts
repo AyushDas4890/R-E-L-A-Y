@@ -1,6 +1,6 @@
 // Pure logic for pages: who may see what, the page tree, and block edits. No I/O, so it can be
 // unit-tested in isolation (see docs/notion/plan.md for the model and the merge rule).
-import type { Block, BlockOp, BlockPatch, BlockType, DbData, Page, PageComment, PageLevel, PageNode, Rich, Teamspace, User } from '../src/types.ts';
+import type { Block, BlockOp, BlockPatch, BlockType, DbData, Page, PageComment, Suggestion, PageLevel, PageNode, Rich, Teamspace, User } from '../src/types.ts';
 
 export const MAX_PAGES = 20_000;
 export const MAX_BLOCKS = 5000;
@@ -27,13 +27,14 @@ export interface PageBody {
   // Present when the page is a database: its schema, views and rows.
   db?: DbData;
   comments?: PageComment[];
+  suggestions?: Suggestion[];
   // The last few snapshots of the blocks, for page history.
   versions?: StoredVersion[];
 }
 export type Spaces = Record<string, Teamspace>;
 
-const RANK: Record<PageLevel, number> = { none: 0, view: 1, comment: 2, edit: 3, full: 4 };
-const LEVELS: PageLevel[] = ['none', 'view', 'comment', 'edit', 'full'];
+const RANK: Record<PageLevel, number> = { none: 0, view: 1, comment: 2, 'edit-content': 3, edit: 4, full: 5 };
+const LEVELS: PageLevel[] = ['none', 'view', 'comment', 'edit-content', 'edit', 'full'];
 export const atLeast = (have: PageLevel, need: PageLevel): boolean => RANK[have] >= RANK[need];
 
 // Ids come from clients, so never read them off a plain object without checking it is an own key.
@@ -100,6 +101,8 @@ export function levelFor(pages: Pages, page: Page, who: Who | undefined, spaces?
   if (page.createdBy === who.id && (!space || space.members[who.id] || space.kind === 'default')) best = RANK.full;
   if (who.bot) best = Math.min(best, RANK.view);
   if (up.some((p) => p.trashedAt !== undefined) && best < RANK.full) best = 0;
+  // Outside a database, "edit content" is just edit.
+  if (best === RANK['edit-content'] && page.kind !== 'database') best = RANK.edit;
   return LEVELS[best];
 }
 

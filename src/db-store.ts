@@ -80,7 +80,9 @@ export function useDatabase(id: string | null) {
     [related, snap.users, open],
   );
 
-  const canEdit = !!open && (open.level === 'edit' || open.level === 'full') && !open.meta.trashedAt;
+  const canEdit = !!open && (open.level === 'edit-content' || open.level === 'edit' || open.level === 'full') && !open.meta.trashedAt;
+  // Properties, views and the like need more than content access.
+  const canDesign = !!open && (open.level === 'edit' || open.level === 'full') && !open.meta.trashedAt;
   const canManage = !!open && open.level === 'full';
 
   return {
@@ -89,6 +91,7 @@ export function useDatabase(id: string | null) {
     meta: open?.meta ?? null,
     level: open?.level ?? ('none' as PageLevel),
     canEdit,
+    canDesign,
     canManage,
     ctx,
     related,

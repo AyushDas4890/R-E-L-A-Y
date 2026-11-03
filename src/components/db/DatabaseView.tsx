@@ -68,7 +68,7 @@ export function DatabaseView({ dbId, inline, onOpenRow }: Props) {
     api.view({ op: 'patch', viewId: base.id, patch: draft as Partial<Omit<View, 'id'>> });
     reset();
   };
-  const canSaveView = api.canEdit && (!db.locked || api.canManage);
+  const canSaveView = api.canDesign && (!db.locked || api.canManage);
 
   const addRow = (values?: Record<string, PropValue>, after?: string | null) => {
     // A new row starts with the view's filter values where they are plain (so it does not vanish from the view).
@@ -113,7 +113,7 @@ export function DatabaseView({ dbId, inline, onOpenRow }: Props) {
         <FilterButton db={db} view={view} patch={patch} />
         <SortButton db={db} view={view} patch={patch} />
         {(view.layout === 'table' || view.layout === 'board') && <GroupButton db={db} view={view} patch={patch} />}
-        <PropsButton db={db} view={view} patch={patch} canEdit={api.canEdit && (!db.locked || api.canManage)} onNew={(a) => setEditing({ prop: null, anchor: a })} onEdit={(p, a) => setEditing({ prop: p, anchor: a })} />
+        <PropsButton db={db} view={view} patch={patch} canEdit={api.canDesign && (!db.locked || api.canManage)} onNew={(a) => setEditing({ prop: null, anchor: a })} onEdit={(p, a) => setEditing({ prop: p, anchor: a })} />
         <LayoutButton db={db} view={view} patch={patch} onSettings={() => setSettings(true)} />
         <span className="db-spacer" />
         {searching ? (

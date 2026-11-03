@@ -75,7 +75,7 @@ export function TableView(p: ViewProps) {
   const [over, setOver] = useState<string | null>(null);
   const canReorder = !readOnly && view.sorts.length === 0 && !groupProp;
   const cols = `minmax(240px, 1.6fr) ${props.map(() => 'minmax(130px, 1fr)').join(' ')} 36px`;
-  const canSchema = api.canEdit && (!db.locked || api.canManage);
+  const canSchema = api.canDesign && (!db.locked || api.canManage);
 
   return (
     <div className="db-table" role="grid" aria-label={api.meta?.title || 'Database'} aria-rowcount={rows.length + 1}>

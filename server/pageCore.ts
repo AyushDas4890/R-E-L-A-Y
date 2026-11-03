@@ -15,6 +15,9 @@ export interface PageDeps {
   // People who can be named in a share or a mention: id -> display name.
   people: () => Record<string, string>;
   workspaceName: () => string;
+  // Information barriers: may these two people be connected through a page?
+  barred?: (a: string, b: string) => boolean;
+  groupMembers?: (groupId: string) => string[];
   send: (ws: WebSocket, ev: ServerEvent) => void;
   audit: (actor: string, action: string, detail: string) => void;
   now?: () => number;

@@ -202,7 +202,12 @@ export function dateChoices(from = new Date()): { label: string; id: string }[] 
   const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const plus = (n: number) => new Date(from.getFullYear(), from.getMonth(), from.getDate() + n);
   const nextMonday = plus(((8 - from.getDay()) % 7) || 7);
+  // Reminders are a date with a time, kept in UTC so the server and every browser agree.
+  const at = (ms: number) => new Date(ms).toISOString().slice(0, 16);
+  const tomorrow9 = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 1, 9).getTime();
   return [
+    { label: 'Remind me in 1 hour', id: at(from.getTime() + 3_600_000) },
+    { label: 'Remind me tomorrow at 9:00', id: at(tomorrow9) },
     { label: 'Today', id: iso(plus(0)) },
     { label: 'Tomorrow', id: iso(plus(1)) },
     { label: 'Yesterday', id: iso(plus(-1)) },
@@ -212,6 +217,8 @@ export function dateChoices(from = new Date()): { label: string; id: string }[] 
 }
 
 export function formatDateId(id: string): string {
+  const t = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/.exec(id);
+  if (t) return `${new Date(`${t[1]}T${t[2]}:00Z`).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (reminder)`;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(id);
   if (!m) return id;
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
