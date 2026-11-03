@@ -13,7 +13,7 @@ test('the sidebar width is clamped, and junk falls back to the default', () => {
 
 test('a browser that never picked a look starts on Notion, white or black by system setting', () => {
   assert.deepEqual(firstLook(false, false), { theme: 'notion', bg: 'none', accent: '' });
-  assert.deepEqual(firstLook(false, true), { theme: 'notion-dark', bg: 'none', accent: '' });
+  assert.deepEqual(firstLook(false, true), { theme: 'notion', bg: 'none', accent: '' });
 });
 
 test('once a look is recorded, nothing is overridden again', () => {

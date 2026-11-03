@@ -74,7 +74,9 @@ const write = (key: string, value: string | null) => {
 // Minimal, or chose anything else, is left alone, so nobody is moved twice. White or black follows
 // the system setting.
 export function firstLook(adopted: boolean, prefersDark: boolean): { theme: string; bg: string; accent: string } | null {
-  return adopted ? null : { theme: prefersDark ? 'notion-dark' : 'notion', bg: 'none', accent: '' };
+  // White is the default look; the system setting no longer decides it.
+  void prefersDark;
+  return adopted ? null : { theme: 'notion', bg: 'none', accent: '' };
 }
 
 // The Notion look lets people drag the sidebar edge. Anything unusable falls back to the default width.
@@ -92,6 +94,11 @@ export function useAppearance() {
       write('relay.bg', look.bg);
       write('relay.accent', look.accent);
       write('relay.look', 'notion');
+    }
+    // Browsers that were put on the dark look by the system setting move to white once.
+    if (read('relay.look', '') === 'notion' && read('relay.theme', 'notion') === 'notion-dark') {
+      write('relay.theme', 'notion');
+      write('relay.look', 'notion-white');
     }
     return read('relay.theme', 'notion');
   });
