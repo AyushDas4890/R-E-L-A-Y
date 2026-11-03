@@ -82,3 +82,12 @@
   .cal-layout { grid-template-columns: 1fr; }
   .home-view { padding: 24px 16px 96px; }
 }
+
+/* Touch targets and keyboard focus for the new views */
+@media (pointer: coarse), (max-width: 700px) {
+  .db-open, .pg-share, .db-tool, .db-tab, .db-opt, .db-new-row, .ghost-btn, .db-row-menu { min-height: 36px; }
+  .icon-btn { min-width: 36px; min-height: 36px; }
+}
+.db :is(button, select, input, textarea):focus-visible, .popover :is(button, select, input, textarea):focus-visible, .side-panel :is(button, select, input, textarea):focus-visible, .home-view :is(button, select, input):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
