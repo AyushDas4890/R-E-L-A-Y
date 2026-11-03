@@ -5,9 +5,10 @@ import type { Block, BlockOp, Page, PageComment, PageShare, SearchHit, Teamspace
 import { GENERAL, applyOps, atLeast, cleanRich, getPage, nodeFor, plainText, subtree, type PageBody } from './pages.ts';
 import type { Core, Handler } from './pageCore.ts';
 import { titleOfRow } from './dbRuntime.ts';
+import { cleanUpload } from './files.ts';
 
 const COLLAB_EVENTS = new Set<string>([
-  'pageAccess', 'pageRequestAccess', 'suggest', 'suggestResolve', 'pageShare', 'comment', 'commentResolve', 'commentDelete', 'pageHistory', 'pageRestoreVersion', 'pageVerify',
+  'pageUpload', 'unfurl', 'pageAccess', 'pageRequestAccess', 'suggest', 'suggestResolve', 'pageShare', 'comment', 'commentResolve', 'commentDelete', 'pageHistory', 'pageRestoreVersion', 'pageVerify',
   'pagePublish', 'teamspace', 'search', 'inboxRead', 'inboxArchive',
 ]);
 const MAX_COMMENTS = 500;
@@ -50,6 +51,8 @@ export function createCollabRuntime(core: Core): Handler {
   const texts = new Map<string, { version: number; text: string }>();
   // Access requests already sent (one per person per page until restart).
   const asked = new Set<string>();
+  // Link previews already fetched, kept for an hour.
+  const previews = new Map<string, { at: number; value: import('../src/types.ts').LinkPreview | null }>();
 
   function pushSpaces(): void {
     for (const [ws, uid] of core.deps.clients()) core.deps.send(ws, { t: 'teamspaces', list: visibleSpaces(core, uid) });
@@ -194,6 +197,36 @@ export function createCollabRuntime(core: Core): Handler {
     if (!who) return true;
 
     switch (ev.t) {
+      case 'pageUpload': {
+        const t = await core.target(ws, userId, ev.id, 'edit');
+        if (!t) return true;
+        const file = cleanUpload(ev.file);
+        if (!file || !core.deps.offload || typeof ev.blockId !== 'string' || ev.blockId.length > 64) {
+          core.deps.send(ws, { t: 'error', message: file ? 'File uploads aren’t set up on this server. Paste a link instead.' : 'That file couldn’t be uploaded (limit 10 MB).' });
+          return true;
+        }
+        try {
+          const stored = await core.deps.offload(file);
+          if (!stored.url) throw new Error('no url');
+          core.deps.send(ws, { t: 'pageUploaded', id: t.id, blockId: ev.blockId, url: stored.url, name: stored.name });
+        } catch {
+          core.deps.send(ws, { t: 'error', message: 'The upload failed. Try again, or paste a link.' });
+        }
+        return true;
+      }
+      case 'unfurl': {
+        const url = typeof ev.url === 'string' && ev.url.length <= 2000 && /^https?:[/][/]/i.test(ev.url) ? ev.url : '';
+        if (!url || !core.deps.unfurl) return true;
+        const hit = previews.get(url);
+        let value = hit && core.now() - hit.at < 3_600_000 ? hit.value : undefined;
+        if (value === undefined) {
+          value = await core.deps.unfurl(url).catch(() => null);
+          if (previews.size > 500) previews.clear();
+          previews.set(url, { at: core.now(), value });
+        }
+        core.sendUser(userId, { t: 'linkPreview', url, preview: value });
+        return true;
+      }
       case 'pageRequestAccess': {
         // The same quiet answer whether or not the page exists, so ids can't be probed.
         const page = getPage(index.pages, ev.id);

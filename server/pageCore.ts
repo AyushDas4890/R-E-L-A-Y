@@ -1,7 +1,7 @@
 // What the page runtime shares with the database and collaboration modules: the index, the body
 // cache, who may do what, and the ways to tell people about a change. Types only.
 import type { WebSocket } from 'ws';
-import type { BlockOp, ClientEvent, InboxItem, Page, PageLevel, PageMeta, ServerEvent } from '../src/types.ts';
+import type { BlockOp, ClientEvent, FileAttachment, InboxItem, LinkPreview, Page, PageLevel, PageMeta, ServerEvent } from '../src/types.ts';
 import type { PageBody, Spaces, Who } from './pages.ts';
 import type { PageStore, PagesIndex } from './pageStore.ts';
 
@@ -15,6 +15,9 @@ export interface PageDeps {
   // People who can be named in a share or a mention: id -> display name.
   people: () => Record<string, string>;
   workspaceName: () => string;
+  // Stores an upload and returns it with a public url (absent when there is no file storage).
+  offload?: (file: FileAttachment) => Promise<FileAttachment>;
+  unfurl?: (url: string) => Promise<LinkPreview | null>;
   // Information barriers: may these two people be connected through a page?
   barred?: (a: string, b: string) => boolean;
   groupMembers?: (groupId: string) => string[];

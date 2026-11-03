@@ -261,7 +261,7 @@ export function createDbRuntime(core: Core): Handler {
         return true;
       }
       case 'rowCreate': {
-        const o = await openDb(ws, userId, ev.id, 'edit');
+        const o = await openDb(ws, userId, ev.id, 'edit-content');
         if (!o) return true;
         const tpl = typeof ev.template === 'string' ? o.db.templates.find((t) => t.id === ev.template) : undefined;
         const values = await sanitize(userId, o.db, { ...(tpl?.props ?? {}), ...(ev.props && typeof ev.props === 'object' ? ev.props : {}) });
@@ -278,7 +278,7 @@ export function createDbRuntime(core: Core): Handler {
         return true;
       }
       case 'rowUpdate': {
-        const o = await openDb(ws, userId, ev.id, 'edit');
+        const o = await openDb(ws, userId, ev.id, 'edit-content');
         const row = o && rowById(o.db, ev.rowId);
         if (!o || !row) {
           if (o) core.deps.send(ws, { t: 'error', message: 'That row no longer exists.' });
@@ -311,7 +311,7 @@ export function createDbRuntime(core: Core): Handler {
         return true;
       }
       case 'rowRemove': {
-        const o = await openDb(ws, userId, ev.id, 'edit');
+        const o = await openDb(ws, userId, ev.id, 'edit-content');
         const row = o && rowById(o.db, ev.rowId);
         if (!o || !row) return true;
         if (ev.restore === true) {
@@ -328,7 +328,7 @@ export function createDbRuntime(core: Core): Handler {
         return true;
       }
       case 'rowMove': {
-        const o = await openDb(ws, userId, ev.id, 'edit');
+        const o = await openDb(ws, userId, ev.id, 'edit-content');
         const row = o && rowById(o.db, ev.rowId);
         if (!o || !row) return true;
         row.order = orderRowAfter(o.db, row.id, typeof ev.after === 'string' ? ev.after : null);
@@ -416,7 +416,7 @@ export function createDbRuntime(core: Core): Handler {
         return true;
       }
       case 'rowButton': {
-        const o = await openDb(ws, userId, ev.id, 'edit');
+        const o = await openDb(ws, userId, ev.id, 'edit-content');
         const row = o && rowById(o.db, ev.rowId);
         const prop = o?.db.props.find((p) => p.id === ev.prop && p.type === 'button');
         if (!o || !row || !prop?.button) return true;

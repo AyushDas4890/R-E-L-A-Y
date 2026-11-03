@@ -46,6 +46,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
   const want = useRef<{ id: string; at: number | 'end' } | null>(null);
   const pendingSub = useRef<string | null>(null);
   const pendingDb = useRef<string | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
   // A page id with a dot is a row of a database: `<database>.<row>`.
   const rowRef = pageId.includes('.') ? { dbId: pageId.split('.')[0], rowId: pageId.split('.')[1] } : null;
   const rowDb = useDatabase(rowRef?.dbId ?? null);
@@ -93,7 +94,10 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
   useEffect(
     () =>
       listen((ev) => {
-        if (ev.t === 'pageCreated' && pendingDb.current) {
+        if (ev.t === 'pageUploaded' && ev.id === pageId) {
+          setUploading(null);
+          doc.update(ev.blockId, { url: ev.url, name: ev.name });
+        } else if (ev.t === 'pageCreated' && pendingDb.current) {
           const id = pendingDb.current;
           pendingDb.current = null;
           doc.update(id, { type: 'database', pageId: ev.id, name: '' });
@@ -620,14 +624,12 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       case 'image':
         return b.url ? (
           <figure className="pg-image"><img src={b.url} alt={b.name || ''} loading="lazy" />{textEditor(b, 'pg-caption', editable ? 'Write a caption' : '')}</figure>
-        ) : <UrlInput label="Embed an image" placeholder="Paste an image link…" disabled={!editable} onSubmit={(u) => doc.update(b.id, { url: u })} />;
+        ) : <UrlInput label="Embed an image" placeholder="Paste an image link…" disabled={!editable} onSubmit={(u) => doc.update(b.id, { url: u })} onFile={(f) => upload(b.id, f)} accept="image/*" busy={uploading === b.id} />;
       case 'file':
       case 'bookmark':
         return b.url ? (
-          <a className="pg-card" href={b.url} target="_blank" rel="noopener noreferrer">
-            <Icon n={b.type === 'file' ? 'paperclip' : 'file'} /><span><strong>{b.name || hostOf(b.url)}</strong><small>{b.url}</small></span>
-          </a>
-        ) : <UrlInput label={b.type === 'file' ? 'Link a file' : 'Add a web bookmark'} placeholder="Paste a link…" disabled={!editable} onSubmit={(u) => doc.update(b.id, { url: u, name: hostOf(u) })} />;
+          <BookmarkCard b={b} onTitle={(name) => { if (editable && name && name !== b.name) doc.update(b.id, { name }); }} />
+        ) : <UrlInput label={b.type === 'file' ? 'Upload or link a file' : 'Add a web bookmark'} placeholder="Paste a link…" disabled={!editable} onSubmit={(u) => doc.update(b.id, { url: u, name: hostOf(u) })} onFile={b.type === 'file' ? (f) => upload(b.id, f) : undefined} busy={uploading === b.id} />;
       case 'table':
         return <TableBlock b={b} disabled={!editable} onChange={(rows) => doc.update(b.id, { rows })} onHeader={(h) => doc.update(b.id, { header: h })} />;
       case 'columns':
@@ -733,6 +735,18 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
     doc.flush();
     if (k === 'y' || e.shiftKey) doc.redo();
     else doc.undo();
+  };
+
+  // Sends a chosen file to the server, which stores it and answers with its link.
+  const upload = (blockId: string, file: File) => {
+    if (file.size > 10 * 1024 * 1024) return window.alert('That file is too large (limit 10 MB).');
+    setUploading(blockId);
+    const reader = new FileReader();
+    reader.onload = () => send({ t: 'pageUpload', id: pageId, blockId, file: { name: file.name, type: file.type, size: file.size, dataUrl: String(reader.result) } });
+    reader.onerror = () => setUploading(null);
+    reader.readAsDataURL(file);
+    // Give up waiting after a minute.
+    setTimeout(() => setUploading((u) => (u === blockId ? null : u)), 60_000);
   };
 
   const exportMd = () => {
@@ -921,7 +935,35 @@ function SelectionBar({ rect, el, onTurn }: { rect: DOMRect; el: HTMLElement; on
   );
 }
 
-function UrlInput({ label, placeholder, disabled, onSubmit }: { label: string; placeholder: string; disabled: boolean; onSubmit: (url: string) => void }) {
+// A bookmark: the page's title, description and picture, fetched by the server once.
+function BookmarkCard({ b, onTitle }: { b: Block; onTitle: (name: string) => void }) {
+  const { send, listen } = useRelayCtx();
+  const [pv, setPv] = useState<import('../../types.ts').LinkPreview | null>(null);
+  const isFile = b.type === 'file';
+  useEffect(() => {
+    if (isFile || !b.url) return;
+    const url = b.url;
+    const off = listen((ev) => {
+      if (ev.t === 'linkPreview' && ev.url === url) {
+        setPv(ev.preview);
+        if (ev.preview?.title) onTitle(ev.preview.title);
+      }
+    });
+    send({ t: 'unfurl', url });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b.url, isFile]);
+  const image = pv?.image && /^https:[/][/]/i.test(pv.image) ? pv.image : '';
+  return (
+    <a className="pg-card" href={b.url} target="_blank" rel="noopener noreferrer">
+      <Icon n={isFile ? 'paperclip' : 'file'} />
+      <span><strong>{pv?.title || b.name || hostOf(b.url!)}</strong>{pv?.description && <small className="pg-desc">{pv.description}</small>}<small>{pv?.site || b.url}</small></span>
+      {image && <img className="pg-card-img" src={image} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+    </a>
+  );
+}
+
+function UrlInput({ label, placeholder, disabled, onSubmit, onFile, accept, busy }: { label: string; placeholder: string; disabled: boolean; onSubmit: (url: string) => void; onFile?: (f: File) => void; accept?: string; busy?: boolean }) {
   const [v, setV] = useState('');
   const ok = /^https?:\/\/\S+$/i.test(v.trim());
   return (
@@ -929,6 +971,9 @@ function UrlInput({ label, placeholder, disabled, onSubmit }: { label: string; p
       <span className="muted">{label}</span>
       <input value={v} disabled={disabled} placeholder={placeholder} aria-label={label} onChange={(e) => setV(e.target.value)} />
       <button className="send-btn" disabled={disabled || !ok}>Add</button>
+      {onFile && !disabled && (
+        <label className="ghost-btn pg-upload">{busy ? 'Uploading…' : 'Upload'}<input type="file" accept={accept} hidden disabled={busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} /></label>
+      )}
     </form>
   );
 }

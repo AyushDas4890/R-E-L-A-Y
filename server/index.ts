@@ -306,6 +306,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
     clients: () => clients,
     workspaceId: id,
     workspaceName: () => db.meta.name,
+    offload: (f) => files.offload(f),
+    unfurl: (u) => unfurl(u),
     barred: (a, b) => barred(a, b, db.groups, db.settings.barriers),
     groupMembers: (gid) => db.groups.find((g) => g.id === gid)?.members ?? [],
     who: (userId) => {
