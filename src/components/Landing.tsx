@@ -5,6 +5,7 @@ import { HeroChat } from './HeroChat.tsx';
 import { Icon } from './Icon.tsx';
 import { FeaturePage } from './Features.tsx';
 import { HelpPage } from './Help.tsx';
+import { LiveDemo } from './LiveDemo.tsx';
 import { RouteLink, SiteFooter, SiteNav, useRoute, type Route } from './Site.tsx';
 import '../tour.css';
 import '../apple.css';
@@ -108,7 +109,13 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
 
       <section className="ap-intro ap-reveal">
         <h2>Everything your team says,<br />in one calm place</h2>
-        <p>Channels, threads, huddles and canvases, with a bot that keeps the follow-ups from slipping.</p>
+        <p>Chat, pages and databases side by side, with a teammate that keeps the follow-ups from slipping.</p>
+      </section>
+
+      <section className="ap-intro ap-reveal" id="live">
+        <h2>See the workspace work</h2>
+        <p>Pages, databases, sharing and search, running the way they do inside Relay.</p>
+        <LiveDemo />
       </section>
 
       <section id="tour" className="ap-tour">
