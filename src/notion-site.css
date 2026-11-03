@@ -1,0 +1,65 @@
+/* The public pages (landing, features, help, sign-in, workspace picker) in the Notion look:
+   warm gray, near-black ink, one blue, flat surfaces, small radii, Inter. Loaded after apple.css,
+   so it only changes tokens and shapes. Follows the system light/dark setting. */
+.ap, .ap-si, .ws-picker {
+  --ap-ink: rgba(0, 0, 0, .95);
+  --ap-ink-2: #615d59;
+  --ap-ink-3: #78736f;
+  --ap-bg: #f6f5f4;
+  --ap-line: #dfdcd9;
+  --ap-blue: #0075de;
+  --ap-blue-hover: #005bab;
+  --ap-blue-ink: #0075de;
+  --ap-font: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --ap-card: #fff;
+  --ap-card-2: #f9f9f8;
+}
+@media (prefers-color-scheme: dark) {
+  .ap, .ap-si, .ws-picker {
+    --ap-ink: rgba(255, 255, 255, .92);
+    --ap-ink-2: #b4afaa;
+    --ap-ink-3: #8f8a85;
+    --ap-bg: #191919;
+    --ap-line: #373634;
+    --ap-blue: #2383e2;
+    --ap-blue-hover: #4a9bea;
+    --ap-blue-ink: #4a9bea;
+    --ap-card: #202020;
+    --ap-card-2: #252525;
+  }
+}
+.ap, .ap-si, .ws-picker { background: var(--ap-bg); }
+.ap :is(h1, h2, h3), .ap-si :is(h1, h2, h3), .ws-picker :is(h1, h2, h3) { letter-spacing: -.02em; }
+
+/* Buttons: small radius, like the app */
+.ap-pill { border-radius: 6px; height: 40px; font-weight: 600; }
+.ap-pill.dark { height: 32px; border-radius: 6px; background: var(--ap-blue); color: #fff; }
+.ap-pill.dark:hover { background: var(--ap-blue-hover); }
+.ap-pill.quiet { background: var(--ap-card); color: var(--ap-ink); box-shadow: inset 0 0 0 1px var(--ap-line); }
+.ap-pill.quiet:hover:not(:disabled) { background: var(--ap-card-2); }
+.ap-pill.full { height: 44px; }
+
+/* Hero: flat, no sky gradient; the nav is a plain bar */
+.ap-sky { background: var(--ap-bg); }
+.ap-nav { top: 0; max-width: none; margin: 0 -24px; border-radius: 0; height: 56px; padding: 0 24px; background: color-mix(in srgb, var(--ap-bg) 92%, transparent); box-shadow: 0 1px 0 var(--ap-line); }
+.ap-statement { font-weight: 700; letter-spacing: -.035em; font-size: clamp(36px, 5.4vw, 64px); }
+.ap-hero-copy { margin-top: clamp(56px, 11vh, 120px); }
+
+/* Product window and tiles */
+.ap-window { border-radius: 10px; background: var(--ap-card); box-shadow: 0 0 0 1px var(--ap-line), 0 24px 48px -24px rgba(0, 0, 0, .18); }
+.ap-window-bar { background: var(--ap-card-2); }
+.ap-window-bar i { background: var(--ap-line); }
+.ap-window-side { background: var(--ap-card-2); }
+.ap-window-side span.on { background: var(--ap-card); box-shadow: 0 0 0 1px var(--ap-line); }
+.ap-tile { border-radius: 12px; background: var(--ap-card); box-shadow: 0 0 0 1px var(--ap-line); }
+.ap-intro h2, .ap-final h2 { font-weight: 700; }
+
+/* Help center */
+.hp-hero .ap-sky { background: var(--ap-bg); }
+.hp-card, .hp-hit, .hp-search { background: var(--ap-card); border-radius: 8px; box-shadow: 0 0 0 1px var(--ap-line); }
+.hp-card:hover, .hp-hit:hover { box-shadow: 0 0 0 1px var(--ap-blue); }
+.hp-side a.on { color: var(--ap-blue-ink); }
+
+/* Sign-in and workspace picker */
+.ap-si input, .ws-picker input { border-radius: 6px; }
+.ws-picker :is(button, a) { border-radius: 8px; }

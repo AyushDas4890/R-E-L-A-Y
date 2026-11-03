@@ -9,6 +9,7 @@ import './pages.css';
 import './db.css';
 import './collab.css';
 import './help.css';
+import './notion-site.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
