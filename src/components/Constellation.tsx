@@ -28,14 +28,16 @@ interface Spark { x: number; y: number; vx: number; vy: number; life: number; co
 
 // Where you left each node, as fractions of the stage, so the layout survives a reload and a resize.
 const POS_KEY = 'relay.constellation';
-const loadPositions = (): Record<string, [number, number]> => {
-  try { const v: unknown = JSON.parse(localStorage.getItem(POS_KEY) ?? '{}'); return v && typeof v === 'object' ? (v as Record<string, [number, number]>) : {}; } catch { return {}; }
+const loadPositions = (posKey: string): Record<string, [number, number]> => {
+  try { const v: unknown = JSON.parse(localStorage.getItem(posKey) ?? '{}'); return v && typeof v === 'object' ? (v as Record<string, [number, number]>) : {}; } catch { return {}; }
 };
-const savePosition = (id: string, fx: number, fy: number) => {
-  try { localStorage.setItem(POS_KEY, JSON.stringify({ ...loadPositions(), [id]: [fx, fy] })); } catch { /* storage blocked: the move just won't stick */ }
+const savePosition = (posKey: string, id: string, fx: number, fy: number) => {
+  try { localStorage.setItem(posKey, JSON.stringify({ ...loadPositions(posKey), [id]: [fx, fy] })); } catch { /* storage blocked: the move just won't stick */ }
 };
 
-export function Constellation({ mine, onEnter }: { mine: WorkspaceSummary[]; onEnter: (id: string) => void }) {
+// `mine` are the glowing nodes: your workspaces on the main Home, a workspace's channels on its own Home.
+// `posKey` keeps their dragged positions apart, and `verb` is what a click does ("enter", "open").
+export function Constellation({ mine, onEnter, posKey = POS_KEY, verb = 'enter' }: { mine: WorkspaceSummary[]; onEnter: (id: string) => void; posKey?: string; verb?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const enter = useRef(onEnter);
   enter.current = onEnter;
@@ -74,7 +76,7 @@ export function Constellation({ mine, onEnter }: { mine: WorkspaceSummary[]; onE
         const wide = w > 700;
         const ax = wide ? w * (0.42 + 0.46 * f) : w * (0.2 + 0.6 * f);
         const ay = wide ? h * (0.78 - 0.34 * Math.sin(f * Math.PI) * (i % 2 ? 0.6 : 1)) : h * (0.72 - 0.18 * Math.sin(f * Math.PI) + (i % 2 ? 0.1 : 0));
-        const kept = loadPositions()[ws.id];
+        const kept = loadPositions(posKey)[ws.id];
         const px = kept ? Math.min(Math.max(kept[0] * w, 40), w - 40) : ax;
         const py = kept ? Math.min(Math.max(kept[1] * h, 40), h - 40) : ay;
         return { ws, col: parseColor(ws.color, [106, 167, 255]), ax: px, ay: py, x: px, y: py, ox: 0, oy: 0, r: 26 + Math.min(14, ws.members * 1.2), phase: i * 2.1, orbit: 14 + (i % 3) * 7, hover: 0 };
@@ -181,7 +183,7 @@ export function Constellation({ mine, onEnter }: { mine: WorkspaceSummary[]; onE
       // Name tag for the node under the cursor (not while it is being moved).
       if (hovered >= 0 && nodes[hovered] && !drag) {
         const nd = nodes[hovered];
-        const title = nd.ws.name, sub = `${nd.ws.members} member${nd.ws.members === 1 ? '' : 's'} · click to enter · drag to move`;
+        const title = nd.ws.name, sub = `${nd.ws.members} member${nd.ws.members === 1 ? '' : 's'} · click to ${verb} · drag to move`;
         ctx.font = '600 14px system-ui, sans-serif';
         const tw = Math.max(ctx.measureText(title).width, (ctx.font = '12px system-ui, sans-serif', ctx.measureText(sub).width));
         const bw = tw + 24, bh = 46;
@@ -245,7 +247,7 @@ export function Constellation({ mine, onEnter }: { mine: WorkspaceSummary[]; onE
       if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
       if (!d.moved) { enter.current(nd.ws.id); return; }
       nd.ax = d.tx; nd.ay = d.ty;
-      savePosition(nd.ws.id, nd.ax / w, nd.ay / h);
+      savePosition(posKey, nd.ws.id, nd.ax / w, nd.ay / h);
       burst(nd.ax, nd.ay, nd.col);
       // Dropped: a packet goes out to every other workspace.
       nodes.forEach((_, j) => { if (j !== d.i && packets.length < 8) packets.push({ from: d.i, to: j, t: 0, speed: 0.012 }); });
@@ -268,7 +270,7 @@ export function Constellation({ mine, onEnter }: { mine: WorkspaceSummary[]; onE
       canvas.removeEventListener('pointercancel', onUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, posKey, verb]);
 
   return <canvas ref={ref} className="hs-constellation" aria-hidden="true" />;
 }
