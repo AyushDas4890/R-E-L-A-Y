@@ -277,6 +277,18 @@ export interface CalendarItem {
   start: string;
   end?: string;
   prop: string;
+  // The date property's id, so the item can be moved; canEdit is whether this person may change the row.
+  propId: string;
+  canEdit: boolean;
+}
+
+// A database that can hold calendar events: it has a date property. Used to add new events.
+export interface CalendarDb {
+  id: string;
+  title: string;
+  titleProp: string;
+  dateProp: string;
+  canEdit: boolean;
 }
 
 // ---- Pages: the Notion-style documents (see docs/notion/plan.md) ----
@@ -739,7 +751,7 @@ export type ServerEvent =
   | { t: 'teamspaces'; list: Teamspace[] }
   | { t: 'inbox'; items: InboxItem[] }
   | { t: 'searchResults'; q: string; hits: SearchHit[] }
-  | { t: 'calendarFeed'; items: CalendarItem[] }
+  | { t: 'calendarFeed'; items: CalendarItem[]; dbs: CalendarDb[] }
   | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' };
 
 export interface Analytics {

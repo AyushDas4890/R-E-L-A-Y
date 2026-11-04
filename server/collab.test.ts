@@ -460,6 +460,11 @@ test('calendar feed lists dated rows of databases the viewer may open', async ()
   assert.deepEqual(r.last(b, 'calendarFeed')!.items.map((i) => i.title), ['Ship it']);
   await r.say(a, { t: 'calendarFeed' });
   assert.equal(r.last(a, 'calendarFeed')!.items.length, 2);
+  // The feed carries what the calendar needs to move and add events.
+  const feed = r.last(a, 'calendarFeed')!;
+  assert.ok(feed.items.every((i) => i.propId && i.canEdit));
+  assert.deepEqual(feed.dbs.find((d) => d.id === id), { id, title: feed.dbs.find((d) => d.id === id)!.title, titleProp: name, dateProp: due.id, canEdit: true });
+  assert.equal(r.last(b, 'calendarFeed')!.dbs.some((d) => d.id === mine), false);
 });
 
 test('a template makes a page with its blocks; unknown template ids give a plain page', async () => {
