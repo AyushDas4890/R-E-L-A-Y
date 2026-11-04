@@ -121,13 +121,3 @@
 .db :is(button, select, input, textarea):focus-visible, .popover :is(button, select, input, textarea):focus-visible, .side-panel :is(button, select, input, textarea):focus-visible, .home-view :is(button, select, input):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
-
-/* Workspace Home: the same living constellation as the main Home, behind the page. Empty space lets the pointer through to it. */
-.home-stage { position: relative; flex: 1; min-height: 0; display: flex; overflow: hidden; }
-.home-stage .hs-constellation { opacity: .65; }
-.home-stage .home-view { position: relative; z-index: 1; pointer-events: none; }
-.home-stage .home-view :is(button, a, input, li, select, textarea) { pointer-events: auto; }
-@media (max-width: 760px) {
-  /* On a phone the constellation is a strip under the page, and the page scrolls normally. */
-  .home-stage .home-view { pointer-events: auto; padding-bottom: 280px; }
-}

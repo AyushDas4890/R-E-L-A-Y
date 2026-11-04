@@ -1,10 +1,9 @@
 // Home: where you were, what changed, what is coming up, and quick ways to start something.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRelayCtx } from '../../ctx.ts';
 import { readRecent } from '../../recent.ts';
 import type { CalendarItem, PageNode } from '../../types.ts';
 import { iconOf } from './PageTree.tsx';
-import { Constellation } from '../Constellation.tsx';
 
 const greeting = (h: number): string => (h < 5 ? 'Working late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
 const ago = (t: number): string => {
@@ -21,21 +20,10 @@ interface Props {
   onNew: (db?: boolean) => void;
   onLibrary: () => void;
   onCalendar: () => void;
-  onChannel: (id: string) => void;
 }
 
-// A steady colour per channel, so each node keeps its own glow from visit to visit.
-const GLOWS = ['#f5a50b', '#e5527f', '#1fb8a6', '#6c8cff', '#9a6bff', '#4caf2e', '#e5484d'];
-const glowOf = (id: string): string => GLOWS[[...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7) % GLOWS.length];
-
-export function HomeView({ onOpen, onNew, onLibrary, onCalendar, onChannel }: Props) {
+export function HomeView({ onOpen, onNew, onLibrary, onCalendar }: Props) {
   const { snap, send, listen } = useRelayCtx();
-  const scroller = useRef<HTMLDivElement>(null);
-  // Your channels are the glowing nodes: the same living backdrop as the main Home page.
-  const nodes = useMemo(
-    () => Object.values(snap.channels).filter((c) => c.kind !== 'dm' && c.members.includes(snap.me)).slice(0, 7).map((c) => ({ id: c.id, name: c.name, color: glowOf(c.id), members: c.members.length, inviteOnly: c.kind !== 'public' })),
-    [snap.channels, snap.me],
-  );
   const [feed, setFeed] = useState<CalendarItem[] | null>(null);
   useEffect(() => {
     const off = listen((ev) => {
@@ -63,10 +51,7 @@ export function HomeView({ onOpen, onNew, onLibrary, onCalendar, onChannel }: Pr
   );
 
   return (
-    // The stage keeps the backdrop still while the page scrolls; wheel turns over empty space still scroll the page.
-    <div className="home-stage" onWheel={(e) => { if ((e.target as HTMLElement).tagName === 'CANVAS') scroller.current?.scrollBy({ top: e.deltaY }); }}>
-    <Constellation mine={nodes} onEnter={onChannel} posKey={`relay.constellation.${snap.workspace.id}`} verb="open" />
-    <div className="home-view" ref={scroller}>
+    <div className="home-view">
       <h1>{greeting(new Date().getHours())}{me ? `, ${me.name.split(' ')[0]}` : ''}</h1>
       <div className="home-quick">
         <button className="ghost-btn" onClick={() => onNew(false)}>📄 New page</button>
@@ -93,7 +78,6 @@ export function HomeView({ onOpen, onNew, onLibrary, onCalendar, onChannel }: Pr
         <h2>Recently edited</h2>
         {edited.length ? <div className="home-row">{edited.map(card)}</div> : <p className="muted">No pages yet. Create one from the sidebar or pick a template.</p>}
       </section>
-    </div>
     </div>
   );
 }
