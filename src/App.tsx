@@ -27,6 +27,7 @@ import { CanvasPanel, DetailsPanel, ThreadPanel } from './components/Panels.tsx'
 import { AdminModal, TermsGate } from './components/Admin.tsx';
 import { ListPanel } from './components/Lists.tsx';
 import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
+import { HomeScreen } from './components/HomeScreen.tsx';
 import { CreateWorkspaceModal, FindWorkspacesModal, InviteModal, WorkspacePicker, WorkspaceSwitcher, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
 import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, usePrefsMigration, type ChannelLevel } from './notify.ts';
@@ -99,7 +100,7 @@ export default function App() {
   }, []);
   // In auth mode the token comes from Supabase; in dev mode from localStorage.
   const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
-  const { snap, typing, error, authError, analytics, workspaces, connected, send, listen, clearError, switchWorkspace } = useRelay(session);
+  const { snap, typing, error, authError, analytics, workspaces, atHome, home, lastWorkspace, connected, send, listen, clearError, switchWorkspace, goHome } = useRelay(session);
   const calls = useHuddleCalls(send, listen, connected);
   const leave = () => {
     void signOut();
@@ -278,6 +279,17 @@ export default function App() {
       />
     );
   }
+  // Opening the app lands here: your own page, with the workspaces you can enter on the side.
+  if (atHome && !snap) {
+    if (!connected && !home.name && !workspaces.mine.length) return <div className="welcome"><p className="muted">Connecting to Relay server…</p><p className="muted"><small>The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.</small></p></div>;
+    return (
+      <>
+        <HomeScreen name={home.name} items={home.items} mine={workspaces.mine} lastWorkspace={lastWorkspace} send={send} onEnter={switchWorkspace} onCreate={() => setModal('createWs')} onFind={() => setModal('findWs')} onSignOut={leave} />
+        {modal === 'createWs' && <CreateWorkspaceModal onClose={() => setModal(null)} onCreate={createWorkspace} />}
+        {modal === 'findWs' && <FindWorkspacesModal discover={workspaces.discover} onClose={() => setModal(null)} onJoin={(id) => { switchWorkspace(id); setModal(null); }} />}
+      </>
+    );
+  }
   if (!snap) {
     return (
       <div className="welcome">
@@ -422,7 +434,7 @@ export default function App() {
 
       <div className="app">
         <nav className="rail" onClick={(e) => e.stopPropagation()}>
-          <WorkspaceSwitcher current={snap.workspace} mine={workspaces.mine} onSwitch={switchWorkspace} onCreate={() => setModal('createWs')} onFind={() => setModal('findWs')} />
+          <WorkspaceSwitcher current={snap.workspace} mine={workspaces.mine} onSwitch={switchWorkspace} onHome={goHome} onCreate={() => setModal('createWs')} onFind={() => setModal('findWs')} />
           <span className="rail-divider" />
           <button className={`rail-btn ${view === 'channel' ? 'active' : ''}`} title="Home" onClick={() => showView('channel')}><Icon n="home" size={20} /><span>Home</span></button>
           <button className={`rail-btn ${view === 'dms' ? 'active' : ''}`} title="Direct messages" onClick={() => showView('dms')}><Icon n="message" size={20} /><span>DMs</span></button>
@@ -473,6 +485,7 @@ export default function App() {
               {menu === 'workspace' && (
                 <div className="menu ws-menu" role="menu">
                   <div className="menu-head"><WorkspaceTile ws={snap.workspace} size={36} /><div><strong>{snap.workspace.name}</strong><small className="muted">{snap.settings.inviteOnly ? 'Invite-only' : 'Open to anyone who signs in'}</small></div></div>
+                  <button role="menuitem" onClick={() => { goHome(); setMenu(null); }}>Back to Home</button>
                   <button role="menuitem" onClick={() => { setModal('invite'); setMenu(null); }}>Invite people to {snap.workspace.name}</button>
                   <button role="menuitem" onClick={() => { setModal('profile'); setMenu(null); }}>Preferences</button>
                   <button role="menuitem" onClick={() => { window.open('/help', '_blank', 'noopener'); setMenu(null); }}>Help center</button>

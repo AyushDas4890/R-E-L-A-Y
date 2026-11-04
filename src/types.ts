@@ -192,6 +192,20 @@ export const PLAN_FEATURES = [
 ] as const;
 
 // One row in the workspace switcher.
+// The page you land on before choosing a workspace. Items belong to the person, not to any workspace.
+export type HomeKind = 'note' | 'todo' | 'link';
+export interface HomeTask { id: string; text: string; done: boolean }
+export interface HomeItem {
+  id: string;
+  kind: HomeKind;
+  title: string;
+  text: string;
+  url: string;
+  tasks: HomeTask[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface WorkspaceSummary {
   id: string;
   name: string;
@@ -603,6 +617,9 @@ export type PageMeta = Omit<Page, 'access'>;
 
 export type ClientEvent =
   | { t: 'auth'; token: string; invite?: string; workspace?: string }
+  | { t: 'homeAdd'; kind: HomeKind; fields?: Partial<Pick<HomeItem, 'title' | 'text' | 'url' | 'tasks'>> }
+  | { t: 'homeUpdate'; id: string; patch: Partial<Pick<HomeItem, 'title' | 'text' | 'url' | 'tasks'>> }
+  | { t: 'homeRemove'; id: string }
   | { t: 'createWorkspace'; name: string }
   | { t: 'renameWorkspace'; name: string }
   | { t: 'star'; channelId: string }
@@ -728,6 +745,8 @@ export type ServerEvent =
   | { t: 'analytics'; data: Analytics }
   | { t: 'export'; data: unknown }
   | { t: 'workspaces'; mine: WorkspaceSummary[]; discover: WorkspaceSummary[] }
+  // Sent instead of a workspace snapshot while a person is on their own Home, and again after each change.
+  | { t: 'home'; items: HomeItem[]; name: string }
   | { t: 'workspaceCreated'; id: string }
   | { t: 'workspace'; workspace: Snapshot['workspace'] }
   | { t: 'starred'; list: string[] }
