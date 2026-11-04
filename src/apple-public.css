@@ -1,0 +1,110 @@
+/* Apple touch for the public pages (landing, features, help, sign-in, workspace picker).
+   Loaded after notion-site.css: brings back the sky, the floating glass nav, pill buttons and the
+   generous radii, and adds the small things that make it feel native: press feedback, springy hovers,
+   soft focus halos. Always light, like apple.com. */
+.ap, .ap-si, .ws-picker {
+  --ap-ink: #1d1d1f;
+  --ap-ink-2: #6e6e73;
+  --ap-ink-3: #86868b;
+  --ap-bg: #f5f5f7;
+  --ap-line: rgba(0, 0, 0, .08);
+  --ap-blue: #0071e3;
+  --ap-blue-hover: #0077ed;
+  --ap-blue-ink: #0066cc;
+  --ap-card: #fff;
+  --ap-card-2: #fbfbfd;
+  --ap-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, 'Segoe UI', system-ui, sans-serif;
+  --ap-spring: cubic-bezier(.32, .72, 0, 1);
+  --ap-pop: cubic-bezier(.34, 1.4, .64, 1);
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+}
+.ap :is(h1, h2, h3), .ap-si :is(h1, h2, h3), .ws-picker :is(h1, h2, h3) { letter-spacing: -.03em; }
+
+/* Sky: a soft morning gradient that melts into the page, with a slow drift of light */
+.ap-sky {
+  background:
+    radial-gradient(60% 40% at 18% 14%, rgba(255, 255, 255, .7), transparent 70%),
+    radial-gradient(50% 36% at 84% 26%, rgba(255, 236, 224, .7), transparent 70%),
+    radial-gradient(46% 34% at 60% 6%, rgba(214, 226, 255, .8), transparent 72%),
+    linear-gradient(180deg, #cfe6f7 0%, #e3eef8 38%, #f1f4f8 66%, var(--ap-bg) 100%);
+}
+.ap-sky::after {
+  content: ''; position: absolute; inset: 0; opacity: .7;
+  background: radial-gradient(38% 30% at 30% 24%, rgba(255, 255, 255, .55), transparent 70%);
+  animation: ap-drift 22s ease-in-out infinite alternate;
+}
+@keyframes ap-drift { to { transform: translate3d(14%, 6%, 0) scale(1.12); } }
+.hp-hero .ap-sky { background: linear-gradient(180deg, #d8eaf8 0%, #eaf1f8 60%, var(--ap-bg) 100%); }
+
+/* Buttons: pills with 100ms press, weight 500 */
+.ap-pill { height: 44px; border-radius: 999px; font-weight: 500; transition: background-color .2s ease, transform .12s var(--ap-spring), box-shadow .2s ease; }
+.ap-pill.blue { box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .25), 0 1px 2px rgba(0, 113, 227, .3); }
+.ap-pill.dark { height: 36px; border-radius: 999px; background: var(--ap-ink); color: #fff; }
+.ap-pill.dark:hover { background: #333336; }
+.ap-pill.quiet { background: #fff; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.ap-pill.full { height: 48px; }
+.ap-pill:active:not(:disabled) { transform: scale(.97); }
+.ap-link-btn, .ap-more { transition: color .2s ease, opacity .2s ease; }
+.ap-more svg, .ap-more .icon { transition: transform .3s var(--ap-spring); }
+.ap-more:hover svg, .ap-more:hover .icon { transform: translateX(3px); }
+
+/* Navigation: a floating glass pill */
+.ap-nav {
+  top: 16px; max-width: 980px; margin: 0 auto; height: 52px; padding: 0 8px 0 20px; border-radius: 999px;
+  background: rgba(255, 255, 255, .72);
+  backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px);
+  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .06), 0 1px 1px rgba(0, 0, 0, .03), 0 12px 32px -8px rgba(0, 40, 80, .14);
+}
+.ap-links a { position: relative; }
+.ap-links a::after { content: ''; position: absolute; left: 0; right: 0; bottom: -4px; height: 1.5px; border-radius: 1px; background: currentColor; transform: scaleX(0); transition: transform .35s var(--ap-spring); }
+.ap-links a:hover::after, .ap-links a.on::after { transform: scaleX(1); }
+.ap-statement { font-weight: 600; letter-spacing: -.04em; font-size: clamp(34px, 4.6vw, 58px); line-height: 1.08; text-wrap: balance; }
+.ap-hero-copy { margin-top: clamp(64px, 13vh, 140px); }
+
+/* Product window, tiles and cards: generous radii, one hairline, soft depth */
+.ap-window { border-radius: 20px; background: #fff; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .08), 0 40px 80px -24px rgba(0, 50, 90, .28), 0 12px 24px -12px rgba(0, 50, 90, .12); }
+.ap-window-bar { background: var(--ap-card-2); }
+.ap-window-bar i:nth-of-type(1) { background: #ff5f57; }
+.ap-window-bar i:nth-of-type(2) { background: #febc2e; }
+.ap-window-bar i:nth-of-type(3) { background: #28c840; }
+.ap-window-side { background: var(--ap-bg); }
+.ap-window-side span.on { background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.ap-tile { border-radius: 28px; background: #fff; box-shadow: none; transition: transform .5s var(--ap-spring), box-shadow .5s var(--ap-spring); }
+.ap-tile:hover { transform: translateY(-3px); box-shadow: 0 24px 48px -24px rgba(0, 40, 90, .2); }
+.ap-intro h2, .ap-final h2 { font-weight: 600; letter-spacing: -.04em; }
+
+/* Help center */
+.hp-card, .hp-hit, .hp-search { background: #fff; border-radius: 14px; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .08); transition: transform .35s var(--ap-spring), box-shadow .35s var(--ap-spring); }
+.hp-card:hover, .hp-hit:hover { transform: translateY(-2px); box-shadow: 0 0 0 .5px rgba(0, 0, 0, .08), 0 16px 32px -16px rgba(0, 40, 90, .22); }
+
+/* Sign-in and workspace picker */
+.ap-si-card, .ws-picker .ws-picker-card {
+  border-radius: 28px; background: rgba(255, 255, 255, .86);
+  backdrop-filter: saturate(180%) blur(30px); -webkit-backdrop-filter: saturate(180%) blur(30px);
+  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .04), 0 32px 72px -20px rgba(0, 50, 90, .26);
+}
+.ap-si-mark { border-radius: 18px; background: linear-gradient(180deg, #fff, #f1f1f4); box-shadow: 0 0 0 .5px rgba(0, 0, 0, .08), 0 6px 16px -6px rgba(0, 0, 0, .2); }
+.ap-si input, .ws-picker input, .ap-si-field input { border-radius: 12px; transition: border-color .2s ease, box-shadow .2s ease; }
+.ap-si-field input:focus, .ws-picker .ws-create-inline input:focus { border-color: var(--ap-blue); box-shadow: 0 0 0 4px rgba(0, 113, 227, .16); }
+.ws-picker :is(button, a) { border-radius: 999px; }
+.ws-picker .ws-row { border-radius: 0; transition: background-color .15s ease; }
+.ws-picker .ws-group { border-radius: 16px; }
+.ap-si-nav { background: rgba(255, 255, 255, .72); backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px); }
+.ap-si-error { border-radius: 12px; }
+
+/* Focus: one soft ring everywhere */
+.ap :focus-visible, .ap-si :focus-visible, .ws-picker :focus-visible { outline: 3px solid rgba(0, 113, 227, .4); outline-offset: 2px; border-radius: 10px; }
+.ap-si-field input:focus-visible { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ap-sky::after { animation: none; }
+  .ap-tile, .hp-card, .hp-hit, .ap-more svg, .ap-links a::after { transition: none; }
+  .ap-tile:hover, .hp-card:hover, .hp-hit:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .ap-nav, .ap-si-nav, .ap-si-card, .ws-picker .ws-picker-card { backdrop-filter: none; -webkit-backdrop-filter: none; background: #fff; }
+}
+@media (max-width: 860px) {
+  .ap-nav { margin: 0 auto; }
+}

@@ -119,7 +119,7 @@ export default function App() {
   const [menu, setMenu] = useState<Menu>(null);
   const appearance = useAppearance();
   // The Notion look keeps its sidebar open or closed (Ctrl+\) and lets people drag its edge.
-  const notion = appearance.theme.startsWith('notion');
+  const notion = /^(notion|apple)/.test(appearance.theme);
   const [sideCollapsed, setSideCollapsed] = useState(() => recall('relay.sideCollapsed') === '1');
   const [sideW, setSideW] = useState(() => clampSide(Number(recall('relay.sideW'))));
   const [resizing, setResizing] = useState(false);
@@ -169,7 +169,7 @@ export default function App() {
         e.preventDefault();
         setModal('search');
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && document.documentElement.dataset.theme?.startsWith('notion')) {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && /^(notion|apple)/.test(document.documentElement.dataset.theme ?? '')) {
         e.preventDefault();
         setSideCollapsed((c) => !c);
       }

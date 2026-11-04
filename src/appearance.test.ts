@@ -11,9 +11,9 @@ test('the sidebar width is clamped, and junk falls back to the default', () => {
   assert.equal(clampSide(Number(null)), SIDE_DEFAULT);
 });
 
-test('a browser that never picked a look starts on Notion, white or black by system setting', () => {
-  assert.deepEqual(firstLook(false, false), { theme: 'notion', bg: 'none', accent: '' });
-  assert.deepEqual(firstLook(false, true), { theme: 'notion', bg: 'none', accent: '' });
+test('a browser that never picked a look starts on the Apple look, whatever the system setting', () => {
+  assert.deepEqual(firstLook(false, false), { theme: 'apple', bg: 'none', accent: '' });
+  assert.deepEqual(firstLook(false, true), { theme: 'apple', bg: 'none', accent: '' });
 });
 
 test('once a look is recorded, nothing is overridden again', () => {
@@ -21,9 +21,9 @@ test('once a look is recorded, nothing is overridden again', () => {
   assert.equal(firstLook(true, true), null);
 });
 
-test('the Notion themes are selectable and every older theme id stays valid', () => {
+test('the Apple and Notion themes are selectable and every older theme id stays valid', () => {
   const ids = THEMES.map((t) => t.id);
-  for (const id of ['notion', 'notion-dark', 'minimal', 'minimal-dark', 'plum', 'moonlight', 'chrome', 'overcast', 'meadow', 'midnight']) {
+  for (const id of ['apple', 'apple-dark', 'notion', 'notion-dark', 'minimal', 'minimal-dark', 'plum', 'moonlight', 'chrome', 'overcast', 'meadow', 'midnight']) {
     assert.ok(ids.includes(id), id);
   }
   assert.equal(new Set(ids).size, ids.length);

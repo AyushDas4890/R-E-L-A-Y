@@ -1,7 +1,7 @@
 /* Notion look: warm grays, hairline borders, flat surfaces. Built on the Minimal rules (minimal.css
    matches both families), so this file only sets tokens, the shell layout and what differs in shape.
    Colors and radii come from Notion's public pages (see docs/notion/features.md, section 11). */
-[data-theme^='notion'] {
+:is([data-theme^='notion'], [data-theme^='apple']) {
   --font: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
   --display: var(--font);
   --radius: 6px;
@@ -34,85 +34,85 @@
 
 /* Only the Notion look uses these; every other theme keeps its own shell. */
 .notion-only { display: none; }
-[data-theme^='notion'] .notion-only { display: revert; }
+:is([data-theme^='notion'], [data-theme^='apple']) .notion-only { display: revert; }
 
 /* ---- Shape: flat, hairline, small radii (Minimal rounds everything to pills and 16px sheets) ---- */
-[data-theme^='notion'] .ghost-btn, [data-theme^='notion'] .huddle-btn, [data-theme^='notion'] .member-stack { border-radius: 6px; }
-[data-theme^='notion'] .omnibar { border-radius: 6px; }
-[data-theme^='notion'] .composer-box { border-radius: 8px; }
-[data-theme^='notion'] .modal, [data-theme^='notion'] .palette { border-radius: 12px; }
-[data-theme^='notion'] .menu, [data-theme^='notion'] .popover { border-radius: 8px; }
-[data-theme^='notion'] .link-card { border-radius: 8px; }
-[data-theme^='notion'] .alert-banner { border-radius: 8px; }
-[data-theme^='notion'] .chip-btn, [data-theme^='notion'] .send-btn { border-radius: 6px; }
-[data-theme^='notion'] .mention { background: var(--tag-bg); color: var(--accent-2); }
-[data-theme^='notion'] .mention.group { background: var(--tag-bg); }
-[data-theme^='notion'] .badge { background: var(--tag-bg); color: var(--accent-2); }
-[data-theme^='notion'] .icon-btn.lit { background: var(--tag-bg); color: var(--accent); }
-[data-theme^='notion'] .reactions button.mine { background: var(--tag-bg); box-shadow: inset 0 0 0 1px var(--accent); }
-[data-theme^='notion'] .palette-results .answer { background: var(--tag-bg); }
-[data-theme^='notion'] .channel-head { background: var(--panel); backdrop-filter: none; }
-[data-theme^='notion'] .channel-title h2 { font-size: 16px; }
-[data-theme^='notion'] h1, [data-theme^='notion'] h2, [data-theme^='notion'] h3 { letter-spacing: -.01em; }
-[data-theme^='notion'] .count { background: var(--accent); color: #fff; }
-[data-theme^='notion'] .pip { background: var(--accent); box-shadow: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .ghost-btn, :is([data-theme^='notion'], [data-theme^='apple']) .huddle-btn, :is([data-theme^='notion'], [data-theme^='apple']) .member-stack { border-radius: 6px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .omnibar { border-radius: 6px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .composer-box { border-radius: 8px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .modal, :is([data-theme^='notion'], [data-theme^='apple']) .palette { border-radius: 12px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .menu, :is([data-theme^='notion'], [data-theme^='apple']) .popover { border-radius: 8px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .link-card { border-radius: 8px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .alert-banner { border-radius: 8px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .chip-btn, :is([data-theme^='notion'], [data-theme^='apple']) .send-btn { border-radius: 6px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .mention { background: var(--tag-bg); color: var(--accent-2); }
+:is([data-theme^='notion'], [data-theme^='apple']) .mention.group { background: var(--tag-bg); }
+:is([data-theme^='notion'], [data-theme^='apple']) .badge { background: var(--tag-bg); color: var(--accent-2); }
+:is([data-theme^='notion'], [data-theme^='apple']) .icon-btn.lit { background: var(--tag-bg); color: var(--accent); }
+:is([data-theme^='notion'], [data-theme^='apple']) .reactions button.mine { background: var(--tag-bg); box-shadow: inset 0 0 0 1px var(--accent); }
+:is([data-theme^='notion'], [data-theme^='apple']) .palette-results .answer { background: var(--tag-bg); }
+:is([data-theme^='notion'], [data-theme^='apple']) .channel-head { background: var(--panel); backdrop-filter: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .channel-title h2 { font-size: 16px; }
+:is([data-theme^='notion'], [data-theme^='apple']) h1, :is([data-theme^='notion'], [data-theme^='apple']) h2, :is([data-theme^='notion'], [data-theme^='apple']) h3 { letter-spacing: -.01em; }
+:is([data-theme^='notion'], [data-theme^='apple']) .count { background: var(--accent); color: #fff; }
+:is([data-theme^='notion'], [data-theme^='apple']) .pip { background: var(--accent); box-shadow: none; }
 
 /* ---- Shell: sidebar full height on the left; the top bar floats over the page area ---- */
-[data-theme^='notion'] .shell { position: relative; background: var(--bg); --side-eff: var(--side); }
-[data-theme^='notion'] .shell.side-collapsed { --side-eff: 0px; }
-[data-theme^='notion'] .shell > .app { margin: 0; height: 100%; }
-[data-theme^='notion'] .rail { display: none; }
-[data-theme^='notion'] .topbar {
+:is([data-theme^='notion'], [data-theme^='apple']) .shell { position: relative; background: var(--bg); --side-eff: var(--side); }
+:is([data-theme^='notion'], [data-theme^='apple']) .shell.side-collapsed { --side-eff: 0px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .shell > .app { margin: 0; height: 100%; }
+:is([data-theme^='notion'], [data-theme^='apple']) .rail { display: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .topbar {
   display: flex; align-items: center; gap: 4px; padding: 0 12px 0 8px; background: var(--bg); color: var(--text);
   position: absolute; top: 0; left: var(--side-eff); right: 0; height: var(--topbar);
 }
-[data-theme^='notion'] .topbar .icon-btn { width: 28px; height: 28px; border-radius: 6px; font-size: 15px; display: grid; place-items: center; }
-[data-theme^='notion'] .topbar .nav-toggle { display: none; }
-[data-theme^='notion'] .topbar .omnibar { display: none; }
-[data-theme^='notion'] .history-nav { padding-left: 0; }
-[data-theme^='notion'] .topbar-actions { margin-left: auto; }
-[data-theme^='notion'] .crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; font-size: 14px; color: var(--muted); }
-[data-theme^='notion'] .crumbs span { padding: 2px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[data-theme^='notion'] .crumbs span:last-child { color: var(--text); }
-[data-theme^='notion'] .crumbs i { font-style: normal; opacity: .5; }
-[data-theme^='notion'] .shell:not(.side-collapsed) .topbar .side-toggle-top { display: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .topbar .icon-btn { width: 28px; height: 28px; border-radius: 6px; font-size: 15px; display: grid; place-items: center; }
+:is([data-theme^='notion'], [data-theme^='apple']) .topbar .nav-toggle { display: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .topbar .omnibar { display: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .history-nav { padding-left: 0; }
+:is([data-theme^='notion'], [data-theme^='apple']) .topbar-actions { margin-left: auto; }
+:is([data-theme^='notion'], [data-theme^='apple']) .crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; font-size: 14px; color: var(--muted); }
+:is([data-theme^='notion'], [data-theme^='apple']) .crumbs span { padding: 2px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is([data-theme^='notion'], [data-theme^='apple']) .crumbs span:last-child { color: var(--text); }
+:is([data-theme^='notion'], [data-theme^='apple']) .crumbs i { font-style: normal; opacity: .5; }
+:is([data-theme^='notion'], [data-theme^='apple']) .shell:not(.side-collapsed) .topbar .side-toggle-top { display: none; }
 
-[data-theme^='notion'] .sidebar { position: relative; background: var(--side-bg); border-right: 0; height: 100%; }
-[data-theme^='notion'] .shell.side-collapsed .sidebar { display: none; }
-[data-theme^='notion'] .sidebar > header { padding: 8px 8px 4px 10px; }
-[data-theme^='notion'] .sidebar h2 { font-size: 14px; font-weight: 600; }
-[data-theme^='notion'] .ws-menu-btn { padding: 4px 6px; border-radius: 6px; }
-[data-theme^='notion'] .side-head-btn, [data-theme^='notion'] .compose-btn { width: 26px; height: 26px; border-radius: 6px; background: transparent; color: var(--side-muted); }
-[data-theme^='notion'] .side-head-btn:hover, [data-theme^='notion'] .compose-btn:hover { background: var(--t3); color: var(--text); }
-[data-theme^='notion'] .side-scroll { padding: 2px 6px 12px; }
-[data-theme^='notion'] .side-top { display: grid; gap: 1px; padding: 0 6px 8px; }
-[data-theme^='notion'] .side-bottom { display: grid; gap: 1px; padding: 6px 6px 8px; border-top: 1px solid var(--hair-c); }
-[data-theme^='notion'] .side-item { padding: 3px 8px; min-height: 28px; border-radius: 6px; font-size: 14px; color: var(--side-muted); font-weight: 500; }
-[data-theme^='notion'] .side-item .hash { width: 20px; opacity: 1; display: grid; place-items: center; }
-[data-theme^='notion'] .side-item:hover { background: var(--side-hover); color: var(--text); }
-[data-theme^='notion'] .side-item.active { background: var(--side-active) !important; color: var(--text); font-weight: 600; box-shadow: none; }
-[data-theme^='notion'] .side-item.unread { color: var(--text); font-weight: 600; }
-[data-theme^='notion'] .side-section { padding: 14px 6px 2px; font-size: 12px; font-weight: 600; color: var(--side-muted); }
-[data-theme^='notion'] .side-toggle { padding: 2px 4px; }
-[data-theme^='notion'] .side-hint { padding: 2px 10px; font-size: 12px; }
-[data-theme^='notion'] .side-resize { position: absolute; top: 0; right: -3px; bottom: 0; width: 6px; cursor: col-resize; z-index: 3; }
-[data-theme^='notion'] .side-resize:hover, [data-theme^='notion'] .side-resize.drag { background: linear-gradient(90deg, transparent 2px, var(--accent) 2px, var(--accent) 4px, transparent 4px); opacity: .6; }
+:is([data-theme^='notion'], [data-theme^='apple']) .sidebar { position: relative; background: var(--side-bg); border-right: 0; height: 100%; }
+:is([data-theme^='notion'], [data-theme^='apple']) .shell.side-collapsed .sidebar { display: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .sidebar > header { padding: 8px 8px 4px 10px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .sidebar h2 { font-size: 14px; font-weight: 600; }
+:is([data-theme^='notion'], [data-theme^='apple']) .ws-menu-btn { padding: 4px 6px; border-radius: 6px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-head-btn, :is([data-theme^='notion'], [data-theme^='apple']) .compose-btn { width: 26px; height: 26px; border-radius: 6px; background: transparent; color: var(--side-muted); }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-head-btn:hover, :is([data-theme^='notion'], [data-theme^='apple']) .compose-btn:hover { background: var(--t3); color: var(--text); }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-scroll { padding: 2px 6px 12px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-top { display: grid; gap: 1px; padding: 0 6px 8px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-bottom { display: grid; gap: 1px; padding: 6px 6px 8px; border-top: 1px solid var(--hair-c); }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-item { padding: 3px 8px; min-height: 28px; border-radius: 6px; font-size: 14px; color: var(--side-muted); font-weight: 500; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-item .hash { width: 20px; opacity: 1; display: grid; place-items: center; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-item:hover { background: var(--side-hover); color: var(--text); }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-item.active { background: var(--side-active) !important; color: var(--text); font-weight: 600; box-shadow: none; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-item.unread { color: var(--text); font-weight: 600; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-section { padding: 14px 6px 2px; font-size: 12px; font-weight: 600; color: var(--side-muted); }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-toggle { padding: 2px 4px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-hint { padding: 2px 10px; font-size: 12px; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-resize { position: absolute; top: 0; right: -3px; bottom: 0; width: 6px; cursor: col-resize; z-index: 3; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-resize:hover, :is([data-theme^='notion'], [data-theme^='apple']) .side-resize.drag { background: linear-gradient(90deg, transparent 2px, var(--accent) 2px, var(--accent) 4px, transparent 4px); opacity: .6; }
 
 /* ---- Desktop: page area sits under the floating top bar, flat, no frame ---- */
 @media (min-width: 769px) {
-  [data-theme^='notion'] .shell > .app { background: transparent; }
-  [data-theme^='notion'] .shell .sidebar { background: var(--side-bg); border-radius: 0; box-shadow: none; }
-  [data-theme^='notion'] .shell .main, [data-theme^='notion'] .shell .panel { margin-top: var(--topbar); border-radius: 0; background: var(--surface); box-shadow: none; }
-  [data-theme^='notion'] .shell .panel { margin-left: 0; border-left: 1px solid var(--hair-c); }
-  [data-theme^='notion'] .shell.has-panel .main { border-radius: 0; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell > .app { background: transparent; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell .sidebar { background: var(--side-bg); border-radius: 0; box-shadow: none; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell .main, :is([data-theme^='notion'], [data-theme^='apple']) .shell .panel { margin-top: var(--topbar); border-radius: 0; background: var(--surface); box-shadow: none; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell .panel { margin-left: 0; border-left: 1px solid var(--hair-c); }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell.has-panel .main { border-radius: 0; }
 }
 
 /* ---- Phone: the sidebar is a sheet, the top bar is a normal bar, search lives in the sheet ---- */
 @media (max-width: 768px) {
-  [data-theme^='notion'] .shell { --side-eff: 0px; }
-  [data-theme^='notion'] .topbar { position: relative; left: 0; padding: 0 8px; }
-  [data-theme^='notion'] .topbar .nav-toggle { display: grid; }
-  [data-theme^='notion'] .topbar .side-toggle-top, [data-theme^='notion'] .history-nav, [data-theme^='notion'] .side-resize, [data-theme^='notion'] .sidebar .side-head-btn.notion-only { display: none; }
-  [data-theme^='notion'] .shell.side-collapsed .sidebar { display: flex; }
-  [data-theme^='notion'] .shell .sidebar { position: fixed; height: auto; background: var(--side-bg); width: min(320px, 86vw); }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell { --side-eff: 0px; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .topbar { position: relative; left: 0; padding: 0 8px; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .topbar .nav-toggle { display: grid; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .topbar .side-toggle-top, :is([data-theme^='notion'], [data-theme^='apple']) .history-nav, :is([data-theme^='notion'], [data-theme^='apple']) .side-resize, :is([data-theme^='notion'], [data-theme^='apple']) .sidebar .side-head-btn.notion-only { display: none; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell.side-collapsed .sidebar { display: flex; }
+  :is([data-theme^='notion'], [data-theme^='apple']) .shell .sidebar { position: fixed; height: auto; background: var(--side-bg); width: min(320px, 86vw); }
 }
