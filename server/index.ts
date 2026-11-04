@@ -41,6 +41,7 @@ import {
 } from '../src/premium.ts';
 import { parseSlash } from './slash.ts';
 import { createStore } from './store.ts';
+import { createMessageSync } from './messageSync.ts';
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
@@ -1518,7 +1519,11 @@ async function loadRuntime(id: string, fresh?: () => DB): Promise<Runtime> {
   if (fresh) await st.save(db);
   const pageStore = createPageStore(id, dataDir);
   const pageIndex = await pageStore.loadIndex();
-  const rt = createRuntime(id, db, (d) => st.save(d), (ws) => {
+  // Optional mirror of messages into relay_messages (off unless RELAY_MESSAGES_DUAL_WRITE=1). The first
+  // sync copies every existing message, so it doubles as the backfill; the document stays the source of truth.
+  const mirror = createMessageSync(id, authAdmin, process.env.RELAY_MESSAGES_DUAL_WRITE === '1');
+  void mirror?.sync(db.messages);
+  const rt = createRuntime(id, db, async (d) => { await st.save(d); void mirror?.sync(d.messages); }, (ws) => {
     // The runtime cut this socket off: forget its workspace and show the person their remaining ones.
     const conn = conns.get(ws);
     if (!conn) return;
