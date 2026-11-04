@@ -10,6 +10,8 @@ import './db.css';
 import './collab.css';
 import './help.css';
 import './notion-site.css';
+import './apple-public.css';
+import './apple-app.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
