@@ -116,12 +116,19 @@ export function NewChannelModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
   const [priv, setPriv] = useState(false);
+  const create = () => {
+    if (!name.trim()) return;
+    send({ t: 'createChannel', name, topic, kind: priv ? 'private' : 'public' });
+    onClose();
+  };
+  // Enter in either field creates the channel, same as the button.
+  const onEnter = (e: React.KeyboardEvent) => { if (e.key === 'Enter') create(); };
   return (
     <Modal title="Create a channel" onClose={onClose}>
-      <label>Name<input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. launch-plan" /></label>
-      <label>Topic<input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What is this channel about?" /></label>
+      <label>Name<input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={onEnter} placeholder="e.g. launch-plan" /></label>
+      <label>Topic<input value={topic} onChange={(e) => setTopic(e.target.value)} onKeyDown={onEnter} placeholder="What is this channel about?" /></label>
       <label className="check"><input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} /> Make private</label>
-      <button className="send-btn" disabled={!name.trim()} onClick={() => { send({ t: 'createChannel', name, topic, kind: priv ? 'private' : 'public' }); onClose(); }}>Create</button>
+      <button className="send-btn" disabled={!name.trim()} onClick={create}>Create</button>
     </Modal>
   );
 }
