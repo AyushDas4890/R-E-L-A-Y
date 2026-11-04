@@ -250,6 +250,10 @@ h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -.01
   .rail { width: 52px; }
   .channel-head { flex-wrap: wrap; padding: 10px 12px; }
   .composer { padding: 0 10px 10px; }
+  /* Keep Send on one line and inside the box: the action row wraps instead of overflowing. */
+  .composer-actions { flex-wrap: wrap; }
+  .composer-actions .send-btn, .composer-actions .ghost-btn { white-space: nowrap; flex: none; }
+  .composer-actions .send-btn { margin-left: auto; }
   .msg { padding: 4px 12px; }
   .head-actions .ghost-btn { padding: 6px 8px; }
 }

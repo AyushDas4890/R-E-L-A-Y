@@ -1,7 +1,7 @@
 // Database events: creating a database, its properties and views, its rows, forms, templates and
 // automations. The rules live in databases.ts; this wires them to sockets and keeps two-way relations in step.
 import type { WebSocket } from 'ws';
-import type { CalendarItem, ClientEvent, DbData, DbDelta, Page, PropValue, Row, Property, SchemaOp, ViewOp } from '../src/types.ts';
+import type { CalendarDb, CalendarItem, ClientEvent, DbData, DbDelta, Page, PropValue, Row, Property, SchemaOp, ViewOp } from '../src/types.ts';
 import {
   applySchemaOps, applyViewOp, automationEffects, cleanAutomation, cleanForm, cleanTemplate, emptyDb, formValues, isComputed, MAX_AUTOMATIONS,
   MAX_TEMPLATES, newRow, orderRowAfter, presetDb, relationDiff, rowById, setValues, LAYOUTS,
@@ -437,21 +437,28 @@ export function createDbRuntime(core: Core): Handler {
       }
       case 'calendarFeed': {
         const items: CalendarItem[] = [];
+        const dbs: CalendarDb[] = [];
         for (const page of Object.values(index.pages)) {
           if (page.kind !== 'database' || items.length >= MAX_FEED) continue;
-          if (!nodeFor(index.pages, page, who, core.spaces())) continue;
+          const node = nodeFor(index.pages, page, who, core.spaces());
+          if (!node) continue;
           const db = (await core.bodyOf(page.id)).db;
           if (!db) continue;
+          // Same bar as rowUpdate and rowCreate, and not in the trash or locked out.
+          const canEdit = atLeast(node.level, 'edit-content') && page.trashedAt === undefined;
+          const title = db.props.find((x) => x.type === 'title');
+          const firstDate = db.props.find((x) => x.type === 'date');
+          if (title && firstDate) dbs.push({ id: page.id, title: page.title || 'Untitled', titleProp: title.id, dateProp: firstDate.id, canEdit });
           for (const p of db.props.filter((x) => x.type === 'date')) {
             for (const r of db.rows) {
               const v = r.props[p.id];
               if (r.trashedAt !== undefined || !v || typeof v !== 'object' || Array.isArray(v)) continue;
-              items.push({ rowId: r.id, dbId: page.id, dbTitle: page.title || 'Untitled', title: titleOfRow(db, r) || 'Untitled', start: v.start, ...(v.end ? { end: v.end } : {}), prop: p.name });
+              items.push({ rowId: r.id, dbId: page.id, dbTitle: page.title || 'Untitled', title: titleOfRow(db, r) || 'Untitled', start: v.start, ...(v.end ? { end: v.end } : {}), prop: p.name, propId: p.id, canEdit });
               if (items.length >= MAX_FEED) break;
             }
           }
         }
-        core.sendUser(userId, { t: 'calendarFeed', items });
+        core.sendUser(userId, { t: 'calendarFeed', items, dbs });
         return true;
       }
     }
