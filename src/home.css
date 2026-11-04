@@ -1,0 +1,41 @@
+/* Home: the page before any workspace. Uses the theme tokens so every theme works. */
+.hs { display: grid; grid-template-columns: 264px minmax(0, 1fr); min-height: 100vh; background: var(--bg); color: var(--text); }
+.hs-side { display: flex; flex-direction: column; gap: 2px; padding: 16px 12px; background: var(--side-bg, var(--panel)); color: var(--side-text, var(--text)); border-right: 1px solid var(--line); position: sticky; top: 0; height: 100vh; overflow-y: auto; box-sizing: border-box; }
+.hs-side ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hs-brand { display: flex; align-items: center; gap: 8px; font-weight: 700; padding: 4px 8px 14px; }
+.hs-label { margin: 14px 8px 4px; font-size: 12px; opacity: .65; text-transform: none; }
+.hs-nav { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 7px 8px; border-radius: 8px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.hs-nav:hover, .hs-nav:focus-visible { background: var(--side-hover, var(--hover)); }
+.hs-nav.on { background: var(--side-active, var(--hover)); font-weight: 600; }
+.hs-nav.ws small { margin-left: auto; opacity: .6; font-size: 11px; }
+.hs-ws-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hs-nav.out { margin-top: auto; opacity: .8; }
+.hs-empty { opacity: .7; font-size: 13px; margin: 4px 8px; }
+.hs-empty.big { margin: 32px 0; font-size: 15px; color: var(--muted); }
+.hs-main { padding: 48px clamp(16px, 5vw, 64px); max-width: 1100px; min-width: 0; }
+.hs-main h1 { margin: 0 0 4px; font-size: clamp(26px, 4vw, 38px); line-height: 1.15; }
+.hs-date { margin: 0 0 24px; color: var(--muted); }
+.hs-add { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.hs-add button { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: inherit; cursor: pointer; }
+.hs-add button:hover, .hs-add button:focus-visible { border-color: var(--accent); }
+.hs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; align-items: start; }
+.hs-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+.hs-card header { display: flex; align-items: center; justify-content: space-between; }
+.hs-kind { font-size: 11px; color: var(--muted); }
+.hs-x { background: none; border: 0; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; border-radius: 4px; }
+.hs-x:hover, .hs-x:focus-visible { color: var(--text); background: var(--hover); }
+.hs-card input:not([type="checkbox"]), .hs-card textarea { font: inherit; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; width: 100%; box-sizing: border-box; resize: vertical; min-width: 0; }
+.hs-card input:not([type="checkbox"]):hover, .hs-card textarea:hover { border-color: var(--line); }
+.hs-card input:not([type="checkbox"]):focus, .hs-card textarea:focus { border-color: var(--accent); outline: none; background: var(--bg); }
+.hs-title { font-weight: 600; font-size: 16px; }
+.hs-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.hs-tasks li { display: flex; align-items: center; gap: 6px; }
+.hs-tasks li.done input:not([type="checkbox"]) { text-decoration: line-through; color: var(--muted); }
+.hs-progress { color: var(--muted); }
+.hs-open { font-size: 13px; color: var(--accent); }
+@media (max-width: 760px) {
+  .hs { grid-template-columns: 1fr; }
+  .hs-side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .hs-nav.out { margin-top: 8px; }
+  .hs-main { padding: 24px 16px 48px; }
+}

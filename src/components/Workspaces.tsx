@@ -17,16 +17,18 @@ export function WorkspaceTile({ ws, size = 36, active }: { ws: Pick<WorkspaceSum
 }
 
 // The column of workspace tiles at the top of the rail: one per workspace you're in, then "+".
-export function WorkspaceSwitcher({ current, mine, onSwitch, onCreate, onFind }: {
+export function WorkspaceSwitcher({ current, mine, onSwitch, onHome, onCreate, onFind }: {
   current: Snapshot['workspace'];
   mine: WorkspaceSummary[];
   onSwitch: (id: string) => void;
+  onHome?: () => void;
   onCreate: () => void;
   onFind: () => void;
 }) {
   const list = mine.length ? mine : [{ ...current, members: 0, inviteOnly: false }];
   return (
     <div className="ws-switcher" role="list" aria-label="Workspaces">
+      {onHome && <button className="ws-switch home" title="Home" aria-label="Home" onClick={onHome}><Icon n="home" /></button>}
       {list.map((w) => (
         <button key={w.id} role="listitem" className={`ws-switch ${w.id === current.id ? 'on' : ''}`} title={w.name} aria-current={w.id === current.id} onClick={() => w.id !== current.id && onSwitch(w.id)}>
           <WorkspaceTile ws={w} active={w.id === current.id} />

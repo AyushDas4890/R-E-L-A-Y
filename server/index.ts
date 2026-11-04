@@ -10,6 +10,7 @@ import type {
   Channel,
   ClientEvent,
   Flag,
+  HomeItem,
   HuddleState,
   Invite,
   ListItem,
@@ -42,6 +43,7 @@ import {
 import { parseSlash } from './slash.ts';
 import { createStore } from './store.ts';
 import { createMessageSync } from './messageSync.ts';
+import { addItem, cleanHome, removeItem, updateItem } from './home.ts';
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
@@ -1545,6 +1547,34 @@ for (const w of directory.workspaces) await loadRuntime(w.id);
 interface Conn { identity?: Identity; rt?: Runtime }
 const conns = new Map<WebSocket, Conn>();
 
+// ---- Home: each person's own notes, to-do lists and links, outside every workspace. One small document
+// per person (row `home-<userId>`), loaded on first use and saved 250 ms after a change.
+const HOME = 'home';
+interface HomeDoc { items: HomeItem[] }
+const homes = new Map<string, { doc: HomeDoc; save: () => Promise<void>; timer?: NodeJS.Timeout }>();
+async function homeOf(userId: string) {
+  let h = homes.get(userId);
+  if (!h) {
+    const st = createStore<HomeDoc>(() => ({ items: [] }), path.join(dataDir, 'homes', `${encodeURIComponent(userId)}.json`), `home-${userId}`);
+    const doc: HomeDoc = { items: cleanHome(await st.load()) };
+    h = { doc, save: () => st.save(doc) };
+    // Another socket may have loaded it meanwhile; keep the first so two copies never diverge.
+    homes.set(userId, homes.get(userId) ?? h);
+    h = homes.get(userId)!;
+  }
+  return h;
+}
+function saveHomeSoon(userId: string): void {
+  const h = homes.get(userId);
+  if (!h) return;
+  clearTimeout(h.timer);
+  h.timer = setTimeout(() => void h.save().catch((err) => console.error('home save failed:', err instanceof Error ? err.message : err)), 250);
+}
+// Every open tab of this person, in any workspace or on Home, shows the same items.
+function sendHome(userId: string, doc: HomeDoc): void {
+  for (const [sock, c] of conns) if (c.identity?.userId === userId) send(sock, { t: 'home', items: doc.items, name: c.identity.name });
+}
+
 function workspacesFor(userId: string): { mine: WorkspaceSummary[]; discover: WorkspaceSummary[] } {
   const mine: WorkspaceSummary[] = [];
   const discover: WorkspaceSummary[] = [];
@@ -1578,6 +1608,12 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     conn.identity = identity;
     conn.rt?.leave(ws);
     conn.rt = undefined;
+    // Opening the app lands on Home: no workspace joined, just the person's own items and their workspace list.
+    if (ev.workspace === HOME && !ev.invite) {
+      send(ws, { t: 'workspaces', ...workspacesFor(identity.userId) });
+      send(ws, { t: 'home', items: (await homeOf(identity.userId)).doc.items, name: identity.name });
+      return;
+    }
     const rt = pickWorkspace(identity.userId, ev.workspace, ev.invite);
     if (!rt) {
       send(ws, { t: 'workspaces', ...workspacesFor(identity.userId) });
@@ -1620,7 +1656,29 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     return;
   }
 
+  if (ev.t === 'homeAdd' || ev.t === 'homeUpdate' || ev.t === 'homeRemove') {
+    if (!conn.identity) {
+      send(ws, { t: 'error', message: 'Sign in to continue.', code: 'auth-required' });
+      return;
+    }
+    const userId = conn.identity.userId;
+    const h = await homeOf(userId);
+    const newId = () => randomUUID().slice(0, 12);
+    let next: HomeItem[] | string | null;
+    if (ev.t === 'homeAdd') next = addItem(h.doc.items, ev.kind, ev.fields && typeof ev.fields === 'object' ? ev.fields : {}, newId(), Date.now(), newId);
+    else if (ev.t === 'homeUpdate') next = updateItem(h.doc.items, ev.id, ev.patch, Date.now(), newId);
+    else next = removeItem(h.doc.items, ev.id);
+    if (typeof next === 'string') send(ws, { t: 'error', message: next });
+    if (!Array.isArray(next)) return;
+    h.doc.items = next;
+    saveHomeSoon(userId);
+    sendHome(userId, h.doc);
+    return;
+  }
+
   if (!conn.rt) {
+    // Signed in but on Home (or turned away from a workspace): workspace events have nowhere to go.
+    if (conn.identity) return;
     send(ws, { t: 'error', message: 'Sign in to continue.', code: 'auth-required' });
     return;
   }
@@ -1689,6 +1747,7 @@ async function shutdown(signal: string): Promise<void> {
   server.close();
   for (const rt of runtimes.values()) rt.stop();
   await Promise.all([...runtimes.values()].map((rt) => rt.flush()));
+  await Promise.all([...homes.values()].map((h) => { clearTimeout(h.timer); return h.save().catch(() => undefined); }));
   process.exit(0);
 }
 process.on('SIGTERM', () => void shutdown('SIGTERM'));

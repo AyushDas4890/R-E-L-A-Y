@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { mentionsUser } from './premium.ts';
 import { usePrefs } from './notify.ts';
 import { supabase, authEnabled } from './supabase.ts';
-import type { Analytics, ClientEvent, ServerEvent, Snapshot, WorkspaceSummary } from './types.ts';
+import type { Analytics, ClientEvent, HomeItem, ServerEvent, Snapshot, WorkspaceSummary } from './types.ts';
 
 interface State {
   snap: Snapshot | null;
@@ -11,12 +11,17 @@ interface State {
   authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' } | null;
   analytics: Analytics | null;
   workspaces: { mine: WorkspaceSummary[]; discover: WorkspaceSummary[] };
+  // On the person's own Home, outside every workspace. Home items arrive from the server and follow them everywhere.
+  atHome: boolean;
+  home: { items: HomeItem[]; name: string };
 }
 
-type Action = { ev: ServerEvent } | { clearError: true } | { expireTyping: number };
+type Action = { ev: ServerEvent } | { clearError: true } | { expireTyping: number } | { atHome: boolean };
 
 function reduce(state: State, action: Action): State {
   if ('clearError' in action) return { ...state, error: null };
+  // Going Home drops the open workspace; going into one waits for its snapshot.
+  if ('atHome' in action) return action.atHome ? { ...state, atHome: true, snap: null, authError: null } : { ...state, atHome: false };
   if ('expireTyping' in action) {
     const typing: State['typing'] = {};
     for (const [ch, users] of Object.entries(state.typing)) {
@@ -27,7 +32,8 @@ function reduce(state: State, action: Action): State {
   }
   const ev = action.ev;
   // An older server sends no `history`: then the snapshot already holds everything.
-  if (ev.t === 'init') return { ...state, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {}, pages: ev.snapshot.pages ?? [], pageFavorites: ev.snapshot.pageFavorites ?? [], teamspaces: ev.snapshot.teamspaces ?? [], inbox: ev.snapshot.inbox ?? [] }, authError: null };
+  if (ev.t === 'home') return { ...state, home: { items: ev.items, name: ev.name } };
+  if (ev.t === 'init') return { ...state, atHome: false, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {}, pages: ev.snapshot.pages ?? [], pageFavorites: ev.snapshot.pageFavorites ?? [], teamspaces: ev.snapshot.teamspaces ?? [], inbox: ev.snapshot.inbox ?? [] }, authError: null };
   // Auth/invite rejections block the session, so they are kept apart from transient errors.
   if (ev.t === 'error') return ev.code ? { ...state, authError: { message: ev.message, code: ev.code } } : { ...state, error: ev.message };
   if (ev.t === 'analytics') return { ...state, analytics: ev.data };
@@ -215,13 +221,16 @@ export function useAuthToken(): { token: string | null; ready: boolean; signOut:
 }
 
 export function useRelay(session: Session | null) {
-  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null, workspaces: { mine: [], discover: [] } });
+  // Opening the app lands on Home, unless an invite link says which workspace to join.
+  const startHome = !session?.invite;
+  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null, workspaces: { mine: [], discover: [] }, atHome: startHome, home: { items: [], name: '' } });
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   // Huddle signaling isn't app state, so it goes to listeners instead of the reducer.
   const listeners = useRef(new Set<(ev: ServerEvent) => void>());
   // The workspace to open on (re)connect; remembered across reloads.
-  const target = useRef<string | undefined>(readWorkspace());
+  const target = useRef<string | undefined>(startHome ? 'home' : undefined);
+  const lastWorkspace = useRef(readWorkspace());
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
@@ -307,10 +316,16 @@ export function useRelay(session: Session | null) {
   // Switching re-authenticates on the open socket; the server moves it to the other workspace.
   const switchWorkspace = useCallback((id: string) => {
     target.current = id;
+    dispatch({ atHome: false });
+    if (wsRef.current) authenticate(wsRef.current);
+  }, []);
+  const goHome = useCallback(() => {
+    target.current = 'home';
+    dispatch({ atHome: true });
     if (wsRef.current) authenticate(wsRef.current);
   }, []);
 
-  return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, workspaces: state.workspaces, connected, send, listen, clearError, switchWorkspace };
+  return { snap: state.snap, typing: state.typing, error: state.error, authError: state.authError, analytics: state.analytics, workspaces: state.workspaces, atHome: state.atHome, home: state.home, lastWorkspace: lastWorkspace.current, connected, send, listen, clearError, switchWorkspace, goHome };
 }
 
 // Read state lives on the server, so it follows the person to every device. The server stamps the
