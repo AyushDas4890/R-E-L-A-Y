@@ -11,9 +11,9 @@ test('the sidebar width is clamped, and junk falls back to the default', () => {
   assert.equal(clampSide(Number(null)), SIDE_DEFAULT);
 });
 
-test('a browser that never picked a look starts on the Apple look, whatever the system setting', () => {
-  assert.deepEqual(firstLook(false, false), { theme: 'apple', bg: 'none', accent: '' });
-  assert.deepEqual(firstLook(false, true), { theme: 'apple', bg: 'none', accent: '' });
+test('a browser that never picked a look starts on the Apple dark look, whatever the system setting', () => {
+  assert.deepEqual(firstLook(false, false), { theme: 'apple-dark', bg: 'none', accent: '' });
+  assert.deepEqual(firstLook(false, true), { theme: 'apple-dark', bg: 'none', accent: '' });
 });
 
 test('once a look is recorded, nothing is overridden again', () => {
