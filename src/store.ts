@@ -8,7 +8,7 @@ interface State {
   snap: Snapshot | null;
   typing: Record<string, Record<string, number>>;
   error: string | null;
-  authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' } | null;
+  authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' | 'left' } | null;
   analytics: Analytics | null;
   workspaces: { mine: WorkspaceSummary[]; discover: WorkspaceSummary[] };
   // On the person's own Home, outside every workspace. Home items arrive from the server and follow them everywhere.
@@ -35,6 +35,8 @@ function reduce(state: State, action: Action): State {
   if (ev.t === 'home') return { ...state, home: { items: ev.items, name: ev.name } };
   if (ev.t === 'init') return { ...state, atHome: false, snap: { ...ev.snapshot, history: ev.snapshot.history ?? {}, pages: ev.snapshot.pages ?? [], pageFavorites: ev.snapshot.pageFavorites ?? [], teamspaces: ev.snapshot.teamspaces ?? [], inbox: ev.snapshot.inbox ?? [] }, authError: null };
   // Auth/invite rejections block the session, so they are kept apart from transient errors.
+  // Leaving a workspace lands on Home. The message is shown as a notice there.
+  if (ev.t === 'error' && ev.code === 'left') return { ...state, atHome: true, snap: null, authError: null, error: ev.message };
   if (ev.t === 'error') return ev.code ? { ...state, authError: { message: ev.message, code: ev.code } } : { ...state, error: ev.message };
   if (ev.t === 'analytics') return { ...state, analytics: ev.data };
   if (ev.t === 'workspaces') return { ...state, workspaces: { mine: ev.mine, discover: ev.discover } };
@@ -259,7 +261,11 @@ export function useRelay(session: Session | null) {
         const ev = JSON.parse(e.data as string) as ServerEvent;
         if (ev.t === 'rtc' || ev.t === 'huddleCall' || PAGE_DOC_EVENTS.has(ev.t)) listeners.current.forEach((fn) => fn(ev));
         else if (ev.t === 'export') downloadJson(ev.data);
-        else if (ev.t === 'workspaceCreated') {
+        else if (ev.t === 'error' && ev.code === 'left') {
+          // This person left the workspace they were in: forget it, so a reconnect opens Home, not that workspace.
+          target.current = 'home';
+          dispatch({ ev });
+        } else if (ev.t === 'workspaceCreated') {
           target.current = ev.id;
           authenticate(ws);
         } else {

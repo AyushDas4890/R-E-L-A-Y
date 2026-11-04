@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addItem, cleanHome, cleanUrl, HOME_MAX_ITEMS, removeItem, updateItem } from './home.ts';
+import { addItem, cleanHome, cleanUrl, HOME_MAX_ITEMS, moveItem, removeItem, updateItem } from './home.ts';
 import type { HomeItem } from '../src/types.ts';
 
 let n = 0;
@@ -50,6 +50,18 @@ test('update ignores unknown ids and bad values', () => {
   assert.equal(updateItem(a, 'a', { tasks: [1, 2] }, 2, nid), null);
   assert.equal(updateItem(a, 'a', null, 2, nid), null);
   assert.equal(updateItem(a, 7, { title: 'x' }, 2, nid), null);
+});
+
+test('move puts an item before another, or last, and ignores junk', () => {
+  let a: ReturnType<typeof list> = [];
+  for (const id of ['a', 'b', 'c']) a = list(addItem(a, 'note', {}, id, 1, nid)); // newest first: c, b, a
+  assert.deepEqual(a.map((i) => i.id), ['c', 'b', 'a']);
+  assert.deepEqual(moveItem(a, 'a', 'c').map((i) => i.id), ['a', 'c', 'b']);
+  assert.deepEqual(moveItem(a, 'c', null).map((i) => i.id), ['b', 'a', 'c']);
+  assert.deepEqual(moveItem(a, 'zzz', 'c'), a);
+  assert.deepEqual(moveItem(a, 'a', 'zzz'), a);
+  assert.deepEqual(moveItem(a, 'a', 'a'), a);
+  assert.deepEqual(moveItem(a, 5, 'a'), a);
 });
 
 test('remove drops one item and tolerates junk', () => {

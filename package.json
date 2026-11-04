@@ -11,7 +11,7 @@
     "build": "tsc --noEmit && vite build",
     "start": "node server/index.ts",
     "lint": "tsc --noEmit",
-    "test": "node --test server/slash.test.ts server/invites.test.ts server/store.test.ts server/prefs.test.ts server/access.test.ts server/history.test.ts server/messageSync.test.ts server/notifications.test.ts server/pages.test.ts server/databases.test.ts server/collab.test.ts server/publish.test.ts src/editor.test.ts src/formula.test.ts src/dbquery.test.ts src/localAi.test.ts src/undo.test.ts server/auth.test.ts server/unfurl.test.ts src/premium.test.ts src/notify.test.ts src/appearance.test.ts src/help.test.ts src/calendarMath.test.ts server/home.test.ts src/home.test.ts"
+    "test": "node --test server/slash.test.ts server/invites.test.ts server/store.test.ts server/prefs.test.ts server/access.test.ts server/history.test.ts server/messageSync.test.ts server/notifications.test.ts server/pages.test.ts server/databases.test.ts server/collab.test.ts server/publish.test.ts src/editor.test.ts src/formula.test.ts src/dbquery.test.ts src/localAi.test.ts src/undo.test.ts server/auth.test.ts server/unfurl.test.ts src/premium.test.ts src/notify.test.ts src/appearance.test.ts src/help.test.ts src/calendarMath.test.ts server/home.test.ts src/home.test.ts src/dnd.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

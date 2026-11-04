@@ -76,6 +76,17 @@ export function updateItem(items: HomeItem[], id: unknown, patch: unknown, now: 
   return items.map((i, n) => (n === at ? next : i));
 }
 
+// Puts one item just before another (or last when `before` is null). Unknown ids leave the list as it was.
+export function moveItem(items: HomeItem[], id: unknown, before: unknown): HomeItem[] {
+  if (typeof id !== 'string') return items;
+  const at = items.findIndex((i) => i.id === id);
+  if (at < 0 || id === before) return items;
+  const rest = items.filter((i) => i.id !== id);
+  const to = before === null || before === undefined ? rest.length : rest.findIndex((i) => i.id === before);
+  if (to < 0) return items;
+  return [...rest.slice(0, to), items[at], ...rest.slice(to)];
+}
+
 export function removeItem(items: HomeItem[], id: unknown): HomeItem[] {
   return typeof id === 'string' ? items.filter((i) => i.id !== id) : items;
 }

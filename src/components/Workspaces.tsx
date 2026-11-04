@@ -3,7 +3,9 @@ import type { ClientEvent, Snapshot, WorkspaceSummary } from '../types.ts';
 import { Icon } from './Icon.tsx';
 import { Modal } from './Modals.tsx';
 import { LogoMark } from './LogoIntro.tsx';
+import { moveBefore, nudge, orderBy, useReorder, useSavedOrder, WORKSPACE_ORDER_KEY } from '../dnd.ts';
 import '../apple.css';
+import '../dnd.css';
 
 export const wsInitials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?';
@@ -25,12 +27,26 @@ export function WorkspaceSwitcher({ current, mine, onSwitch, onHome, onCreate, o
   onCreate: () => void;
   onFind: () => void;
 }) {
-  const list = mine.length ? mine : [{ ...current, members: 0, inviteOnly: false }];
+  // Drag a tile to put your workspaces in your own order (remembered on this device, same order as on Home).
+  const [saved, saveOrder] = useSavedOrder(WORKSPACE_ORDER_KEY);
+  const list = orderBy(mine.length ? mine : [{ ...current, members: 0, inviteOnly: false }], (w) => w.id, saved);
+  const ids = list.map((w) => w.id);
+  const order = useReorder((from, before) => saveOrder(moveBefore(ids, from, before)));
   return (
     <div className="ws-switcher" role="list" aria-label="Workspaces">
       {onHome && <button className="ws-switch home" title="Home" aria-label="Home" onClick={onHome}><Icon n="home" /></button>}
       {list.map((w) => (
-        <button key={w.id} role="listitem" className={`ws-switch ${w.id === current.id ? 'on' : ''}`} title={w.name} aria-current={w.id === current.id} onClick={() => w.id !== current.id && onSwitch(w.id)}>
+        <button
+          key={w.id}
+          role="listitem"
+          className={`ws-switch ${w.id === current.id ? 'on' : ''} ${order.classOf(w.id)}`}
+          title={`${w.name}${list.length > 1 ? ' (drag to reorder)' : ''}`}
+          aria-current={w.id === current.id}
+          onClick={() => w.id !== current.id && onSwitch(w.id)}
+          {...order.handleProps(w.id)}
+          {...order.targetProps(w.id)}
+          {...order.keyProps((d) => saveOrder(nudge(ids, w.id, d)), true)}
+        >
           <WorkspaceTile ws={w} active={w.id === current.id} />
         </button>
       ))}

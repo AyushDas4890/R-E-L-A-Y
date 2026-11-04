@@ -620,6 +620,7 @@ export type ClientEvent =
   | { t: 'homeAdd'; kind: HomeKind; fields?: Partial<Pick<HomeItem, 'title' | 'text' | 'url' | 'tasks'>> }
   | { t: 'homeUpdate'; id: string; patch: Partial<Pick<HomeItem, 'title' | 'text' | 'url' | 'tasks'>> }
   | { t: 'homeRemove'; id: string }
+  | { t: 'homeMove'; id: string; before: string | null }
   | { t: 'createWorkspace'; name: string }
   | { t: 'renameWorkspace'; name: string }
   | { t: 'star'; channelId: string }
@@ -771,7 +772,7 @@ export type ServerEvent =
   | { t: 'inbox'; items: InboxItem[] }
   | { t: 'searchResults'; q: string; hits: SearchHit[] }
   | { t: 'calendarFeed'; items: CalendarItem[]; dbs: CalendarDb[] }
-  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' };
+  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' | 'left' };
 
 export interface Analytics {
   totalMessages: number;

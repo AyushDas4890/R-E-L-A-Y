@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
 import { getDevSession, saveDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
@@ -30,6 +30,8 @@ import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './
 import { HomeScreen } from './components/HomeScreen.tsx';
 import { CreateWorkspaceModal, FindWorkspacesModal, InviteModal, WorkspacePicker, WorkspaceSwitcher, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
+import { INTERNAL } from './dnd.ts';
+import './dnd.css';
 import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, usePrefsMigration, type ChannelLevel } from './notify.ts';
 import { clampSide, SIDE_DEFAULT, useAppearance } from './appearance.ts';
 import { Backdrop } from './components/Appearance.tsx';
@@ -140,6 +142,9 @@ export default function App() {
   // Phone layout: the channel list is its own screen, opened from the header or tab bar.
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Dragging a channel in the sidebar: which one, and which header or channel it is hovering over.
+  const [dragCh, setDragCh] = useState<string | null>(null);
+  const [dropKey, setDropKey] = useState<string | null>(null);
   // A page I just asked for opens as soon as the server says it exists.
   const openAfterCreate = useRef(false);
   const [showBrowse, setShowBrowse] = useState(false);
@@ -284,6 +289,7 @@ export default function App() {
     if (!connected && !home.name && !workspaces.mine.length) return <div className="welcome"><p className="muted">Connecting to Relay server…</p><p className="muted"><small>The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.</small></p></div>;
     return (
       <>
+        {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
         <HomeScreen name={home.name} items={home.items} mine={workspaces.mine} lastWorkspace={lastWorkspace} send={send} onEnter={switchWorkspace} onCreate={() => setModal('createWs')} onFind={() => setModal('findWs')} onSignOut={leave} />
         {modal === 'createWs' && <CreateWorkspaceModal onClose={() => setModal(null)} onCreate={createWorkspace} />}
         {modal === 'findWs' && <FindWorkspacesModal discover={workspaces.discover} onClose={() => setModal(null)} onJoin={(id) => { switchWorkspace(id); setModal(null); }} />}
@@ -328,8 +334,34 @@ export default function App() {
     else send({ t: 'pageCreate', parentId, ...where, ...(options.template ? { template: options.template } : {}) });
   };
   const toggleMenu = (m: Menu) => setMenu(menu === m ? null : m);
+  type ChannelTarget = { to: 'starred' } | { to: 'channels' } | { to: 'section'; id: string; before?: string };
+  // Dropping a channel on Starred stars it, on Channels returns it to the main list, on a section files it there
+  // (before the channel it landed on, if any). Leaving Starred un-stars it, since a starred channel shows only there.
+  const moveChannel = (id: string, target: ChannelTarget) => {
+    const isStarred = starredIds.has(id);
+    if (target.to === 'starred') {
+      if (!isStarred) send({ t: 'star', channelId: id });
+      return;
+    }
+    if (isStarred) send({ t: 'star', channelId: id });
+    const next = snap.sections.map((sec) => {
+      const ids = sec.channelIds.filter((x) => x !== id);
+      if (target.to !== 'section' || sec.id !== target.id) return { ...sec, channelIds: ids };
+      const at = target.before ? ids.indexOf(target.before) : -1;
+      return { ...sec, channelIds: at < 0 ? [...ids, id] : [...ids.slice(0, at), id, ...ids.slice(at)] };
+    });
+    if (JSON.stringify(next) !== JSON.stringify(snap.sections)) send({ t: 'sections', sections: next });
+  };
+  const dropProps = (key: string, target: ChannelTarget) => ({
+    onDragOver: (e: DragEvent) => { if (dragCh) { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; if (dropKey !== key) setDropKey(key); } },
+    onDragLeave: (e: DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropKey === key) setDropKey(null); },
+    onDrop: (e: DragEvent) => { if (!dragCh) return; e.preventDefault(); e.stopPropagation(); moveChannel(dragCh, target); setDragCh(null); setDropKey(null); },
+  });
   const section = (key: string, label: string, actions?: ReactNode) => (
-    <div className="side-section">
+    <div
+      className={`side-section ${dragCh && dropKey === `head:${key}` ? 'dnd-over' : ''}`}
+      {...(key === 'starred' ? dropProps(`head:${key}`, { to: 'starred' }) : key === 'channels' ? dropProps(`head:${key}`, { to: 'channels' }) : snap.sections.some((sec) => sec.id === key) ? dropProps(`head:${key}`, { to: 'section', id: key }) : {})}
+    >
       <button className={`side-toggle ${collapsed[key] ? 'closed' : ''}`} aria-expanded={!collapsed[key]} onClick={() => setCollapsed((c) => ({ ...c, [key]: !c[key] }))}>
         <i aria-hidden>▾</i> {label}
       </button>
@@ -361,13 +393,26 @@ export default function App() {
     }
   };
 
-  const sidebarItem = (c: (typeof channels)[number]) => {
+  // `zone` says where in the sidebar the item sits ('starred', 'channels', 'dms' or a section id), so a drop on it knows where to put the dragged channel.
+  const sidebarItem = (c: (typeof channels)[number], zone?: string) => {
     const muted = levels.levelOf(c.id) === 'mute';
     const u = muted ? undefined : unread[c.id];
     const label = channelLabel(c, snap.users, snap.me);
     const other = c.kind === 'dm' ? c.members.find((m) => m !== snap.me) ?? snap.me : '';
     return (
-      <button key={c.id} className={`side-item ${view === 'channel' && c.id === ch?.id ? 'active' : ''} ${u ? 'unread' : ''} ${muted ? 'muted' : ''}`} onClick={() => openChannel(c.id)}>
+      <button
+        key={c.id}
+        className={`side-item ${view === 'channel' && c.id === ch?.id ? 'active' : ''} ${u ? 'unread' : ''} ${muted ? 'muted' : ''} ${dragCh === c.id ? 'dnd-dragging' : ''} ${dragCh && dragCh !== c.id && dropKey === `item:${c.id}` ? 'dnd-over' : ''}`}
+        onClick={() => openChannel(c.id)}
+        {...(zone && c.members.includes(snap.me)
+          ? {
+              draggable: true,
+              onDragStart: (e: DragEvent) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData(INTERNAL, c.id); e.dataTransfer.setData('text/plain', ''); setDragCh(c.id); },
+              onDragEnd: () => { setDragCh(null); setDropKey(null); },
+              ...dropProps(`item:${c.id}`, zone === 'starred' ? { to: 'starred' } : zone === 'channels' || zone === 'dms' ? { to: 'channels' } : { to: 'section', id: zone, before: c.id }),
+            }
+          : {})}
+      >
         <span className="hash">{c.kind === 'dm' ? <Avatar user={snap.users[other]} size={18} online={snap.online.includes(other)} /> : c.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span>
         <span className="label">{label}</span>
         {snap.huddles.some((h) => h.channelId === c.id) && <span title="Huddle live"><Icon n="headphones" size={14} /></span>}
@@ -525,18 +570,18 @@ export default function App() {
             <PageTree nodes={snap.pages} favorites={snap.pageFavorites} teamspaces={snap.teamspaces} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} onLibrary={() => showView('library')} onManageSpaces={() => setModal('spaces')} />
 
             {section('starred', notion ? 'Favorites' : 'Starred')}
-            {!collapsed.starred && starred.map(sidebarItem)}
-            {!collapsed.starred && starred.length === 0 && <p className="muted small side-hint">Star a channel from its header to pin it here.</p>}
+            {!collapsed.starred && starred.map((c) => sidebarItem(c, 'starred'))}
+            {!collapsed.starred && starred.length === 0 && <p className="muted small side-hint">Star a channel from its header, or drag one here, to pin it.</p>}
 
             {snap.sections.map((sec) => (
               <div key={sec.id}>
                 {section(sec.id, sec.name, <button title="Remove section (channels move back to Channels)" onClick={() => removeSection(sec.id)}>×</button>)}
-                {!collapsed[sec.id] && sec.channelIds.map((id) => snap.channels[id]).filter((c) => c && c.members.includes(snap.me) && !starredIds.has(c.id)).map(sidebarItem)}
-                {!collapsed[sec.id] && sec.channelIds.length === 0 && <p className="muted small side-hint">Move channels here from a channel's details.</p>}
+                {!collapsed[sec.id] && sec.channelIds.map((id) => snap.channels[id]).filter((c) => c && c.members.includes(snap.me) && !starredIds.has(c.id)).map((c) => sidebarItem(c, sec.id))}
+                {!collapsed[sec.id] && sec.channelIds.length === 0 && <p className="muted small side-hint">Drag channels onto this section's name, or move them from a channel's details.</p>}
               </div>
             ))}
             {section('channels', 'Channels')}
-            {!collapsed.channels && joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map(sidebarItem)}
+            {!collapsed.channels && joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map((c) => sidebarItem(c, 'channels'))}
             {!collapsed.channels && (
               <div className="menu-anchor">
                 <button className="side-item add" onClick={() => toggleMenu('addChannel')}><span className="hash">＋</span><span className="label">Add channels</span></button>
@@ -548,10 +593,10 @@ export default function App() {
                 )}
               </div>
             )}
-            {!collapsed.channels && showBrowse && browse.map(sidebarItem)}
+            {!collapsed.channels && showBrowse && browse.map((c) => sidebarItem(c))}
 
             {section('dms', 'Direct messages')}
-            {!collapsed.dms && dms.filter((c) => !starredIds.has(c.id)).map(sidebarItem)}
+            {!collapsed.dms && dms.filter((c) => !starredIds.has(c.id)).map((c) => sidebarItem(c, 'dms'))}
             {!collapsed.dms && people.filter((u) => !dms.some((d) => d.members.includes(u.id))).slice(0, 8).map((u) => (
               <button key={u.id} className="side-item" onClick={() => dmWith(u.id)}>
                 <span className="hash"><Avatar user={u} size={18} online={snap.online.includes(u.id)} /></span>
