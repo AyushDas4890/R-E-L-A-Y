@@ -1,8 +1,11 @@
 import { useRef, useState } from 'react';
+import type { ClipboardEvent } from 'react';
 import type { FileAttachment } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { EMOJI } from '../format.tsx';
 import { Icon } from './Icon.tsx';
+import { useFileDrop } from '../dnd.ts';
+import '../dnd.css';
 
 const MAX_FILE = 4 * 1024 * 1024;
 
@@ -109,7 +112,7 @@ export function Composer({
     el.focus();
   };
 
-  const addFiles = async (list: FileList | null) => {
+  const addFiles = async (list: FileList | File[] | null) => {
     if (!list) return;
     setFileError('');
     const accepted: FileAttachment[] = [];
@@ -123,8 +126,17 @@ export function Composer({
     setFiles((prev) => [...prev, ...accepted].slice(0, 5));
   };
 
+  // Drop files anywhere on the composer, or paste a screenshot into the box, to attach them.
+  const drop = useFileDrop((list) => void addFiles(list));
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (e.clipboardData.files.length === 0) return;
+    e.preventDefault();
+    void addFiles(e.clipboardData.files);
+  };
+
   return (
-    <div className="composer">
+    <div className={`composer ${drop.active ? 'drop-glow' : ''}`} {...drop.props}>
+      {drop.active && <div className="composer-drop" aria-hidden="true">Drop to attach (up to 5 files, 4 MB each)</div>}
       {mentionMatches.length > 0 && (
         <div className="popover mention-pop">
           {mentionMatches.map((x) => (
@@ -166,6 +178,7 @@ export function Composer({
           value={text}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
+          onPaste={onPaste}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();

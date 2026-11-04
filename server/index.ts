@@ -43,7 +43,7 @@ import {
 import { parseSlash } from './slash.ts';
 import { createStore } from './store.ts';
 import { createMessageSync } from './messageSync.ts';
-import { addItem, cleanHome, removeItem, updateItem } from './home.ts';
+import { addItem, cleanHome, moveItem, removeItem, updateItem } from './home.ts';
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
@@ -640,7 +640,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
   }
 
   // Disconnects every tab of a person at once and tells them why.
-  function evict(userId: string, code: 'no-workspace' | 'removed', message: string): void {
+  function evict(userId: string, code: 'no-workspace' | 'removed' | 'left', message: string): void {
     for (const [ws, uid] of [...clients]) {
       if (uid !== userId) continue;
       send(ws, { t: 'error', message, code });
@@ -651,7 +651,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
 
   // Takes a person out of the workspace (they stay as a name on old messages). DMs are kept:
   // the other side's history is theirs too.
-  function retire(userId: string, code: 'no-workspace' | 'removed', message: string): void {
+  function retire(userId: string, code: 'no-workspace' | 'removed' | 'left', message: string): void {
     const user = db.users[userId];
     user.inactive = true;
     if (user.role === 'owner' || user.role === 'admin') user.role = 'member';
@@ -1161,7 +1161,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
           return;
         }
         audit(userId, 'member.leave', db.users[userId].name);
-        retire(userId, 'no-workspace', `You left ${db.meta.name}.`);
+        // 'left' (not 'no-workspace') so the client returns to Home instead of the workspace picker.
+        retire(userId, 'left', `You left ${db.meta.name}.`);
         return;
       }
       case 'removeMember': {
@@ -1656,7 +1657,7 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     return;
   }
 
-  if (ev.t === 'homeAdd' || ev.t === 'homeUpdate' || ev.t === 'homeRemove') {
+  if (ev.t === 'homeAdd' || ev.t === 'homeUpdate' || ev.t === 'homeRemove' || ev.t === 'homeMove') {
     if (!conn.identity) {
       send(ws, { t: 'error', message: 'Sign in to continue.', code: 'auth-required' });
       return;
@@ -1667,6 +1668,7 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     let next: HomeItem[] | string | null;
     if (ev.t === 'homeAdd') next = addItem(h.doc.items, ev.kind, ev.fields && typeof ev.fields === 'object' ? ev.fields : {}, newId(), Date.now(), newId);
     else if (ev.t === 'homeUpdate') next = updateItem(h.doc.items, ev.id, ev.patch, Date.now(), newId);
+    else if (ev.t === 'homeMove') next = moveItem(h.doc.items, ev.id, ev.before);
     else next = removeItem(h.doc.items, ev.id);
     if (typeof next === 'string') send(ws, { t: 'error', message: next });
     if (!Array.isArray(next)) return;

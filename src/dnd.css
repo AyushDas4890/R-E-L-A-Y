@@ -1,0 +1,32 @@
+/* Drag and drop: what a thing looks like while it is dragged, and what it can be dropped on. Uses theme tokens. */
+.dnd-dragging { opacity: .45; }
+.dnd-over { outline: 2px dashed var(--accent, #1f6bff); outline-offset: 1px; border-radius: 8px; }
+
+/* A grip that is the handle for dragging an item (or for moving it with the arrow keys). */
+.hs-grip { background: none; border: 0; padding: 0 4px; color: var(--muted, #888); font-size: 15px; line-height: 1; cursor: grab; border-radius: 4px; opacity: .55; }
+.hs-grip:hover, .hs-grip:focus-visible { opacity: 1; color: var(--text); background: var(--hover); }
+.hs-grip:active { cursor: grabbing; }
+.hs-grip.task { opacity: 0; font-size: 13px; }
+.hs-tasks li:hover .hs-grip.task, .hs-grip.task:focus-visible { opacity: .8; }
+
+/* Dragging a file or link in from outside */
+.drop-glow { box-shadow: inset 0 0 0 2px var(--accent, #1f6bff); background: color-mix(in srgb, var(--accent, #1f6bff) 8%, transparent); }
+
+/* Sidebar channels */
+.side-item[draggable="true"] { cursor: grab; }
+.side-item.dnd-dragging { opacity: .4; }
+.side-item.dnd-over { outline: none; box-shadow: 0 -2px 0 0 var(--accent, #1f6bff); border-radius: 0; }
+.side-section.dnd-over { outline: none; box-shadow: inset 0 0 0 2px var(--accent, #1f6bff); border-radius: 8px; background: color-mix(in srgb, var(--accent, #1f6bff) 12%, transparent); }
+
+/* Task list board: drop a task onto a column */
+.list-col.dnd-over { outline: 2px dashed var(--accent, #1f6bff); outline-offset: 2px; border-radius: 8px; }
+.list-item[draggable="true"] { cursor: grab; }
+.list-item.dnd-dragging { opacity: .4; }
+
+/* Composer: drop files to attach */
+.composer.drop-glow .composer-box { border-color: var(--accent, #1f6bff); }
+.composer-drop { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--accent, #1f6bff) 14%, var(--bg, #fff)); color: var(--text); font-weight: 600; pointer-events: none; z-index: 3; border: 2px dashed var(--accent, #1f6bff); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dnd-dragging { transition: opacity .12s; }
+}
