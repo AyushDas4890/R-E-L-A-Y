@@ -200,16 +200,10 @@
 .ws-picker .ws-signout:hover { text-decoration: underline; }
 @media (max-width: 480px) { .ws-picker .ws-picker-card { padding: 32px 20px; } }
 
-/* Living background: drifting dots and glowing nodes behind the landing hero and the sign-in card. */
+/* Quiet backdrop: a still field of dots and hairline threads behind the public pages and the sign-in card. */
 .ap-stars { display: block; width: 100%; height: 100%; color: #1d1d1f; pointer-events: none; }
 /* On the scrolling public pages the backdrop is fixed to the window, so every section sits on the same sky. */
 .ap { isolation: isolate; }
 .ap > .ap-stars-wrap { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .ap .ap-sky { z-index: -2; }
 .ap-si > canvas.ap-stars { position: absolute; inset: 0; z-index: 0; }
-
-/* Interaction layer (see publicMotion.ts): cards catch a soft light under the cursor, buttons lean toward it. */
-.ap-tile, .ap-window, .ap-si-card { position: relative; }
-.ap-sheen { position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none; opacity: 0;
-  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(0, 113, 227, .09), transparent 60%); }
-@media (prefers-reduced-motion: reduce) { .ap-sheen { display: none; } }

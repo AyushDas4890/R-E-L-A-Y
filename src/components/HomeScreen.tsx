@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 import type { ClientEvent, HomeItem, HomeKind, HomeTask, WorkspaceSummary } from '../types.ts';
-import { greeting, progress } from '../home.ts';
+import { progress } from '../home.ts';
 import { LogoMark } from './LogoIntro.tsx';
 import { WorkspaceTile } from './Workspaces.tsx';
 import { carriesFiles, carriesTextOrLink, classifyDrop, isTextFile, moveBefore, nudge, orderBy, useReorder, useSavedOrder, WORKSPACE_ORDER_KEY } from '../dnd.ts';
@@ -182,7 +182,7 @@ export function HomeScreen({ name, items, mine, lastWorkspace, send, onEnter, on
         {dropping && <div className="hs-drop" aria-hidden="true"><b>Drop to add to Home</b><span>A link becomes a link card, text becomes a note</span></div>}
         {notice && <p className="hs-notice" role="status">{notice}</p>}
         <main className="hs-main">
-          <h1>{greeting(now.getHours(), name)}</h1>
+          <h1>Home</h1>
           <p className="hs-date">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} · Pick a workspace on the left, or keep things here. Only you can see this page.</p>
           <div className="hs-add" role="group" aria-label="Add to Home">
             <button onClick={() => add('note')}>+ Note</button>

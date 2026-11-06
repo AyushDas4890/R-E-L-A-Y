@@ -1,5 +1,6 @@
 // A database on a page: view tabs, the toolbar and the chosen layout. Filters, sorts and groups you
 // change are yours until you save them for everyone, as in Notion.
+import { Icon } from '../Icon.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { useDatabase } from '../../db-store.ts';
 import { viewRows } from '../../dbquery.ts';
@@ -119,7 +120,7 @@ export function DatabaseView({ dbId, inline, onOpenRow }: Props) {
         {searching ? (
           <input className="db-search-box" autoFocus aria-label="Search rows" placeholder="Type to search…" value={search} onChange={(e) => setSearch(e.target.value)} onBlur={() => { if (!search) setSearching(false); }} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') { setSearch(''); setSearching(false); } }} />
         ) : (
-          <button className="icon-btn" aria-label="Search rows" onClick={() => setSearching(true)}>🔍</button>
+          <button className="icon-btn" aria-label="Search rows" onClick={() => setSearching(true)}><Icon n="search" /></button>
         )}
         {db.form.enabled && <button className="db-tool" onClick={() => setForm(true)}>Form</button>}
         {!readOnly && (

@@ -121,3 +121,6 @@
 .db :is(button, select, input, textarea):focus-visible, .popover :is(button, select, input, textarea):focus-visible, .side-panel :is(button, select, input, textarea):focus-visible, .home-view :is(button, select, input):focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
+
+.home-quick .ghost-btn { display: inline-flex; align-items: center; gap: 8px; }
+.home-quick .ghost-btn .icon { color: var(--muted); }

@@ -1,11 +1,11 @@
 // Home: where you were, what changed, what is coming up, and quick ways to start something.
+import { Icon } from '../Icon.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { useRelayCtx } from '../../ctx.ts';
 import { readRecent } from '../../recent.ts';
 import type { CalendarItem, PageNode } from '../../types.ts';
 import { iconOf } from './PageTree.tsx';
 
-const greeting = (h: number): string => (h < 5 ? 'Working late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
 const ago = (t: number): string => {
   const m = Math.round((Date.now() - t) / 60_000);
   if (m < 1) return 'just now';
@@ -40,7 +40,6 @@ export function HomeView({ onOpen, onNew, onLibrary, onCalendar }: Props) {
   const today = new Date().toISOString().slice(0, 10);
   const soon = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   const upcoming = (feed ?? []).filter((i) => i.start.slice(0, 10) >= today && i.start.slice(0, 10) <= soon).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 6);
-  const me = snap.users[snap.me];
 
   const card = (n: PageNode) => (
     <button key={n.id} className="home-card" onClick={() => onOpen(n.id)}>
@@ -52,12 +51,12 @@ export function HomeView({ onOpen, onNew, onLibrary, onCalendar }: Props) {
 
   return (
     <div className="home-view">
-      <h1>{greeting(new Date().getHours())}{me ? `, ${me.name.split(' ')[0]}` : ''}</h1>
+      <h1>Home</h1>
       <div className="home-quick">
-        <button className="ghost-btn" onClick={() => onNew(false)}>📄 New page</button>
-        <button className="ghost-btn" onClick={() => onNew(true)}>🗂️ New database</button>
-        <button className="ghost-btn" onClick={onLibrary}>📑 Templates</button>
-        <button className="ghost-btn" onClick={onCalendar}>📅 Calendar</button>
+        <button className="ghost-btn" onClick={() => onNew(false)}><Icon n="file" /> New page</button>
+        <button className="ghost-btn" onClick={() => onNew(true)}><Icon n="database" /> New database</button>
+        <button className="ghost-btn" onClick={onLibrary}><Icon n="layout" /> Templates</button>
+        <button className="ghost-btn" onClick={onCalendar}><Icon n="calendar" /> Calendar</button>
       </div>
       {favs.length > 0 && (<section><h2>Favorites</h2><div className="home-row">{favs.slice(0, 8).map(card)}</div></section>)}
       <section>

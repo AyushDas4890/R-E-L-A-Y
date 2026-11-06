@@ -37,11 +37,11 @@ export const iconOf = (n: PageNode): string => n.icon || (n.kind === 'database' 
 function NewMenu({ anchor, onClose, onPick, withTemplates }: { anchor: HTMLElement | null; onClose: () => void; onPick: (o: NewPageOptions) => void; withTemplates: boolean }) {
   return (
     <Popover anchor={anchor} onClose={onClose} width={240} label="New">
-      <button className="db-opt" onClick={() => { onClose(); onPick({}); }}>📄 Page</button>
-      <button className="db-opt" onClick={() => { onClose(); onPick({ db: true }); }}>🗂️ Database</button>
+      <button className="db-opt" onClick={() => { onClose(); onPick({}); }}><Icon n="file" /> Page</button>
+      <button className="db-opt" onClick={() => { onClose(); onPick({ db: true }); }}><Icon n="database" /> Database</button>
       <p className="db-group-label">Ready-made databases</p>
       {DB_PRESETS.map((p) => <button key={p.id} className="db-opt" onClick={() => { onClose(); onPick({ db: p.id }); }}>{p.icon} {p.name}</button>)}
-      {withTemplates && <><hr style={{ border: 0, borderTop: '1px solid var(--line)' }} /><button className="db-opt" onClick={() => { onClose(); onPick({ template: '*' }); }}>📑 More templates…</button></>}
+      {withTemplates && <><hr style={{ border: 0, borderTop: '1px solid var(--line)' }} /><button className="db-opt" onClick={() => { onClose(); onPick({ template: '*' }); }}><Icon n="layout" /> More templates…</button></>}
     </Popover>
   );
 }
@@ -130,7 +130,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           <button className="pt-main" onClick={() => onOpen(n.id)} title={n.title || 'Untitled'}>
             <span className="hash pt-icon" aria-hidden>{iconOf(n)}</span>
             <span className="label">{n.title || 'Untitled'}</span>
-            {n.published && <span className="pt-pub" title="Published to the web" aria-label="Published">🌐</span>}
+            {n.published && <span className="pt-pub" title="Published to the web" aria-label="Published"><Icon n="globe" size={14} /></span>}
           </button>
           <span className="pt-tools">
             <button className="icon-btn" aria-label="Page options" onClick={() => setMenu(menu === n.id ? null : n.id)}><Icon n="more" size={14} /></button>
@@ -206,7 +206,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           {head('ptrash', `Trash (${trashed.length})`)}
           {!sections.ptrash && trashed.map((n) => (
             <button key={n.id} className={`side-item ${current === n.id ? 'active' : ''}`} onClick={() => onOpen(n.id)}>
-              <span className="hash pt-icon" aria-hidden>🗑️</span><span className="label">{n.title || 'Untitled'}</span>
+              <span className="hash pt-icon" aria-hidden><Icon n="trash" size={16} /></span><span className="label">{n.title || 'Untitled'}</span>
             </button>
           ))}
         </>
