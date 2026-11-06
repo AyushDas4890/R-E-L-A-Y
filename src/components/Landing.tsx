@@ -1,8 +1,8 @@
 import { Starfield } from './Starfield.tsx';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { HeroChat } from './HeroChat.tsx';
+import { FeatureShelf } from './FeatureShelf.tsx';
 import { Icon } from './Icon.tsx';
 import { FeaturePage } from './Features.tsx';
 import { HelpPage } from './Help.tsx';
@@ -12,9 +12,6 @@ import '../tour.css';
 import '../apple.css';
 
 gsap.registerPlugin(ScrollTrigger);
-
-// One statement, revealed word by word: the first words land dark, the rest follow.
-const STATEMENT = 'Relay is team chat with a teammate built in. It answers, reminds and recaps, so the work keeps moving.';
 
 // Each feature tile shows a looping motion graphic of the real UI doing that job.
 const STEPS: { id: string; title: string; text: string; page: Route; wide?: boolean }[] = [
@@ -39,7 +36,6 @@ export function Landing({ onGetStarted }: Props) {
 
 function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
   const root = useRef<HTMLDivElement>(null);
-  const [poke, setPoke] = useState(0);
 
   useLayoutEffect(() => {
     const scroller = root.current!;
@@ -56,14 +52,8 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
         ScrollTrigger.create({ trigger: el, start: 'top 85%', end: 'bottom 15%', onToggle: (s) => (s.isActive ? tl.play() : tl.pause()) });
       });
       if (reduce) return;
-      // Entrance: nav and window rise in on a soft, non-bouncing curve.
-      gsap.timeline({ defaults: { ease: 'expo.out' } })
-        .from('.ap-nav', { y: -16, opacity: 0, duration: 0.9 })
-        .from('.ap-word', { opacity: 0.12, duration: 0.5, stagger: 0.035, ease: 'power1.out' }, 0.2)
-        .from('.ap-hero-actions', { y: 12, opacity: 0, duration: 0.8 }, '-=0.6')
-        .from('.ap-window', { y: 80, opacity: 0, duration: 1.4 }, '-=0.9');
-      // The statement dims back as it scrolls away, the way the reference hero scrubs its text.
-      gsap.to('.ap-statement', { opacity: 0.25, y: -40, ease: 'none', scrollTrigger: { trigger: '.ap-hero', start: 'top top', end: 'center top', scrub: 0.5 } });
+      // Entrance: the nav eases in on a soft, non-bouncing curve.
+      gsap.from('.ap-nav', { y: -16, opacity: 0, duration: 0.9, ease: 'expo.out' });
       gsap.utils.toArray<HTMLElement>('.ap-reveal').forEach((el) => {
         gsap.from(el, { y: 40, opacity: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: el, start: 'top 88%' } });
       });
@@ -78,35 +68,7 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
         <div className="ap-sky" aria-hidden />
         <SiteNav route="home" go={go} onGetStarted={onGetStarted} />
 
-        <div className="ap-hero-copy">
-          <h1 className="ap-statement">
-            {STATEMENT.split(' ').map((w, i) => <span key={i} className="ap-word">{w} </span>)}
-          </h1>
-          <div className="ap-hero-actions">
-            <button className="ap-pill blue" onClick={onGetStarted}>Get started free</button>
-            <a className="ap-more" href="#tour">See how it works <Icon n="chevron" size={14} /></a>
-          </div>
-        </div>
-
-        <div className="ap-window" aria-label="Relay product preview">
-          <div className="ap-window-bar" aria-hidden><i /><i /><i /><span>Relay — #launch</span></div>
-          <div className="ap-window-body">
-            <aside className="ap-window-side" aria-hidden>
-              <b>Flo Studios</b>
-              <span className="on"># launch</span>
-              <span># design</span>
-              <span># general</span>
-              <em>Direct messages</em>
-              <span><i style={{ background: '#d7765a' }} />Maya</span>
-              <span><i style={{ background: '#3aa79b' }} />Ken</span>
-              <span><i style={{ background: '#5b6cf0' }} />Relay Bot</span>
-            </aside>
-            <div className="ap-window-chat">
-              <HeroChat active onMood={() => {}} poke={poke} />
-            </div>
-          </div>
-          <button className="ap-window-hint" onClick={() => setPoke((p) => p + 1)}>Try it: ask Relay Bot something</button>
-        </div>
+        <FeatureShelf onGetStarted={onGetStarted} />
       </section>
 
       <section className="ap-intro ap-reveal">
