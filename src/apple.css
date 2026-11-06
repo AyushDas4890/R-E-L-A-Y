@@ -102,17 +102,8 @@
 .ap-intro h2, .ap-final h2 { margin: 0; font-size: clamp(36px, 5.4vw, 64px); font-weight: 600; line-height: 1.06; letter-spacing: -.035em; }
 .ap-intro p, .ap-final p { max-width: 640px; margin: 24px auto 0; font-size: clamp(17px, 1.6vw, 21px); line-height: 1.45; color: var(--ap-ink-2); letter-spacing: -.01em; }
 
-/* Feature tiles, each with a looping motion graphic of the real UI */
-.ap-tour { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-.ap-tile { display: grid; grid-template-rows: auto 1fr; gap: 40px; padding: 48px 48px 0; border-radius: 28px; background: #fff; overflow: hidden; scroll-margin-top: 96px; }
-.ap-tile.wide { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); grid-template-rows: auto; align-items: center; gap: 56px; padding: 56px; }
-.ap-tile-copy h3 { margin: 0 0 12px; font-size: clamp(26px, 2.6vw, 34px); font-weight: 600; line-height: 1.1; letter-spacing: -.025em; }
-.ap-tile-copy p { margin: 0; max-width: 40ch; font-size: 17px; line-height: 1.5; color: var(--ap-ink-2); }
-.ap-tile-copy .ap-more { margin-top: 16px; font-size: 15px; }
-.ap-tile-media { align-self: end; }
-.ap-tile.wide .ap-tile-media { align-self: center; }
-.ap .ms { border-radius: 16px 16px 0 0; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 16px 40px rgba(0,0,0,.08); font-family: var(--ap-font); }
-.ap-tile.wide .ms { border-radius: 16px; }
+/* A closer look: feature list beside one live stage (tour.css) */
+.ap-tour { max-width: 1200px; margin: 0 auto; padding: 0 24px; scroll-margin-top: 96px; }
 
 .ap-final { padding: 176px 24px 160px; text-align: center; }
 .ap-final .ap-pill { margin-top: 40px; }
@@ -134,9 +125,7 @@
   .ap-window-body { grid-template-columns: 1fr; height: 420px; }
   .ap-window-side { display: none; }
   .ap-intro { padding: 112px 16px 64px; }
-  .ap-tour { grid-template-columns: 1fr; padding: 0 16px; gap: 16px; }
-  .ap-tile, .ap-tile.wide { grid-template-columns: 1fr; padding: 32px 24px 0; gap: 32px; }
-  .ap-tile.wide .ms { border-radius: 16px 16px 0 0; }
+  .ap-tour { padding: 0 16px; }
   .ap-final { padding: 120px 16px; }
   .ap-foot-meta { flex-direction: column; }
 }

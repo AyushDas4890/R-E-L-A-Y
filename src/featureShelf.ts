@@ -40,13 +40,12 @@ const ART: Record<string, () => string> = {
     P(5, tx(70, 492, '3 replies', 20, 500, BI)),
   mentions: () => P(0, av(70, 66, 22, 'M') + tx(108, 60, 'Maya', 20, 600) + tx(418, 60, '10:44', 15, 400, MUT, 'end')) +
     P(1, rr(104, 92, 116, 38, 10, TINT) + tx(116, 120, '@Priya', 23, 500, BI) + tx(232, 120, 'can you confirm', 23) + tx(106, 160, 'QA by 3?', 23) + '<rect class="m w1" x="98" y="86" width="346" height="86" fill="#fff"/>') +
-    P(3, tx(58, 252, 'Activity', 17, 600, MUT) + rr(46, 272, 382, 96, 18, SOFT) + av(88, 320, 22, 'P', '#e2e2e7') + tx(124, 314, 'Priya', 20, 600) + tx(124, 340, 'mentioned you in #launch', 17, 400, MUT) + `<circle class="m dotp" cx="404" cy="320" r="7" fill="${BLUE}"/>`),
+    P(3, tx(58, 252, 'Activity', 17, 600, MUT) + rr(46, 272, 382, 96, 18, SOFT) + av(88, 320, 22, 'P', '#e2e2e7') + tx(124, 314, 'Priya', 20, 600) + tx(124, 340, 'mentioned you in #launch', 17, 400, MUT) + `<circle cx="404" cy="320" r="7" fill="${BLUE}"/>`),
   huddles: () => [[142, 150, 'M'], [332, 150, 'K'], [142, 332, 'A'], [332, 332, 'S']].map((p, i) => P(i, av(p[0] as number, p[1] as number, 62, p[2] as string, i === 3 ? BLUE : '#e8e8ed', i === 3 ? '#fff' : INK) + tx(p[0] as number, (p[1] as number) + 96, ['Maya', 'Ken', 'Ava', 'Sam'][i], 17, 500, MUT, 'middle'))).join('') +
-    P(4, `<g class="m hop"><circle class="m pulse" cx="142" cy="150" r="76" fill="none" stroke="${BLUE}" stroke-width="4"/></g>`) +
+    P(4, `<g class="m hop"><circle cx="142" cy="150" r="74" fill="none" stroke="${BLUE}" stroke-width="4"/></g>`) +
     P(5, pill(112, 474, 250, 62, INK) + '<circle cx="170" cy="505" r="20" fill="rgba(255,255,255,.18)"/><circle cx="237" cy="505" r="20" fill="rgba(255,255,255,.18)"/><circle cx="304" cy="505" r="20" fill="#ff453a"/>'),
   canvases: () => P(0, tx(58, 70, 'Launch plan', 34, 600) + tx(58, 112, 'Everything we ship on Thursday.', 20, 400, MUT)) +
     ['Write the launch copy', 'Review the pricing page', 'Book the demo call'].map((t, i) => { const y = 170 + i * 62; return P(1 + i, (i < 2 ? rr(58, y, 28, 28, 8, BLUE) + `<path class="m d${2 + i}" pathLength="1" d="M65 ${y + 14}l5 5 9-11" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : rr(59, y + 1, 26, 26, 7, '#fff', INK)) + tx(104, y + 22, t, 22, 400, i < 2 ? MUT : INK)); }).join('') +
-    `<rect class="m cr" x="316" y="296" width="2.5" height="26" rx="1" fill="${BLUE}"/>` +
     P(4, rr(46, 384, 382, 128, 18, SOFT) + tx(72, 430, 'Tip', 18, 600, BI) + tx(72, 466, 'Type / to add a block,', 21) + tx(72, 494, 'a table or a list.', 21)),
   lists: () => [['Write launch copy', 'Maya', 'Done'], ['Review pricing', 'Ken', 'In progress'], ['Book the demo', 'Ava', 'To do'], ['QA pass', 'Sam', 'To do']].map((r, i) => {
     const y = 92 + i * 108; const moving = i === 1;
@@ -63,7 +62,7 @@ const ART: Record<string, () => string> = {
     cls('xi4', rr(58, 250, 60, 60, 16, BLUE) + '<circle cx="88" cy="280" r="7" fill="#fff"/>') + cls('xi6', rr(58, 390, 60, 60, 16, BLUE) + '<circle cx="88" cy="420" r="7" fill="#fff"/>') +
     P(6, tx(58, 520, 'Runs every time, in a second.', 17, 400, MUT)),
   search: () => P(0, pill(46, 26, 382, 64, SOFT) + `<circle cx="82" cy="57" r="11" fill="none" stroke="${MUT}" stroke-width="2.6"/><path d="M90 65l9 9" stroke="${MUT}" stroke-width="2.6" stroke-linecap="round"/>` + rr(338, 42, 76, 32, 9, '#fff', LINE) + tx(376, 64, 'Ctrl K', 15, 500, MUT, 'middle')) +
-    P(1, tx(116, 67, 'launch', 24) + `<rect class="m w1" x="112" y="40" width="190" height="36" fill="${SOFT}"/>`) + `<rect class="m cr" x="202" y="44" width="2.5" height="26" rx="1" fill="${INK}"/>` +
+    P(1, tx(116, 67, 'launch', 24) + `<rect class="m w1" x="112" y="40" width="190" height="36" fill="${SOFT}"/>`) + `<rect class="m xi1" x="202" y="44" width="2" height="26" rx="1" fill="${BLUE}"/>` +
     [['# launch', 'Channel', 1], ['Maya', 'Person', 0], ['Launch copy is ready', 'Message, #launch', 0]].map((r, i) => { const y = 124 + i * 108;
       return P(2 + i, (r[2] ? rr(46, y, 382, 92, 16, TINT) : '') + av(88, y + 46, 22, i === 0 ? '#' : i === 1 ? 'M' : '“', i === 0 ? BLUE : '#e8e8ed', i === 0 ? '#fff' : INK) + tx(128, y + 42, r[0] as string, 22, 500) + tx(128, y + 70, r[1] as string, 17, 400, MUT));
     }).join('') + P(5, tx(58, 500, 'Ask a question to get the answer.', 17, 400, MUT)),
@@ -72,10 +71,10 @@ const ART: Record<string, () => string> = {
     P(4, hl(58, 456, 358) + tx(58, 500, 'One message, not fifty.', 19, 500, BI)),
   relaybot: () => P(0, `<circle cx="72" cy="62" r="22" fill="${INK}"/><circle cx="64" cy="62" r="4" fill="#fff"/><circle cx="80" cy="62" r="4" fill="#fff"/>` + tx(108, 70, 'Relay Bot', 20, 600)) +
     P(1, rr(86, 128, 342, 64, 22, SOFT) + tx(110, 168, '/remind me stretch in 10m', 20)) +
-    cls('ty2', rr(46, 222, 104, 50, 25, SOFT) + [0, 1, 2].map((d) => `<circle class="m pulse" style="animation-delay:${d * 0.2}s" cx="${78 + d * 20}" cy="247" r="5" fill="${MUT}"/>`).join('')) +
+    cls('ty2', rr(46, 222, 104, 50, 25, SOFT) + [0, 1, 2].map((d) => `<circle class="tyd" style="animation-delay:${d * 0.16}s" cx="${78 + d * 20}" cy="247" r="5" fill="${MUT}"/>`).join('')) +
     P(3, rr(46, 222, 330, 104, 22, BLUE) + tx(72, 266, 'Reminder set', 23, 600, '#fff') + tx(72, 298, 'Stretch, in 10 minutes', 20, 400, 'rgba(255,255,255,.85)')) +
     P(4, rr(86, 356, 342, 64, 22, SOFT) + tx(110, 396, 'What did Ken ask?', 20)) +
-    cls('ty5', rr(46, 450, 104, 50, 25, SOFT) + [0, 1, 2].map((d) => `<circle class="m pulse" style="animation-delay:${d * 0.2}s" cx="${78 + d * 20}" cy="475" r="5" fill="${MUT}"/>`).join('')) +
+    cls('ty5', rr(46, 450, 104, 50, 25, SOFT) + [0, 1, 2].map((d) => `<circle class="tyd" style="animation-delay:${d * 0.16}s" cx="${78 + d * 20}" cy="475" r="5" fill="${MUT}"/>`).join('')) +
     P(6, rr(46, 450, 300, 64, 22, BLUE) + tx(72, 490, 'About pricing, in #launch.', 19, 400, '#fff')),
   calendar: () => { let s = tx(58, 62, 'November 2026', 28, 600); 'SMTWTFS'.split('').forEach((d, i) => { s += tx(73 + i * 55, 112, d, 15, 600, MUT, 'middle'); });
     let ev = '';
@@ -84,7 +83,7 @@ const ART: Record<string, () => string> = {
     return P(0, s) + cls('xi2', `<circle cx="${sx}" cy="${sy - 7}" r="23" fill="${BLUE}"/>` + tx(sx, sy, 12, 21, 600, '#fff', 'middle')) + P(3, ev) +
       P(4, rr(46, 444, 382, 84, 18, SOFT) + rr(58, 458, 5, 56, 3, BLUE) + tx(78, 482, 'Launch review', 20, 600) + tx(78, 508, 'Thursday 12, 10:00', 17, 400, MUT)); },
   inbox: () => [['Priya', 'Can you confirm QA by 3?', '2m', 1], ['Maya', 'Launch copy is ready for review', '1h', 1], ['Ken', 'Looks great. One question on pricing', '3h', 0], ['Ava', 'Joined #onboarding', 'Mon', 0]].map((r, i) => { const y = 24 + i * 134;
-    return P(i, av(82, y + 48, 26, (r[0] as string)[0]) + tx(124, y + 42, r[0] as string, 21, r[3] ? 600 : 500) + tx(418, y + 42, r[2] as string, 16, 400, MUT, 'end') + tx(124, y + 72, r[1] as string, 18, 400, MUT) + (r[3] ? `<circle class="m dotp" cx="406" cy="${y + 64}" r="7" fill="${BLUE}"/>` : '') + (i < 3 ? hl(58, y + 108, 358) : '')); }).join(''),
+    return P(i, av(82, y + 48, 26, (r[0] as string)[0]) + tx(124, y + 42, r[0] as string, 21, r[3] ? 600 : 500) + tx(418, y + 42, r[2] as string, 16, 400, MUT, 'end') + tx(124, y + 72, r[1] as string, 18, 400, MUT) + (r[3] ? `<circle class="m${i === 0 ? ' xo5' : ''}" cx="406" cy="${y + 64}" r="7" fill="${BLUE}"/>` : '') + (i < 3 ? hl(58, y + 108, 358) : '')); }).join(''),
 };
 
 const BAR: Record<string, string> = { channels: 'Relay, #general', threads: 'Relay, #launch', mentions: 'Relay, #launch', huddles: 'Huddle, #design', canvases: 'Relay, Canvas', lists: 'Relay, List', workflows: 'Relay, Workflows', search: 'Relay, Search', recap: 'Relay, #launch', relaybot: 'Relay, #general', calendar: 'Relay, Calendar', inbox: 'Relay, Inbox' };
@@ -113,12 +112,15 @@ function poster(f: Feature): string {
   return '<rect width="474" height="900" fill="#fff"/>' + tx(36, 64, f.cat, 19, 500, MUT) + tx(34, 142, f.t, f.t.length > 8 ? 64 : 72, 600, INK).replace('letter-spacing="-0.2"', 'letter-spacing="-3"') + tx(36, 184, f.su.replace(/\.$/, ''), 22, 400, MUT) + winFrame(f) + `<g transform="translate(0,300)">${ART[f.id]()}</g>`;
 }
 
-// The cover loops are generated here: step k of a 10 second loop starts at 2 + 8k percent, and everything fades out together at the end.
+// The cover loops are generated here: step k of a 10 second loop starts at 2 + 8k percent; each step
+// fades in with an 8px rise on the shared entrance curve, and everything fades out together at the
+// end so the loop resets without a cut. Nothing pulses: the only repeating motion is a typing
+// indicator while someone is typing.
 function keyframes(): string {
   const out: string[] = [];
   for (let k = 0; k < 9; k++) {
     const s = 2 + 8 * k, e = s + 5;
-    out.push(`@keyframes fs-p${k}{0%,${s}%{opacity:0;transform:translateY(12px)}${e}%,91%{opacity:1;transform:none}97%,100%{opacity:0;transform:none}}`);
+    out.push(`@keyframes fs-p${k}{0%,${s}%{opacity:0;transform:translateY(8px)}${e}%,91%{opacity:1;transform:none}97%,100%{opacity:0;transform:none}}`);
     out.push(`@keyframes fs-w${k}{0%,${s + 3}%{transform:scaleX(1)}${s + 13}%,91%{transform:scaleX(0)}97%,100%{transform:scaleX(1)}}`);
     out.push(`@keyframes fs-d${k}{0%,${s}%{stroke-dashoffset:1}${e + 2}%,91%{stroke-dashoffset:0}97%,100%{stroke-dashoffset:1}}`);
     out.push(`@keyframes fs-xi${k}{0%,${s}%{opacity:0}${e}%,91%{opacity:1}97%,100%{opacity:0}}`);
@@ -127,18 +129,19 @@ function keyframes(): string {
   }
   let rules = '';
   for (let k = 0; k < 9; k++) rules += `.fs-act .p${k}{animation-name:fs-p${k}}.fs-act .w${k}{animation-name:fs-w${k}}.fs-act .d${k}{animation-name:fs-d${k}}.fs-act .xi${k}{animation-name:fs-xi${k}}.fs-act .xo${k}{animation-name:fs-xo${k}}.fs-act .ty${k}{animation-name:fs-ty${k}}`;
-  return out.join('') + rules +
+  return out.join('') +
     '.fs-act .m{animation-duration:10s;animation-iteration-count:infinite;animation-timing-function:cubic-bezier(.32,.72,0,1);animation-fill-mode:both}' + rules +
+    // The selection steps down the channel list, one channel at a time.
     '@keyframes fs-sw{0%,30%{transform:translateY(0);opacity:0}34%,50%{transform:translateY(0);opacity:1}56%,70%{transform:translateY(64px);opacity:1}76%,88%{transform:translateY(128px);opacity:1}94%,100%{transform:translateY(128px);opacity:0}}' +
+    // The speaker ring moves to whoever is talking.
     '@keyframes fs-hop{0%,16%{transform:translate(0,0)}24%,40%{transform:translate(190px,0)}48%,64%{transform:translate(190px,182px)}72%,88%{transform:translate(0,182px)}96%,100%{transform:translate(0,0)}}' +
-    '@keyframes fs-pulse{0%{transform:scale(1);opacity:1}60%{transform:scale(1.07);opacity:.35}100%{transform:scale(1);opacity:1}}' +
-    '@keyframes fs-blink{0%,49%{opacity:1}50%,100%{opacity:0}}' +
-    '@keyframes fs-dot{0%,100%{transform:scale(1)}50%{transform:scale(1.4)}}' +
+    '@keyframes fs-tyd{0%,60%,100%{opacity:.3}30%{opacity:1}}' +
     '.fs-act .sw{animation:fs-sw 10s cubic-bezier(.32,.72,0,1) infinite both}.fs-act .hop{animation:fs-hop 10s cubic-bezier(.32,.72,0,1) infinite both}' +
-    '.fs-act .pulse{animation:fs-pulse 1.6s ease-in-out infinite}.fs-act .cr{animation:fs-blink 1s steps(1) infinite}.fs-act .dotp{animation:fs-dot 1.8s ease-in-out infinite}' +
-    '.fs-act .p4 .pulse,.fs-act .ty2 .pulse,.fs-act .ty5 .pulse{animation:fs-pulse 1.1s ease-in-out infinite}' +
-    '.fs-act path[pathLength]{stroke-dasharray:1}.fs-act .m.w1,.fs-act .m[class*=" w"]{transform-box:fill-box;transform-origin:100% 50%}.fs-act .pulse,.fs-act .dotp{transform-box:fill-box;transform-origin:50% 50%}' +
-    '@media (prefers-reduced-motion:reduce){.fs-act .m{animation:none!important}}';
+    '.fs-act .tyd{animation:fs-tyd 1.1s ease-in-out infinite both}.tyd{opacity:.3}' +
+    '.fs-act path[pathLength]{stroke-dasharray:1}.fs-act .m.w1,.fs-act .m[class*=" w"]{transform-box:fill-box;transform-origin:100% 50%}' +
+    // Covers at rest (and reduced motion) show the finished frame: wipes, outgoing states and typing bubbles hidden.
+    '.m[class*=" w"],.m[class*=" xo"],.m[class*=" ty"]{opacity:0}' +
+    '@media (prefers-reduced-motion:reduce){.fs-act .m,.fs-act .tyd{animation:none!important}}';
 }
 
 export function mountShelf(host: HTMLElement, onGetStarted: () => void): () => void {

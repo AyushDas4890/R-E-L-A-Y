@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Film, Clip, Win, Msg, Bot, Cursor, typeInto, eraseText, type Build, type Chapter } from './Film.tsx';
+import { ENTER, EXIT, T, arrive, pointAt, typing } from '../motion.ts';
 import { Icon, type IconName } from './Icon.tsx';
 import { RouteLink, SiteFooter, SiteNav, type FeatureRoute, type Route } from './Site.tsx';
 import '../apple.css';
@@ -10,25 +11,10 @@ import '../features.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Layout position of an element inside the canvas, ignoring any transforms the film has set.
-function offsetIn(el: HTMLElement, canvas: HTMLElement) {
-  let x = 0, y = 0;
-  for (let n: HTMLElement | null = el; n && n !== canvas; n = n.offsetParent as HTMLElement | null) { x += n.offsetLeft; y += n.offsetTop; }
-  return { x, y };
-}
-
-// Point at an element on the canvas: the cursor glides there, then presses.
-function clickAt(tl: gsap.core.Timeline, q: (s: string) => Element[], target: string, at: number | string, dx = 0.5, dy = 0.5) {
-  const el = q(target)[0] as HTMLElement | undefined;
-  const canvas = el?.closest('.fm-canvas') as HTMLElement | null;
-  if (!el || !canvas) return tl;
-  const o = offsetIn(el, canvas);
-  const x = o.x + el.offsetWidth * dx, y = o.y + el.offsetHeight * dy;
-  return tl
-    .to(q('.fm-cursor'), { x, y, duration: 0.7, ease: 'power2.inOut' }, at)
-    .to(q('.fm-cursor'), { scale: 0.82, duration: 0.08, yoyo: true, repeat: 1, transformOrigin: '20% 10%' })
-    .fromTo(el, { scale: 1 }, { scale: 0.96, duration: 0.08, yoyo: true, repeat: 1 }, '<');
-}
+// Point at an element on the canvas: the cursor glides there, then presses it.
+const clickAt = (tl: gsap.core.Timeline, q: (s: string) => Element[], target: string, at: number | string, dx = 0.5, dy = 0.5) =>
+  pointAt(tl, q, '.fm-canvas', target, at, { dx, dy });
+const hold = (tl: gsap.core.Timeline, s: number) => tl.to({}, { duration: s });
 
 // ======================= Overview =======================
 
@@ -42,13 +28,13 @@ const OVERVIEW_CHAPTERS: Chapter[] = [
 function OverviewMock() {
   return (
     <>
-      <Win channel="launch" topic="Launch prep for v2" actions={<><span className="fm-icon-btn"><Icon n="headphones" /></span><span className="fm-chip-btn ov-recap"><Icon n="sparkles" size={14} /> Recap</span></>}>
+      <Win channel="launch" topic="Launch prep for v2" actions={<><span className="fm-icon-btn"><Icon n="headphones" /></span><span className="fm-chip-btn ov-recap"><Icon n="clock" size={14} /> Recap</span></>}>
         <div className="fm-feed">
-          <Msg className="ov-m1" who="Maya" c="#d7765a" l="M" text="Launch copy is ready for review" />
-          <Msg className="ov-m2" who="Ken" c="#3aa79b" l="K" text="Looks great. One question on pricing">
+          <Msg className="ov-m1" who="Maya" c="#c8705a" l="M" text="Launch copy is ready for review" />
+          <Msg className="ov-m2" who="Ken" c="#3c9a8f" l="K" text="Looks great. One question on pricing">
             <span className="fm-replies ov-replies"><Icon n="message" size={14} /> 2 replies</span>
           </Msg>
-          <Msg className="ov-m3" who="Priya" c="#8a6bd8" l="P" text="We ship at 4 PM if QA passes" />
+          <Msg className="ov-m3" who="Priya" c="#7d68c4" l="P" text="We ship at 4 PM if QA passes" />
           <Msg className="ov-m4" who="You" c="#0071e3" l="Y" text={<><span className="fm-mention">@Priya</span> can you confirm QA by 3?</>} />
           <Bot className="ov-recap-msg">
             <p className="fm-recap"><b>Recap of #launch</b><span>Copy is approved, pricing stays the same, Priya owns QA, ship at 4 PM.</span></p>
@@ -58,10 +44,10 @@ function OverviewMock() {
         <div className="fm-composer"><span className="ov-draft" /><i className="fm-caret" /></div>
         <aside className="fm-thread ov-thread">
           <header><b>Thread</b><small># launch</small></header>
-          <Msg who="Ken" c="#3aa79b" l="K" text="Looks great. One question on pricing" />
+          <Msg who="Ken" c="#3c9a8f" l="K" text="Looks great. One question on pricing" />
           <div className="fm-thread-rule">2 replies</div>
-          <Msg className="ov-r1" who="Maya" c="#d7765a" l="M" text="Pricing stays the same as v1" />
-          <Msg className="ov-r2" who="Ken" c="#3aa79b" l="K" text="Perfect, thanks" />
+          <Msg className="ov-r1" who="Maya" c="#c8705a" l="M" text="Pricing stays the same as v1" />
+          <Msg className="ov-r2" who="Ken" c="#3c9a8f" l="K" text="Perfect, thanks" />
         </aside>
       </Win>
       <Cursor />
@@ -70,32 +56,36 @@ function OverviewMock() {
 }
 
 const overviewBuild: Build = (q) => {
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  const tl = gsap.timeline();
   tl.set(q('.fm-cursor'), { x: 720, y: 470, scale: 1 })
     .set(q('.ov-m4, .ov-recap-msg, .ov-typing, .ov-r1, .ov-r2'), { autoAlpha: 0 })
-    .set(q('.ov-thread'), { xPercent: 105 });
-  tl.addLabel('c0', 0)
-    .fromTo(q('.ov-m1, .ov-m2, .ov-m3'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.6 }, 0.3)
-    .to({}, { duration: 1 });
+    .set(q('.ov-thread'), { xPercent: 101 });
+  // Messages arrive in order.
+  tl.addLabel('c0', 0);
+  arrive(tl, q('.ov-m1, .ov-m2, .ov-m3'), 0.3, 0.7);
+  hold(tl, 1);
+  // Opening the replies slides the thread in beside the channel.
   tl.addLabel('c1');
   clickAt(tl, q, '.ov-replies', 'c1');
-  tl.to(q('.ov-thread'), { xPercent: 0, duration: 0.7, ease: 'expo.out' })
-    .fromTo(q('.ov-r1, .ov-r2'), { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.4, stagger: 0.5 })
-    .to({}, { duration: 1.2 })
-    .to(q('.ov-thread'), { xPercent: 105, duration: 0.5, ease: 'power2.in' });
+  tl.to(q('.ov-thread'), { xPercent: 0, duration: T.panel, ease: ENTER });
+  arrive(tl, q('.ov-r1, .ov-r2'), '-=0.2', 0.6);
+  hold(tl, 1.4);
+  tl.to(q('.ov-thread'), { xPercent: 101, duration: T.exit + 0.1, ease: EXIT });
+  // A mention is typed, sent, and lands in the channel.
   tl.addLabel('c2');
   clickAt(tl, q, '.fm-composer', 'c2', 0.2);
   typeInto(tl, q('.ov-draft')[0], '@Priya can you confirm QA by 3?', '>');
-  eraseText(tl, q('.ov-draft')[0], '@Priya can you confirm QA by 3?', '+=0.3');
-  tl.fromTo(q('.ov-m4'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '<')
-    .fromTo(q('.ov-m4 .fm-mention'), { backgroundColor: 'rgba(0,113,227,0)' }, { backgroundColor: 'rgba(0,113,227,.16)', duration: 0.4 }, '+=0.1')
-    .to({}, { duration: 1 });
+  eraseText(tl, q('.ov-draft')[0], '@Priya can you confirm QA by 3?', '+=0.35');
+  arrive(tl, q('.ov-m4'), '<');
+  hold(tl, 1.2);
+  // Recap: the bot types, then its summary takes the same place.
   tl.addLabel('c3');
   clickAt(tl, q, '.ov-recap', 'c3');
-  tl.fromTo(q('.ov-typing'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.2 })
-    .to(q('.ov-typing'), { autoAlpha: 0, duration: 0.2 }, '+=0.9')
-    .fromTo(q('.ov-recap-msg'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.6 }, '<')
-    .to({}, { duration: 2 });
+  tl.to(q('.ov-typing'), { autoAlpha: 1, duration: 0.2, ease: ENTER });
+  typing(tl, q('.ov-typing i'), '<', 2);
+  tl.to(q('.ov-typing'), { autoAlpha: 0, duration: 0.2, ease: EXIT }, '>');
+  arrive(tl, q('.ov-recap-msg'), '<');
+  hold(tl, 2.4);
   return tl;
 };
 
@@ -113,9 +103,9 @@ function HuddleMock() {
     <>
       <Win channel="design" topic="Product and brand design" actions={<span className="fm-chip-btn hd-start"><Icon n="headphones" size={14} /> Huddle</span>}>
         <div className="fm-feed">
-          <Msg who="Maya" c="#d7765a" l="M" text="Can we look at the onboarding flow together?" />
-          <Msg who="Ken" c="#3aa79b" l="K" text="Sure, starting a huddle" />
-          <Msg className="hd-ken" who="Ken" c="#3aa79b" l="K" text="I will update the step 2 copy today" />
+          <Msg who="Maya" c="#c8705a" l="M" text="Can we look at the onboarding flow together?" />
+          <Msg who="Ken" c="#3c9a8f" l="K" text="Sure, starting a huddle" />
+          <Msg className="hd-ken" who="Ken" c="#3c9a8f" l="K" text="I will update the step 2 copy today" />
           <Bot className="hd-note">
             <p className="fm-recap"><b>Huddle notes · 18 min with Ken, Maya, Priya</b><span>1 message shared during the huddle.</span><span>Action items: Ken: I will update the step 2 copy today</span></p>
           </Bot>
@@ -133,8 +123,9 @@ function HuddleMock() {
         </div>
         <div className="fm-huddle hd-bar">
           <div className="fm-huddle-people">
-            {[['#3aa79b', 'K', 'hd-p1'], ['#d7765a', 'M', 'hd-p2'], ['#8a6bd8', 'P', 'hd-p3']].map(([c, l, k]) => (
-              <span key={k} className={`fm-person ${k}`}><i style={{ background: c }}>{l}</i><span className="fm-meter"><u /><u /><u /><u /></span></span>
+            <i className="fm-ring hd-ring" />
+            {[['#3c9a8f', 'K', 'hd-p1', 'Ken'], ['#c8705a', 'M', 'hd-p2', 'Maya'], ['#7d68c4', 'P', 'hd-p3', 'Priya']].map(([c, l, k, n]) => (
+              <span key={k} className={`fm-person ${k}`}><i style={{ background: c }}>{l}</i><small>{n}</small></span>
             ))}
           </div>
           <div className="fm-huddle-controls">
@@ -150,34 +141,41 @@ function HuddleMock() {
 }
 
 const huddleBuild: Build = (q) => {
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  const tl = gsap.timeline();
+  const people = q('.fm-person') as HTMLElement[];
+  const ringX = (i: number) => (people[i] ? people[i].offsetLeft + people[i].offsetWidth / 2 - 26 : 0);
   tl.set(q('.fm-cursor'), { x: 520, y: 300, scale: 1 })
-    .set(q('.hd-bar'), { autoAlpha: 0, y: 30 })
-    .set(q('.hd-p2, .hd-p3, .hd-ken, .hd-note'), { autoAlpha: 0 })
-    .set(q('.hd-screen'), { autoAlpha: 0, scale: 0.92 });
+    .set(q('.hd-bar'), { autoAlpha: 0, y: 24 })
+    .set(q('.hd-p1, .hd-p2, .hd-p3, .hd-ken, .hd-note, .hd-ring'), { autoAlpha: 0 })
+    .set(q('.hd-ring'), { x: ringX(0) })
+    .set(q('.hd-screen'), { autoAlpha: 0, scale: 0.98, y: 8 });
+  // One click and the huddle bar rises with you in it.
   tl.addLabel('c0', 0);
   clickAt(tl, q, '.hd-start', 0.3);
-  tl.to(q('.hd-bar'), { autoAlpha: 1, y: 0, duration: 0.6, ease: 'expo.out' })
-    .fromTo(q('.hd-p1'), { scale: 0.4, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.45, ease: 'back.out(1.6)' }, '<0.1')
-    .to({}, { duration: 1 });
+  tl.to(q('.hd-bar'), { autoAlpha: 1, y: 0, duration: T.panel, ease: ENTER })
+    .fromTo(q('.hd-p1'), { autoAlpha: 0, scale: 0.92 }, { autoAlpha: 1, scale: 1, duration: T.enter, ease: ENTER }, '<0.15');
+  hold(tl, 1);
+  // Teammates join; the speaking ring moves to whoever is talking.
   tl.addLabel('c1')
-    .fromTo(q('.hd-p2, .hd-p3'), { scale: 0.4, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 0.45, stagger: 0.5, ease: 'back.out(1.6)' }, 'c1+=0.2')
-    .fromTo(q('.fm-meter u'), { scaleY: 0.25 }, { scaleY: () => 0.35 + Math.random() * 0.65, duration: 0.18, yoyo: true, repeat: 9, stagger: { each: 0.02, from: 'random' }, ease: 'sine.inOut' }, '<0.3')
-    .fromTo(q('.hd-p2 i'), { boxShadow: '0 0 0 0 rgba(52,199,89,0)' }, { boxShadow: '0 0 0 3px rgba(52,199,89,1)', duration: 0.2, yoyo: true, repeat: 3 }, '<')
-    .to({}, { duration: 0.6 });
-  tl.addLabel('c2');
-  clickAt(tl, q, '.hd-share', 'c2');
-  tl.to(q('.hd-screen'), { autoAlpha: 1, scale: 1, duration: 0.7, ease: 'expo.out' })
-    .fromTo(q('.fm-screen-field'), { scaleX: 0 }, { scaleX: 1, duration: 0.5, stagger: 0.25, transformOrigin: 'left center' })
-    .fromTo(q('.fm-screen-btn'), { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.4 })
-    .fromTo(q('.hd-ken'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.01 }, '<')
-    .to({}, { duration: 1.2 });
+    .fromTo(q('.hd-p2, .hd-p3'), { autoAlpha: 0, scale: 0.92 }, { autoAlpha: 1, scale: 1, duration: T.enter, ease: ENTER, stagger: 0.6 }, 'c1+=0.2')
+    .to(q('.hd-ring'), { autoAlpha: 1, duration: 0.25, ease: ENTER }, '+=0.2')
+    .to(q('.hd-ring'), { x: ringX(1), duration: 0.55, ease: ENTER }, '+=0.9')
+    .to(q('.hd-ring'), { x: ringX(2), duration: 0.55, ease: ENTER }, '+=0.9');
+  hold(tl, 0.6);
+  // Screen share opens in a large tile above the call.
+  tl.addLabel('c2')
+    .to(q('.hd-ring'), { x: ringX(0), duration: 0.55, ease: ENTER }, 'c2');
+  clickAt(tl, q, '.hd-share', 'c2+=0.1');
+  tl.to(q('.hd-screen'), { autoAlpha: 1, scale: 1, y: 0, duration: T.panel, ease: ENTER })
+    .set(q('.hd-ken'), { autoAlpha: 1 }, '+=0.4');
+  hold(tl, 1.6);
+  // Leaving ends the call and the notes post in the channel.
   tl.addLabel('c3');
   clickAt(tl, q, '.hd-leave', 'c3');
-  tl.to(q('.hd-screen'), { autoAlpha: 0, scale: 0.96, duration: 0.4, ease: 'power2.in' })
-    .to(q('.hd-bar'), { autoAlpha: 0, y: 30, duration: 0.4, ease: 'power2.in' }, '<')
-    .fromTo(q('.hd-note'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.6 }, '+=0.2')
-    .to({}, { duration: 2 });
+  tl.to(q('.hd-screen'), { autoAlpha: 0, scale: 0.98, duration: T.exit, ease: EXIT })
+    .to(q('.hd-bar'), { autoAlpha: 0, y: 16, duration: T.exit, ease: EXIT }, '<');
+  arrive(tl, q('.hd-note'), '+=0.2');
+  hold(tl, 2.4);
   return tl;
 };
 
@@ -195,8 +193,8 @@ function WorkflowMock() {
     <>
       <Win channel="incidents" topic="Production issues and on-call" actions={<span className="fm-chip-btn"><Icon n="zap" size={14} /> Workflows</span>}>
         <div className="fm-feed">
-          <Msg who="Priya" c="#8a6bd8" l="P" text="Reminder: on-call this week is Ken" />
-          <Msg className="wf-trigger" who="Ken" c="#3aa79b" l="K" text={<><span className="fm-kw">!incident</span> sev1 checkout is down</>} />
+          <Msg who="Priya" c="#7d68c4" l="P" text="Reminder: on-call this week is Ken" />
+          <Msg className="wf-trigger" who="Ken" c="#3c9a8f" l="K" text={<><span className="fm-kw">!incident</span> sev1 checkout is down</>} />
           <Bot className="wf-reply" text="SEV1 declared. Page the on-call now and open a huddle in this channel." />
         </div>
         <div className="fm-composer"><span className="wf-draft" /><i className="fm-caret" /></div>
@@ -206,7 +204,7 @@ function WorkflowMock() {
         <h4>New workflow</h4>
         <div className="fm-row"><label>Name</label><span className="fm-input wf-name" /></div>
         <div className="fm-row"><label>Trigger</label>
-          <div className="fm-seg"><span className="wf-kw"><i className="fm-seg-fill wf-kwfill" />Keyword</span><span>Someone joins</span><span>Schedule</span></div>
+          <div className="fm-seg"><i className="fm-seg-fill wf-kwfill" /><span className="wf-kw">Keyword</span><span>Someone joins</span><span>Schedule</span></div>
         </div>
         <div className="fm-row"><label>Keyword</label><span className="fm-input mono wf-key" /></div>
         <div className="fm-row top"><label>Reply</label><span className="fm-input area wf-text" /></div>
@@ -222,36 +220,39 @@ function WorkflowMock() {
 }
 
 const workflowBuild: Build = (q) => {
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  const tl = gsap.timeline();
   tl.set(q('.fm-cursor'), { x: 700, y: 120, scale: 1 })
     .set(q('.wf-trigger, .wf-reply'), { autoAlpha: 0 })
-    .set(q('.wf-branch'), { autoAlpha: 0, y: 10 })
-    .set(q('.wf-kwfill'), { autoAlpha: 0 });
+    .set(q('.wf-branch'), { autoAlpha: 0, y: 8 })
+    .set(q('.wf-kwfill'), { xPercent: 100 });
+  // The builder opens over the channel; the trigger segment slides to Keyword.
   tl.addLabel('c0', 0)
-    .fromTo(q('.wf-scrim'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4 }, 0)
-    .fromTo(q('.wf-modal'), { autoAlpha: 0, y: 24, scale: 0.97 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.6, ease: 'expo.out' }, 0.1);
-  typeInto(tl, q('.wf-name')[0], 'Incident triage', 0.7);
+    .fromTo(q('.wf-scrim'), { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4, ease: ENTER }, 0)
+    .fromTo(q('.wf-modal'), { autoAlpha: 0, y: 16, scale: 0.98 }, { autoAlpha: 1, y: 0, scale: 1, duration: T.panel, ease: ENTER }, 0.1);
+  typeInto(tl, q('.wf-name')[0], 'Incident triage', 0.8);
   clickAt(tl, q, '.wf-kw', '>');
-  tl.to(q('.wf-kwfill'), { autoAlpha: 1, duration: 0.2 });
+  tl.to(q('.wf-kwfill'), { xPercent: 0, duration: 0.4, ease: ENTER }, '-=0.1');
   typeInto(tl, q('.wf-key')[0], '!incident', '>+0.2');
-  tl.to({}, { duration: 0.6 });
+  hold(tl, 0.6);
   tl.addLabel('c1');
   typeInto(tl, q('.wf-text')[0], 'Incident logged. Post impact, start time and owner in this thread.', 'c1+=0.2', 2);
-  tl.to({}, { duration: 0.8 });
+  hold(tl, 0.8);
+  // A branch gives sev1 its own answer.
   tl.addLabel('c2')
-    .to(q('.wf-branch'), { autoAlpha: 1, y: 0, duration: 0.5 }, 'c2+=0.1');
+    .to(q('.wf-branch'), { autoAlpha: 1, y: 0, duration: T.enter, ease: ENTER }, 'c2+=0.1');
   typeInto(tl, q('.wf-cond')[0], 'sev1', '>');
   typeInto(tl, q('.wf-alt')[0], 'SEV1 declared. Page the on-call now and open a huddle.', '>+0.2', 1.6);
   clickAt(tl, q, '.wf-save', '>+0.3');
-  tl.to(q('.wf-modal'), { autoAlpha: 0, y: 16, scale: 0.98, duration: 0.4, ease: 'power2.in' })
-    .to(q('.wf-scrim'), { autoAlpha: 0, duration: 0.3 }, '<');
+  tl.to(q('.wf-modal'), { autoAlpha: 0, y: 8, scale: 0.98, duration: T.exit, ease: EXIT })
+    .to(q('.wf-scrim'), { autoAlpha: 0, duration: T.exit, ease: EXIT }, '<');
+  // Someone types the keyword; the bot answers a moment later.
   tl.addLabel('c3');
   clickAt(tl, q, '.fm-composer', 'c3', 0.2);
   typeInto(tl, q('.wf-draft')[0], '!incident sev1 checkout is down', '>');
-  eraseText(tl, q('.wf-draft')[0], '!incident sev1 checkout is down', '+=0.3');
-  tl.fromTo(q('.wf-trigger'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '<')
-    .fromTo(q('.wf-reply'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '+=0.7')
-    .to({}, { duration: 2.2 });
+  eraseText(tl, q('.wf-draft')[0], '!incident sev1 checkout is down', '+=0.35');
+  arrive(tl, q('.wf-trigger'), '<');
+  arrive(tl, q('.wf-reply'), '+=0.8');
+  hold(tl, 2.4);
   return tl;
 };
 
@@ -269,10 +270,10 @@ function SearchMock() {
     <>
       <Win channel="launch" topic="Launch prep for v2">
         <div className="fm-feed">
-          <Msg who="Maya" c="#d7765a" l="M" text="Launch copy is ready for review" />
-          <Msg who="Ken" c="#3aa79b" l="K" text="Pricing stays the same as v1" />
-          <Msg className="sr-target" who="Priya" c="#8a6bd8" l="P" text="We ship at 4 PM if QA passes" />
-          <Msg who="Maya" c="#d7765a" l="M" text="Press kit goes out tomorrow morning" />
+          <Msg who="Maya" c="#c8705a" l="M" text="Launch copy is ready for review" />
+          <Msg who="Ken" c="#3c9a8f" l="K" text="Pricing stays the same as v1" />
+          <Msg className="sr-target" who="Priya" c="#7d68c4" l="P" text="We ship at 4 PM if QA passes"><i className="fm-hl sr-hl" /></Msg>
+          <Msg who="Maya" c="#c8705a" l="M" text="Press kit goes out tomorrow morning" />
         </div>
         <div className="fm-composer"><span className="fm-placeholder">Message #launch</span></div>
       </Win>
@@ -288,7 +289,7 @@ function SearchMock() {
           <div className="fm-res"><span className="fm-res-ico"><Icon n="message" size={14} /></span><span><b>Ken</b> in #general: <mark>Launch</mark> retro on Friday</span></div>
         </div>
         <div className="fm-palette-list sr-answer">
-          <div className="fm-res best"><span className="fm-res-ico"><Icon n="sparkles" size={14} /></span><span><b>Best answer</b> from Priya in #launch<em>We ship at 4 PM if QA passes</em></span></div>
+          <div className="fm-res best"><span className="fm-res-ico blue"><Icon n="message" size={14} /></span><span><b>Best answer</b> from Priya in #launch<em>We ship at 4 PM if QA passes</em></span></div>
           <small>Messages</small>
           <div className="fm-res"><span className="fm-res-ico"><Icon n="message" size={14} /></span><span><b>Ken</b> in #launch: when do we freeze copy?</span></div>
         </div>
@@ -299,37 +300,39 @@ function SearchMock() {
 }
 
 const searchBuild: Build = (q) => {
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  const tl = gsap.timeline();
   tl.set(q('.fm-cursor'), { x: 760, y: 470, scale: 1 })
-    .set(q('.sr-scrim, .sr-palette, .sr-keys, .sr-answer'), { autoAlpha: 0 })
-    .set(q('.sr-list .fm-res, .sr-list small'), { autoAlpha: 0 })
-    .set(q('.sr-target'), { backgroundColor: 'rgba(255,214,10,0)' });
+    .set(q('.sr-scrim, .sr-palette, .sr-keys, .sr-answer, .sr-hl'), { autoAlpha: 0 })
+    .set(q('.sr-list .fm-res, .sr-list small'), { autoAlpha: 0 });
+  // Ctrl K: the keys press, the palette opens over the channel.
   tl.addLabel('c0', 0)
-    .fromTo(q('.sr-keys'), { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 0.3)
-    .to(q('.sr-k1'), { y: 3, boxShadow: '0 0 0 rgba(0,0,0,.2)', duration: 0.1 }, '+=0.3')
-    .to(q('.sr-k2'), { y: 3, boxShadow: '0 0 0 rgba(0,0,0,.2)', duration: 0.1 }, '+=0.15')
-    .to(q('.sr-k1, .sr-k2'), { y: 0, boxShadow: '0 3px 0 rgba(0,0,0,.18)', duration: 0.15 }, '+=0.2')
-    .to(q('.sr-keys'), { autoAlpha: 0, y: 10, duration: 0.3 }, '+=0.1')
-    .to(q('.sr-scrim'), { autoAlpha: 1, duration: 0.3 }, '<')
-    .fromTo(q('.sr-palette'), { autoAlpha: 0, y: -16, scale: 0.98 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.5, ease: 'expo.out' }, '<')
-    .to({}, { duration: 0.6 });
+    .fromTo(q('.sr-keys'), { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: T.enter, ease: ENTER }, 0.3)
+    .to(q('.sr-k1'), { y: 3, duration: T.feedback, ease: 'power1.out' }, '+=0.3')
+    .to(q('.sr-k2'), { y: 3, duration: T.feedback, ease: 'power1.out' }, '+=0.12')
+    .to(q('.sr-k1, .sr-k2'), { y: 0, duration: 0.2, ease: ENTER }, '+=0.2')
+    .to(q('.sr-keys'), { autoAlpha: 0, y: 8, duration: 0.25, ease: EXIT }, '+=0.1')
+    .to(q('.sr-scrim'), { autoAlpha: 1, duration: 0.3, ease: ENTER }, '<')
+    .fromTo(q('.sr-palette'), { autoAlpha: 0, y: -8, scale: 0.98 }, { autoAlpha: 1, y: 0, scale: 1, duration: T.enter, ease: ENTER }, '<');
+  hold(tl, 0.6);
+  // Results narrow as the word is typed.
   tl.addLabel('c1');
   typeInto(tl, q('.sr-q')[0], 'launch', 'c1+=0.2', 0.6);
-  tl.to(q('.sr-list small, .sr-list .fm-res'), { autoAlpha: 1, duration: 0.3, stagger: 0.12 }, '<0.2')
-    .to({}, { duration: 1.2 });
+  arrive(tl, q('.sr-list small, .sr-list .fm-res'), '<0.2', 0.08);
+  hold(tl, 1.2);
+  // A question puts the best answer on top.
   tl.addLabel('c2')
-    .to(q('.sr-list'), { autoAlpha: 0, duration: 0.25 }, 'c2');
+    .to(q('.sr-list'), { autoAlpha: 0, duration: 0.25, ease: EXIT }, 'c2');
   typeInto(tl, q('.sr-q')[0], 'When do we ship?', 'c2+=0.2', 0.9);
-  tl.fromTo(q('.sr-answer'), { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, '>+0.1')
-    .fromTo(q('.sr-answer .best'), { boxShadow: '0 0 0 0 rgba(0,113,227,0)' }, { boxShadow: '0 0 0 2px rgba(0,113,227,.5)', duration: 0.4 })
-    .to({}, { duration: 1 });
+  arrive(tl, q('.sr-answer'), '>+0.1');
+  hold(tl, 1.2);
+  // Choosing it opens the channel at that message, briefly marked.
   tl.addLabel('c3');
   clickAt(tl, q, '.sr-answer .best', 'c3');
-  tl.to(q('.sr-palette'), { autoAlpha: 0, y: -10, duration: 0.3, ease: 'power2.in' })
-    .to(q('.sr-scrim'), { autoAlpha: 0, duration: 0.3 }, '<')
-    .to(q('.sr-target'), { backgroundColor: 'rgba(255,214,10,.28)', duration: 0.3 })
-    .to(q('.sr-target'), { backgroundColor: 'rgba(255,214,10,0)', duration: 1.4, ease: 'power1.in' }, '+=0.8')
-    .to({}, { duration: 0.6 });
+  tl.to(q('.sr-palette'), { autoAlpha: 0, y: -6, duration: T.exit, ease: EXIT })
+    .to(q('.sr-scrim'), { autoAlpha: 0, duration: T.exit, ease: EXIT }, '<')
+    .to(q('.sr-hl'), { autoAlpha: 1, duration: 0.3, ease: ENTER })
+    .to(q('.sr-hl'), { autoAlpha: 0, duration: 1.2, ease: 'power1.in' }, '+=1');
+  hold(tl, 0.8);
   return tl;
 };
 
@@ -429,7 +432,7 @@ const PAGE_DEFS: Record<FeatureRoute, PageDef> = {
       { icon: 'command', title: 'Ctrl K / ⌘K', text: 'Opens from anywhere in the app.' },
       { icon: 'users', title: 'People and channels', text: 'Jump to a DM or channel by name.' },
       { icon: 'message', title: 'Every message', text: 'Full history, nothing ages out.' },
-      { icon: 'sparkles', title: 'Best answer', text: 'Ask with a question mark.' },
+      { icon: 'search', title: 'Best answer', text: 'Ask with a question mark.' },
       { icon: 'bookmark', title: 'Saved for later', text: 'Star a message to keep it in Later.' },
       { icon: 'pin', title: 'Pinned messages', text: 'Keep the important ones at hand.' },
     ],
@@ -449,12 +452,12 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
     scroller.scrollTop = 0;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const ctx = gsap.context(() => {
-      gsap.timeline({ defaults: { ease: 'expo.out' } })
-        .from('.ap-nav', { y: -16, opacity: 0, duration: 0.8 })
-        .from('.fp-eyebrow, .fp-title, .fp-lede, .fp-actions', { y: 24, opacity: 0, duration: 1, stagger: 0.08 }, 0.1)
-        .from('.fp-film', { y: 60, opacity: 0, duration: 1.2 }, 0.35);
+      gsap.timeline({ defaults: { ease: ENTER } })
+        .from('.ap-nav', { y: -12, opacity: 0, duration: 0.8 })
+        .from('.fp-eyebrow, .fp-title, .fp-lede, .fp-actions', { y: 16, opacity: 0, duration: 0.9, stagger: 0.07 }, 0.1)
+        .from('.fp-film', { y: 32, opacity: 0, duration: 1.1 }, 0.3);
       gsap.utils.toArray<HTMLElement>('.ap-reveal').forEach((el) => {
-        gsap.from(el, { y: 40, opacity: 0, duration: 1, ease: 'expo.out', scrollTrigger: { trigger: el, scroller, start: 'top 88%' } });
+        gsap.from(el, { y: 24, opacity: 0, duration: 0.9, ease: ENTER, scrollTrigger: { trigger: el, scroller, start: 'top 90%' } });
       });
     }, root);
     return () => ctx.revert();

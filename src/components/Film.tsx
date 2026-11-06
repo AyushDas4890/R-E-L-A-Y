@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { gsap } from 'gsap';
 import { Icon } from './Icon.tsx';
+import { ENTER, EXIT, T, typeText, setText } from '../motion.ts';
 
 // Motion-graphic "films" of the product. Each film is a mock of the real UI drawn on a fixed
 // 960x560 canvas and a GSAP timeline with one label per chapter ('c0', 'c1', …). The same
@@ -60,7 +61,8 @@ export function Film({ chapters, build, label, children }: { chapters: Chapter[]
     const fills = el.querySelectorAll<HTMLElement>('.fm-chap i');
     const ctx = gsap.context(() => {
       const t = build(gsap.utils.selector(el.querySelector('.fm-canvas')));
-      t.pause();
+      // Render once to the end and back so the opening frame shows before the film plays.
+      t.pause().progress(1).progress(0);
       let last = -1;
       t.eventCallback('onUpdate', () => {
         const now = t.time();
@@ -71,8 +73,16 @@ export function Film({ chapters, build, label, children }: { chapters: Chapter[]
           if (now >= a && now < b && i !== last) { last = i; setChap(i); }
         });
       });
-      t.eventCallback('onComplete', () => { t.seek(0); if (!heldByViewer.current && visible.current) t.play(); else setPlaying(false); });
+      // The last frame fades out, the film resets while invisible, and the first frame fades back in.
+      const canvas = el.querySelector('.fm-canvas');
+      t.eventCallback('onComplete', () => {
+        gsap.to(canvas, { autoAlpha: 0, duration: T.reset, ease: EXIT, delay: 1.2, onComplete: () => {
+          t.pause(0);
+          gsap.to(canvas, { autoAlpha: 1, duration: T.reset, ease: ENTER, delay: 0.2, onComplete: () => { if (!heldByViewer.current && visible.current) t.play(); else setPlaying(false); } });
+        } });
+      });
       tl.current = t;
+      (el as HTMLElement & { _tl?: gsap.core.Timeline })._tl = t; // console handle for checking frames
       // Reduced motion: no autoplay; show the first chapter's finished frame.
       if (reduceMotion()) t.seek(chapterBounds(t, 0, chapters.length)[1] - 0.01);
     }, el);
@@ -89,11 +99,21 @@ export function Film({ chapters, build, label, children }: { chapters: Chapter[]
 
   const toggle = () => {
     const t = tl.current!;
-    if (t.isActive()) { t.pause(); heldByViewer.current = true; setPlaying(false); }
-    else { heldByViewer.current = false; t.play(); setPlaying(true); }
+    // Stopping or starting always cancels a reset fade, so the frame on screen is the real one.
+    const canvas = root.current!.querySelector('.fm-canvas');
+    gsap.killTweensOf(canvas);
+    gsap.set(canvas, { autoAlpha: 1 });
+    if (playing) { t.pause(); heldByViewer.current = true; setPlaying(false); return; }
+    heldByViewer.current = false;
+    if (t.progress() === 1) t.restart(); else t.play();
+    setPlaying(true);
   };
   const jump = (i: number) => {
     const t = tl.current!;
+    // Cancel a reset fade in progress so the chosen chapter is visible at once.
+    const canvas = root.current!.querySelector('.fm-canvas');
+    gsap.killTweensOf(canvas);
+    gsap.set(canvas, { autoAlpha: 1 });
     heldByViewer.current = false;
     t.seek(`c${i}`).play();
     setPlaying(true);
@@ -131,10 +151,19 @@ export function Clip({ build, chapter, count, children }: { build: Build; chapte
     const el = root.current!;
     const ctx = gsap.context(() => {
       const t = build(gsap.utils.selector(el.querySelector('.fm-canvas')));
-      t.pause();
+      t.pause().progress(1).progress(0);
       const [a, b] = chapterBounds(t, chapter, count);
       if (reduceMotion()) { t.seek(b - 0.01); return; }
-      loop.current = t.tweenFromTo(a, b - 0.01, { repeat: -1, repeatDelay: 1.4, paused: true, ease: 'none' });
+      // One chapter, then a fade to its first frame and again.
+      const canvas = el.querySelector('.fm-canvas');
+      const pass = (): gsap.core.Tween => t.tweenFromTo(a, b - 0.01, { paused: true, ease: 'none', onComplete: () => {
+        loop.current = gsap.to(canvas, { autoAlpha: 0, duration: T.reset, ease: EXIT, delay: 1.2, onComplete: () => {
+          t.seek(a);
+          loop.current = gsap.to(canvas, { autoAlpha: 1, duration: T.reset, ease: ENTER, delay: 0.2, onComplete: () => { loop.current = pass(); loop.current.play(); } });
+        } });
+      } });
+      t.seek(a);
+      loop.current = pass();
     }, el);
     return () => ctx.revert();
   }, [build, chapter, count]);
@@ -167,8 +196,8 @@ export function Bot({ text, className = '', children }: { text?: ReactNode; clas
 }
 
 export const Cursor = () => (
-  <svg className="fm-cursor" width="22" height="22" viewBox="0 0 22 22" aria-hidden>
-    <path d="M3 2l15 8.5-6.6 1.6L8 18.5z" fill="#1d1d1f" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
+  <svg className="fm-cursor mo-cursor" width="20" height="22" viewBox="0 0 18 20" aria-hidden>
+    <path d="M2 1.5v14.2l3.9-3.5 2.7 6.1 2.6-1.1-2.6-6h5.6z" fill="#1d1d1f" stroke="#fff" strokeWidth="1.4" strokeLinejoin="round" />
   </svg>
 );
 
@@ -183,9 +212,9 @@ export function Win({ channel, topic, actions, children, side = true }: { channe
             <b>Flo Studios</b>
             {['launch', 'design', 'general', 'incidents'].map((c) => <span key={c} className={`fm-side-ch ${c === channel ? 'on' : ''}`} data-ch={c}># {c}</span>)}
             <em>Direct messages</em>
-            <span><Av c="#d7765a" l="M" className="sm" />Maya</span>
-            <span><Av c="#3aa79b" l="K" className="sm" />Ken</span>
-            <span><Av c="#8a6bd8" l="P" className="sm" />Priya</span>
+            <span><Av c="#c8705a" l="M" className="sm" />Maya</span>
+            <span><Av c="#3c9a8f" l="K" className="sm" />Ken</span>
+            <span><Av c="#7d68c4" l="P" className="sm" />Priya</span>
           </aside>
         )}
         <section className="fm-main">
@@ -197,16 +226,6 @@ export function Win({ channel, topic, actions, children, side = true }: { channe
   );
 }
 
-// Typed text that stays correct when the timeline is scrubbed or looped.
-export function typeInto(tl: gsap.core.Timeline, el: Element | undefined, text: string, at: number | string, duration = text.length * 0.045) {
-  if (!el) return tl;
-  const state = { n: 0 };
-  return tl.fromTo(state, { n: 0 }, { n: text.length, duration, ease: 'none', onUpdate: () => { el.textContent = text.slice(0, Math.round(state.n)); } }, at);
-}
-
-// Clears a typed draft (the message was sent); scrubbing back before it shows the draft again.
-export function eraseText(tl: gsap.core.Timeline, el: Element | undefined, text: string, at: number | string) {
-  if (!el) return tl;
-  const state = { shown: 1 };
-  return tl.fromTo(state, { shown: 1 }, { shown: 0, duration: 0.01, ease: 'none', onUpdate: () => { el.textContent = state.shown > 0.5 ? text : ''; } }, at);
-}
+// Typed text and cleared drafts, rendered by the timeline so scrubbing and chapter jumps stay correct.
+export const typeInto = (tl: gsap.core.Timeline, el: Element | undefined, text: string, at: number | string, duration = text.length * 0.045) => typeText(tl, el, text, at, duration);
+export const eraseText = (tl: gsap.core.Timeline, el: Element | undefined, text: string, at: number | string) => setText(tl, el, text, '', at);

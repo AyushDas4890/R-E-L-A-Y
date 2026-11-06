@@ -10,6 +10,7 @@ import { actionItems, summarize } from '../localAi.ts';
 import type { Block, DbData, PropValue, Row, View } from '../types.ts';
 import { CalendarView, ChartView } from './db/CalendarViews.tsx';
 import { BoardView, TableView, type ViewProps } from './db/Views.tsx';
+import { Icon, type IconName } from './Icon.tsx';
 import '../live-demo.css';
 
 const reduced = (): boolean => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -24,8 +25,7 @@ function Pointer({ x, y, clicks, label, show }: { x: number; y: number; clicks: 
   return (
     <div className={`ld-ptr ${show ? 'on' : ''}`} style={{ transform: `translate(${x}px, ${y}px)` }} aria-hidden>
       {label && <span className="ld-ghost">{label}</span>}
-      <svg width="20" height="22" viewBox="0 0 20 22"><path d="M2 1 L2 17 L6.5 13 L9.5 20 L12.5 18.7 L9.6 11.8 L15.5 11.5 Z" fill="#111" stroke="#fff" strokeWidth="1.4" strokeLinejoin="round" /></svg>
-      {clicks > 0 && <i key={clicks} className="ld-ripple" />}
+      <svg key={clicks} className={clicks > 0 ? 'ld-press' : ''} width="18" height="20" viewBox="0 0 18 20"><path d="M2 1.5v14.2l3.9-3.5 2.7 6.1 2.6-1.1-2.6-6h5.6z" fill="#1d1d1f" stroke="#fff" strokeWidth="1.4" strokeLinejoin="round" /></svg>
     </div>
   );
 }
@@ -74,10 +74,10 @@ function useTyped(text: string, go: boolean, ms = 38): string {
 }
 
 const PEOPLE = {
-  maya: { id: 'maya', name: 'Maya', color: '#d7765a' },
-  ken: { id: 'ken', name: 'Ken', color: '#3aa79b' },
-  priya: { id: 'priya', name: 'Priya', color: '#8a6bd8' },
-  bob: { id: 'bob', name: 'Bob', color: '#5b6cf0' },
+  maya: { id: 'maya', name: 'Maya', color: '#c8705a' },
+  ken: { id: 'ken', name: 'Ken', color: '#3c9a8f' },
+  priya: { id: 'priya', name: 'Priya', color: '#7d68c4' },
+  bob: { id: 'bob', name: 'Bob', color: '#5a7fb8' },
 } as const;
 
 const demoCtx = { snap: { me: 'maya', users: PEOPLE, pages: [], groups: [] }, send: () => undefined, listen: () => () => undefined } as unknown as RelayCtx;
@@ -118,16 +118,16 @@ function PagesDemo({ run, onEnd, onStage }: SceneProps) {
   useEffect(() => { if (s < 4) setChecked(false); else if (reduced()) setChecked(true); }, [s]);
   return (
     <div className="ld-page" aria-hidden>
-      <div className="ld-icon">🚀</div>
+      <div className="ld-icon"><Icon n="file" size={28} /></div>
       <h4 className="ld-title">{s === 0 ? title : 'Launch plan'}<Cursor show={s === 0} /></h4>
       {s >= 1 && <p className="ld-line">{s === 1 ? intro : 'Everything we need to ship v2 on Friday.'}<Cursor show={s === 1} /></p>}
       {s === 2 && (
         <div className="ld-slash-wrap">
           <p className="ld-line">{slash}<Cursor show /></p>
           <div className="ld-menu">
-            <span className="on">☑ To-do list <small>Track tasks with checkboxes</small></span>
-            <span>▸ Toggle list <small>Hide and show content</small></span>
-            <span>☰ Table of contents <small>Links to your headings</small></span>
+            <span className="on"><Icon n="checkSquare" size={16} />To-do list <small>Track tasks with checkboxes</small></span>
+            <span><Icon n="chevron" size={16} />Toggle list <small>Hide and show content</small></span>
+            <span><Icon n="menu" size={16} />Table of contents <small>Links to your headings</small></span>
           </div>
         </div>
       )}
@@ -139,7 +139,7 @@ function PagesDemo({ run, onEnd, onStage }: SceneProps) {
           {checked && <li className="ld-pop"><b className="ck" />Review pricing page <span className="ld-mention">@Maya</span></li>}
         </ul>
       )}
-      {s >= 5 && <div className="ld-callout"><span>💡</span> Anyone can open this page, comment on a line, or ask the assistant about it.</div>}
+      {s >= 5 && <div className="ld-callout">Anyone can open this page, comment on a line, or ask the assistant about it.</div>}
     </div>
   );
 }
@@ -222,7 +222,7 @@ function DbDemo({ run, onEnd, onStage }: SceneProps) {
   const view: View = db.views[shown];
   const api = useMemo(
     () => ({
-      db: live, meta: { title: 'Launch tasks', icon: '✅' }, state: 'ready', level: 'view', canEdit: false, canDesign: false, canManage: false,
+      db: live, meta: { title: 'Launch tasks', icon: '' }, state: 'ready', level: 'view', canEdit: false, canDesign: false, canManage: false,
       ctx: { now: Date.now(), related: () => undefined, userName: (u: string) => PEOPLE[u as keyof typeof PEOPLE]?.name ?? u },
       related: () => undefined, updateRow: () => undefined, createRow: () => undefined, moveRow: () => undefined, removeRow: () => undefined,
       schema: () => undefined, view: () => undefined, setIcon: () => undefined, pressButton: () => undefined,
@@ -235,7 +235,7 @@ function DbDemo({ run, onEnd, onStage }: SceneProps) {
   return (
     <Ctx.Provider value={demoCtx}>
       <div className="ld-db" aria-hidden>
-        <h4 className="ld-dbtitle">✅ Launch tasks</h4>
+        <h4 className="ld-dbtitle">Launch tasks</h4>
         <div className="db-tabs">
           {db.views.map((v) => <span key={v.id} className={`db-tab ${v.id === view.id ? 'on' : ''}`}>{v.name}</span>)}
         </div>
@@ -278,7 +278,7 @@ function CollabDemo({ run, onEnd, onStage }: SceneProps) {
     <div className="ld-collab" aria-hidden>
       <div className="ld-doc">
         <div className="ld-docbar">
-          <span>🚀 Launch plan</span>
+          <span className="ld-crumb"><Icon n="file" size={15} />Launch plan</span>
           <span className="ld-avs"><Av id="maya" /><Av id="ken" />{s >= 3 && <Av id="bob" />}</span>
           <span className={`ld-share ${open && s <= 1 ? 'hot' : ''}`}>Share</span>
         </div>
@@ -315,7 +315,7 @@ function CollabDemo({ run, onEnd, onStage }: SceneProps) {
         <div className="ld-side wide">
           <div className="ld-switch"><span>Publish to the web</span><i className={published ? 'on' : ''} /></div>
           {published && <div className="ld-url">relay.app/p/hq.x8Kq…</div>}
-          {published && <div className="ld-browser"><div className="ld-bbar"><i /><i /><i /><span>Launch plan</span></div><h4>🚀 Launch plan</h4><p>Everything we need to ship v2 on Friday.</p><p className="ld-pill">Published · read only</p></div>}
+          {published && <div className="ld-browser"><div className="ld-bbar"><i /><i /><i /><span>Launch plan</span></div><h4>Launch plan</h4><p>Everything we need to ship v2 on Friday.</p><p className="ld-pill">Published · read only</p></div>}
         </div>
       )}
     </div>
@@ -356,20 +356,20 @@ function FindDemo({ run, onEnd, onStage }: SceneProps) {
     <div className="ld-find" aria-hidden>
       {s <= 1 && (
         <div className="ld-palette">
-          <div className="ld-query"><span className="ld-keys"><kbd className={s === 0 && q.length === 0 ? 'down' : ''}>Ctrl</kbd><kbd className={s === 0 && q.length === 0 ? 'down' : ''}>K</kbd></span><span>⌕</span> <span>{s === 0 ? q : 'launch'}</span><Cursor show={s === 0} /></div>
+          <div className="ld-query"><Icon n="search" size={18} /><span>{s === 0 ? q : 'launch'}</span><Cursor show={s === 0} /><span className="ld-keys"><kbd className={s === 0 && q.length === 0 ? 'down' : ''}>Ctrl</kbd><kbd className={s === 0 && q.length === 0 ? 'down' : ''}>K</kbd></span></div>
           {s === 1 && (
             <ul className="ld-results ld-fade">
-              <li><span>🚀</span><div><b>Launch plan</b><small>Page · Everything we need to ship v2 on Friday</small></div></li>
-              <li><span>▫️</span><div><b>Update launch checklist</b><small>Row in Launch tasks</small></div></li>
-              <li><span>✅</span><div><b>Launch tasks</b><small>Database</small></div></li>
-              <li><span>💬</span><div><b>Priya in #launch</b><small>Shipping at 4 on Friday</small></div></li>
+              <li><span className="ld-ri"><Icon n="file" size={15} /></span><div><b>Launch plan</b><small>Page · Everything we need to ship v2 on Friday</small></div></li>
+              <li><span className="ld-ri"><Icon n="checkSquare" size={15} /></span><div><b>Update launch checklist</b><small>Row in Launch tasks</small></div></li>
+              <li><span className="ld-ri"><Icon n="database" size={15} /></span><div><b>Launch tasks</b><small>Database</small></div></li>
+              <li><span className="ld-ri"><Icon n="message" size={15} /></span><div><b>Priya in #launch</b><small>Shipping at 4 on Friday</small></div></li>
             </ul>
           )}
         </div>
       )}
       {s >= 2 && (
         <div className="ld-assist ld-fade">
-          <h5>✨ Assistant</h5>
+          <h5><Icon n="bot" size={16} />Assistant</h5>
           {s === 2 && (
             <>
               <div className="ld-ai-btns"><button type="button" className={did ? 'on' : ''}>Summarize</button><button type="button" className={did === 'act' ? 'on' : ''}>Action items</button></div>
@@ -436,37 +436,48 @@ export function LiveDemo() {
     setStage(0);
     setPtr((p) => ({ ...p, show: false, label: '' }));
   }, []);
-  const side = [['🚀', 'Launch plan'], ['✅', 'Launch tasks'], ['📝', 'Meeting notes'], ['📚', 'Team wiki']];
+  const side: [IconName, string][] = [['file', 'Launch plan'], ['database', 'Launch tasks'], ['file', 'Meeting notes'], ['file', 'Team wiki']];
+  const durations = [PAGE_STAGES, DB_STAGES, COLLAB_STAGES, FIND_STAGES][scene];
+  const run = visible && !paused;
   return (
-    <div className="ld" ref={root} data-theme="notion">
-      <div className="ld-tabs-bar" role="tablist" aria-label="What you can do in Relay">
-        {SCENES.map((x, i) => (
-          <button key={x.id} role="tab" aria-selected={i === scene} className={i === scene ? 'on' : ''} onClick={() => go(i)}>{x.label}</button>
-        ))}
-        <button className="ld-pause" aria-pressed={paused} onClick={() => setPaused((p) => !p)}>{paused ? 'Play' : 'Pause'}</button>
+    <div className="ld" ref={root} data-theme="apple">
+      <div className="ld-top">
+        <div className="ld-seg" role="tablist" aria-label="What you can do in Relay">
+          {SCENES.map((x, i) => (
+            <button key={x.id} role="tab" aria-selected={i === scene} className={i === scene ? 'on' : ''} onClick={() => go(i)}>{x.label}</button>
+          ))}
+        </div>
+        <button className="ld-pause" aria-label={paused ? 'Play' : 'Pause'} aria-pressed={paused} onClick={() => setPaused((p) => !p)}>
+          {paused ? <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden><path d="M3 1.5v11l9.5-5.5z" fill="currentColor" /></svg>
+            : <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor" /><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor" /></svg>}
+        </button>
       </div>
       <div className="ld-frame">
-        <div className="ld-chrome" aria-hidden><i /><i /><i /><span>Relay — Flo Studios</span></div>
+        <div className="ld-chrome" aria-hidden><i /><i /><i /><span>Relay · Flo Studios</span></div>
         <div className="ld-app">
           <aside className="ld-nav" aria-hidden>
             <b className="ld-ws"><i>F</i>Flo Studios</b>
-            <span>⌕ Search</span><span>⌂ Home</span>
-            <span>▤ Inbox{scene === 2 && stage >= 3 && <em className="ld-count">1</em>}</span>
+            <span><Icon n="search" size={15} />Search</span><span><Icon n="home" size={15} />Home</span>
+            <span><Icon n="inbox" size={15} />Inbox{scene === 2 && stage >= 3 && <em className="ld-count">1</em>}</span>
             <small>Teamspace</small>
-            {side.map(([i, t]) => <span key={t} className={t === cur.active ? 'on' : ''}>{i} {t}</span>)}
+            {side.map(([i, t]) => <span key={t} className={t === cur.active ? 'on' : ''}><Icon n={i} size={15} />{t}</span>)}
             <small>Channels</small>
-            <span># launch</span><span># design</span>
+            <span><b className="ld-hash">#</b>launch</span><span><b className="ld-hash">#</b>design</span>
           </aside>
           <div className="ld-stage" ref={stageEl}>
             <AimCtx.Provider value={aim}>
-              <div key={`${scene}:${cycle}`} className="ld-scene"><cur.Scene run={visible && !paused} onEnd={() => go((scene + 1) % SCENES.length)} onStage={setStage} /></div>
+              <div key={`${scene}:${cycle}`} className="ld-scene"><cur.Scene run={run} onEnd={() => go((scene + 1) % SCENES.length)} onStage={setStage} /></div>
             </AimCtx.Provider>
             <Pointer x={ptr.x} y={ptr.y} clicks={ptr.clicks} label={ptr.label} show={ptr.show} />
           </div>
         </div>
       </div>
-      <div className="ld-progress" aria-hidden>{cur.captions.map((_, i) => <i key={i} className={i <= stage ? 'on' : ''} />)}</div>
-      <p className="ld-caption" role="status" aria-live="polite">{cur.captions[Math.min(stage, cur.captions.length - 1)]}</p>
+      <div className={`ld-progress ${run ? '' : 'held'}`} aria-hidden>
+        {cur.captions.map((_, i) => (
+          <i key={`${scene}:${cycle}:${i}`} className={i < stage ? 'done' : i === stage ? 'now' : ''} style={{ ['--d' as string]: `${durations[i]}ms` }}><u /></i>
+        ))}
+      </div>
+      <p key={`${scene}:${stage}`} className="ld-caption" role="status" aria-live="polite">{cur.captions[Math.min(stage, cur.captions.length - 1)]}</p>
     </div>
   );
 }
