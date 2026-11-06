@@ -207,3 +207,9 @@
 .ap > .ap-stars-wrap { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .ap .ap-sky { z-index: -2; }
 .ap-si > canvas.ap-stars { position: absolute; inset: 0; z-index: 0; }
+
+/* Interaction layer (see publicMotion.ts): cards catch a soft light under the cursor, buttons lean toward it. */
+.ap-tile, .ap-window, .ap-si-card { position: relative; }
+.ap-sheen { position: absolute; inset: 0; z-index: 3; border-radius: inherit; pointer-events: none; opacity: 0;
+  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(0, 113, 227, .09), transparent 60%); }
+@media (prefers-reduced-motion: reduce) { .ap-sheen { display: none; } }

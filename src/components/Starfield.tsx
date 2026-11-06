@@ -3,12 +3,14 @@
 // It is pure decoration (hidden from assistive tech, never catches the pointer) and holds still when the
 // visitor prefers reduced motion. The ink colour is the canvas's CSS `color`, so it suits light or dark pages.
 import { useEffect, useRef } from 'react';
+import { attachPublicMotion } from '../publicMotion.ts';
 
 type RGB = [number, number, number];
 const GLOWS: RGB[] = [[79, 140, 255], [229, 82, 127], [31, 184, 166], [245, 165, 11], [154, 107, 255]];
 const rgba = (c: RGB, a: number) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
-interface Dot { x: number; y: number; vx: number; vy: number; r: number }
+// z is how far the dot sits behind the page: deeper dots follow the scroll less, which gives the sky depth.
+interface Dot { x: number; y: number; vx: number; vy: number; r: number; z: number }
 interface Node { ax: number; ay: number; x: number; y: number; r: number; col: RGB; phase: number; orbit: number }
 interface Packet { from: number; to: number; t: number; speed: number }
 interface Ripple { x: number; y: number; t: number; col: RGB }
@@ -23,6 +25,9 @@ export function Starfield() {
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     let w = 0, h = 0, raf = 0;
+    const scroller = canvas.closest<HTMLElement>('.ap');
+    const pageRoot = canvas.closest<HTMLElement>('.ap, .ap-si, .ws-picker');
+    const detach = pageRoot ? attachPublicMotion(pageRoot) : () => {};
     const mouse = { x: -9999, y: -9999, on: false };
     let ink: RGB = [29, 29, 31];
     let dots: Dot[] = [];
@@ -39,7 +44,7 @@ export function Starfield() {
       const m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i.exec(getComputedStyle(canvas).color);
       if (m) ink = [Number(m[1]), Number(m[2]), Number(m[3])];
       const count = Math.round(Math.min(90, Math.max(26, (w * h) / 14000)));
-      dots = Array.from({ length: count }, () => ({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25, r: 0.8 + Math.random() * 1.5 }));
+      dots = Array.from({ length: count }, () => ({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25, r: 0.8 + Math.random() * 1.5, z: 0.06 + Math.random() * 0.3 }));
       // Glowing nodes sit toward the edges so they frame the page copy instead of sitting under it.
       const wide = w > 700;
       const spots: [number, number][] = wide
@@ -53,23 +58,36 @@ export function Starfield() {
       ctx.clearRect(0, 0, w, h);
       const sec = time / 1000;
 
+      // Dots ride the scroll at their own depth, wrapping around so the sky never runs out.
+      const sy = scroller ? scroller.scrollTop : 0;
+      const scrY = (d: Dot) => { const m = (d.y - sy * d.z) % h; return m < 0 ? m + h : m; };
       for (const d of dots) {
         if (still) break;
-        const dx = d.x - mouse.x, dy = d.y - mouse.y, dist = Math.hypot(dx, dy);
+        const dx = d.x - mouse.x, dy = scrY(d) - mouse.y, dist = Math.hypot(dx, dy);
         if (mouse.on && dist < 130 && dist > 0.1) { const f = (1 - dist / 130) * 0.9; d.vx += (dx / dist) * f * 0.12; d.vy += (dy / dist) * f * 0.12; }
         d.vx *= 0.985; d.vy *= 0.985;
         d.x += d.vx; d.y += d.vy;
         if (d.x < -10) d.x = w + 10; else if (d.x > w + 10) d.x = -10;
-        if (d.y < -10) d.y = h + 10; else if (d.y > h + 10) d.y = -10;
       }
+      const pts = dots.map((d) => ({ x: d.x, y: scrY(d) }));
       ctx.lineWidth = 1;
-      for (let i = 0; i < dots.length; i++) {
-        for (let j = i + 1; j < dots.length; j++) {
-          const dist = Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y);
-          if (dist < 110) { ctx.strokeStyle = rgba(ink, (1 - dist / 110) * 0.16); ctx.beginPath(); ctx.moveTo(dots[i].x, dots[i].y); ctx.lineTo(dots[j].x, dots[j].y); ctx.stroke(); }
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const dist = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y);
+          if (dist < 110) { ctx.strokeStyle = rgba(ink, (1 - dist / 110) * 0.16); ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke(); }
         }
       }
-      for (const d of dots) { ctx.fillStyle = rgba(ink, 0.4); ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill(); }
+      for (let i = 0; i < pts.length; i++) { ctx.fillStyle = rgba(ink, 0.4); ctx.beginPath(); ctx.arc(pts[i].x, pts[i].y, dots[i].r, 0, Math.PI * 2); ctx.fill(); }
+      // Near the cursor the sky answers: a soft light and threads to the closest dots, like a constellation forming.
+      if (mouse.on && !still) {
+        const glow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 170);
+        glow.addColorStop(0, 'rgba(79,140,255,0.13)'); glow.addColorStop(1, 'rgba(79,140,255,0)');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 170, 0, Math.PI * 2); ctx.fill();
+        for (let i = 0; i < pts.length; i++) {
+          const dist = Math.hypot(pts[i].x - mouse.x, pts[i].y - mouse.y);
+          if (dist < 140) { ctx.strokeStyle = `rgba(79,140,255,${(1 - dist / 140) * 0.4})`; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mouse.x, mouse.y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke(); }
+        }
+      }
 
       nodes.forEach((nd) => {
         if (!still) { nd.x = nd.ax + Math.cos(sec * 0.35 + nd.phase) * nd.orbit; nd.y = nd.ay + Math.sin(sec * 0.28 + nd.phase * 1.3) * nd.orbit * 0.7; }
@@ -133,7 +151,7 @@ export function Starfield() {
     window.addEventListener('pointerdown', onDown);
     document.addEventListener('pointerleave', onLeave);
     return () => {
-      cancelAnimationFrame(raf); ro.disconnect();
+      cancelAnimationFrame(raf); ro.disconnect(); detach();
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerdown', onDown);
       document.removeEventListener('pointerleave', onLeave);
