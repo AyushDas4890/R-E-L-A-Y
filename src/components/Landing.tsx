@@ -11,7 +11,6 @@ import { Settle } from './Settle.tsx';
 import { Tour } from './TourScenes.tsx';
 import { ENTER } from '../motion.ts';
 import { RouteLink, SiteFooter, SiteNav, useRoute, type Route } from './Site.tsx';
-import ScrollZoomReveal from './framer/ScrollZoomReveal.tsx';
 import LightBulbButton from './framer/LightBulbButton.tsx';
 import '../tour.css';
 import '../apple.css';
@@ -77,28 +76,6 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
         <h2>{words('Everything your team says,')}<br />{words('in one calm place')}</h2>
         <p>Chat, pages and databases side by side, with a teammate that keeps the follow-ups from slipping.</p>
         <Settle />
-      </section>
-
-      <section className="ap-zoom-section" id="zoom-reveal" style={{ position: 'relative', overflow: 'hidden' }}>
-        <ScrollZoomReveal
-          leftText="One calm place"
-          rightText="See it work"
-          buttonText="Enter Workspace"
-          buttonLink="#live"
-          textColor="#ece8f3"
-          buttonTextColor="#10233f"
-          buttonBgColor="#f5a400"
-          iconType="play"
-          image={{
-            src: '/bg/silver-line-waves.jpg',
-            alt: 'Relay workspace preview',
-          }}
-          scrollDistance="220vh"
-          onButtonClick={() => {
-            const el = document.getElementById('live');
-            if (el) el.scrollIntoView({ behavior: 'smooth' });
-          }}
-        />
       </section>
 
       <section className="ap-intro ap-reveal" id="live">

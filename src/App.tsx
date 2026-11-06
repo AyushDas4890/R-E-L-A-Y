@@ -5,6 +5,7 @@ import { getDevSession, saveDevSession, useAuthToken, useLastRead, useOlderHisto
 import { authEnabled } from './supabase.ts';
 import { Login } from './components/Login.tsx';
 import { Landing } from './components/Landing.tsx';
+import { PageIntro } from './components/PageIntro.tsx';
 import { HelpPage } from './components/Help.tsx';
 import { useRoute } from './components/Site.tsx';
 import { gsap } from 'gsap';
@@ -72,6 +73,14 @@ export default function App() {
   const { token, ready, signOut } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
   const [invite, setInvite] = useState(inviteFromUrl);
+  // Show the scroll-zoom intro overlay once per session on first load.
+  const [showIntro, setShowIntro] = useState(() => {
+    try { return !sessionStorage.getItem('relay.introSeen'); } catch { return true; }
+  });
+  const doneIntro = () => {
+    try { sessionStorage.setItem('relay.introSeen', '1'); } catch { /* ignore */ }
+    setShowIntro(false);
+  };
   // Help pages are public and also open for signed-in people, so they are decided before anything else.
   const [siteRoute, goSite] = useRoute();
   const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
@@ -258,7 +267,12 @@ export default function App() {
   }
   if (!session || (authError && authError.code === 'auth-required')) {
     if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
-    if (!showLogin && !authError) return <Landing onGetStarted={openLogin} />;
+    if (!showLogin && !authError) return (
+      <>
+        {showIntro && <PageIntro onDone={doneIntro} />}
+        <Landing onGetStarted={openLogin} />
+      </>
+    );
     return (
       <Login
         onBack={authError ? undefined : closeLogin}
