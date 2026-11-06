@@ -6,6 +6,7 @@ import { Film, Clip, Win, Msg, Bot, Cursor, typeInto, eraseText, type Build, typ
 import { ENTER, EXIT, T, arrive, pointAt, typing } from '../motion.ts';
 import { Icon, type IconName } from './Icon.tsx';
 import { RouteLink, SiteFooter, SiteNav, type FeatureRoute, type Route } from './Site.tsx';
+import FlexibleAccordion from './framer/FlexibleAccordion.tsx';
 import '../apple.css';
 import '../features.css';
 
@@ -458,10 +459,52 @@ const PAGE_DEFS: Record<FeatureRoute, PageDef> = {
 
 const NEXT_LABEL: Record<FeatureRoute, string> = { overview: 'Overview', huddles: 'Huddles', workflows: 'Workflows', search: 'Search' };
 
+const FEATURE_ACCORDION_IMAGES: Record<FeatureRoute, string[]> = {
+  overview: [
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1800&q=90',
+    'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1800&q=90',
+    'https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1800&q=90',
+  ],
+  huddles: [
+    'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?auto=format&fit=crop&w=1800&q=80',
+  ],
+  workflows: [
+    'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1800&q=80',
+  ],
+  search: [
+    'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1800&q=80',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1800&q=80',
+  ],
+};
+
 export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go: (r: Route) => void; onGetStarted: () => void }) {
   const def = PAGE_DEFS[page];
   const root = useRef<HTMLDivElement>(null);
   const { Mock } = def.film;
+
+  const accordionItems = def.details.map((d, i) => ({
+    tab: d.eyebrow || `0${i + 1}`,
+    eyebrow: `${def.eyebrow} · ${d.eyebrow}`,
+    title: d.title,
+    description: d.text,
+    primaryLabel: 'Try in Relay',
+    primaryLink: '#',
+    secondaryLabel: 'Watch demo',
+    secondaryLink: '#film',
+    image: {
+      src: FEATURE_ACCORDION_IMAGES[page]?.[i] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1800&q=80',
+      alt: d.title,
+    },
+  }));
 
   useLayoutEffect(() => {
     const scroller = root.current!;
@@ -497,6 +540,30 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
         <div className="fp-film" id="film">
           <Film key={page} label={def.film.label} chapters={def.film.chapters} build={def.film.build}><Mock /></Film>
         </div>
+      </section>
+
+      <section className="fp-accordion-section ap-reveal" style={{ maxWidth: 1040, margin: '60px auto 30px', padding: '0 20px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <p className="fp-eyebrow" style={{ textTransform: 'uppercase', letterSpacing: '0.12em', color: '#9a6bff', fontSize: 13, fontWeight: 600 }}>Interactive Feature Explorer</p>
+          <h2 style={{ fontSize: '32px', margin: '6px 0', fontFamily: 'var(--display)' }}>Explore {def.eyebrow}</h2>
+          <p style={{ color: '#a79eb6', maxWidth: 540, margin: '0 auto', fontSize: 15 }}>Click through each capability to explore how {def.eyebrow.toLowerCase()} works inside Relay.</p>
+        </div>
+        <FlexibleAccordion
+          items={accordionItems}
+          cardBackground="#1c1825"
+          textColor="#ece8f3"
+          mutedTextColor="#a79eb6"
+          tabColor="rgba(236, 232, 243, 0.45)"
+          activeTabColor="#9a6bff"
+          primaryBackground="#9a6bff"
+          primaryTextColor="#ffffff"
+          secondaryColor="#c3a6ff"
+          arrowBackground="#9a6bff"
+          arrowColor="#ffffff"
+          cardRadius={22}
+          imageRadius={20}
+          onPrimaryClick={onGetStarted}
+        />
       </section>
 
       <section className="fp-details">

@@ -47,6 +47,9 @@
 
 .ap-nav { position: sticky; top: 16px; z-index: 5 !important; display: flex; align-items: center; gap: 24px; max-width: 980px; height: 52px; margin: 0 auto; padding: 0 8px 0 20px; border-radius: 999px;
   background: rgba(255,255,255,.78); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 1px 1px rgba(0,0,0,.04), 0 8px 24px rgba(0,40,80,.08); }
+.ap-nav.ap-nav-island { max-width: 1040px; gap: 16px; justify-content: space-between; }
+.ap-island-wrap { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; }
+.ap-island-wrap nav { margin: 0 !important; }
 .ap-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--ap-ink); font-size: 17px; font-weight: 600; letter-spacing: -.02em; text-decoration: none; }
 .ap-links { display: flex; gap: 28px; margin: 0 auto; }
 .ap-links a { color: var(--ap-ink); opacity: .8; font-size: 14px; text-decoration: none; transition: opacity .2s; }

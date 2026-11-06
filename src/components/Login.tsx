@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
 import { Starfield } from './Starfield.tsx';
+import LightBulbButton from './framer/LightBulbButton.tsx';
 import '../apple.css';
 import { supabase, authEnabled } from '../supabase.ts';
 
@@ -107,16 +108,35 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
           <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : 'Use GitHub, or get a sign-in link by email.'}</p>
 
           {!signedIn && (
-            <button className="ap-pill dark full" onClick={() => (authEnabled ? oauth('github') : setOauthError('GitHub sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, or continue with a name below.'))} disabled={!!busy}>
-              <GithubIcon />{busy === 'github' ? 'Opening GitHub…' : 'Continue with GitHub'}
-            </button>
+            <LightBulbButton
+              onClick={() => (authEnabled ? oauth('github') : setOauthError('GitHub sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, or continue with a name below.'))}
+              disabled={!!busy}
+              lightColor="#b3ff00"
+              buttonColor="#16151f"
+              substrateColor="#09080d"
+              icon={<GithubIcon />}
+              width="100%"
+              height={46}
+            >
+              {busy === 'github' ? 'Opening GitHub…' : 'Continue with GitHub'}
+            </LightBulbButton>
           )}
           {!signedIn && (
             sent ? (
               <p className="ap-si-sub" role="status">Check {email || known} for your sign-in link. You can close this tab.</p>
             ) : known ? (
               <>
-                <button className="ap-pill quiet full" disabled={!!busy} onClick={() => { setEmail(known); void emailLink(known); }}>{busy === 'email' ? 'Sending link…' : `Continue as ${known}`}</button>
+                <LightBulbButton
+                  disabled={!!busy}
+                  onClick={() => { setEmail(known); void emailLink(known); }}
+                  lightColor="#3ccf7c"
+                  buttonColor="#1c1a26"
+                  substrateColor="#0c0b12"
+                  width="100%"
+                  height={44}
+                >
+                  {busy === 'email' ? 'Sending link…' : `Continue as ${known}`}
+                </LightBulbButton>
                 <button className="ap-link-btn" onClick={() => setKnown('')}>Use a different email</button>
               </>
             ) : (
@@ -125,7 +145,17 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
                   Email
                   <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value.trim())} placeholder="you@gmail.com" maxLength={120} />
                 </label>
-                <button className="ap-pill quiet full" disabled={!email || !!busy}>{busy === 'email' ? 'Sending link…' : 'Continue with email'}</button>
+                <LightBulbButton
+                  type="submit"
+                  disabled={!email || !!busy}
+                  lightColor="#f5a400"
+                  buttonColor="#1c1a26"
+                  substrateColor="#0c0b12"
+                  width="100%"
+                  height={44}
+                >
+                  {busy === 'email' ? 'Sending link…' : 'Continue with email'}
+                </LightBulbButton>
               </form>
             )
           )}
@@ -136,7 +166,17 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
                 Invite code
                 <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Code" maxLength={32} autoFocus />
               </label>
-              <button className="ap-pill blue full" disabled={!code} onClick={() => onInvite(code)}>Join with invite</button>
+              <LightBulbButton
+                disabled={!code}
+                onClick={() => onInvite(code)}
+                lightColor="#9a6bff"
+                buttonColor="#241838"
+                substrateColor="#0e0717"
+                width="100%"
+                height={46}
+              >
+                Join with invite
+              </LightBulbButton>
               <button className="ap-pill quiet full" onClick={onSignOut}>Use a different account</button>
             </>
           ) : authEnabled ? (
@@ -164,7 +204,17 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
                   Invite code
                   <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Optional" maxLength={32} />
                 </label>
-                <button className="ap-pill blue full" disabled={!devName.trim()}>Continue</button>
+                <LightBulbButton
+                  type="submit"
+                  disabled={!devName.trim()}
+                  lightColor="#3ccf7c"
+                  buttonColor="#18231c"
+                  substrateColor="#08100a"
+                  width="100%"
+                  height={46}
+                >
+                  Continue
+                </LightBulbButton>
               </form>
             </>
           )}

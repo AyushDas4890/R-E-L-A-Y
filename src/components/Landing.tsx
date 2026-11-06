@@ -11,6 +11,8 @@ import { Settle } from './Settle.tsx';
 import { Tour } from './TourScenes.tsx';
 import { ENTER } from '../motion.ts';
 import { RouteLink, SiteFooter, SiteNav, useRoute, type Route } from './Site.tsx';
+import ScrollZoomReveal from './framer/ScrollZoomReveal.tsx';
+import LightBulbButton from './framer/LightBulbButton.tsx';
 import '../tour.css';
 import '../apple.css';
 
@@ -77,6 +79,28 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
         <Settle />
       </section>
 
+      <section className="ap-zoom-section" id="zoom-reveal" style={{ position: 'relative', overflow: 'hidden' }}>
+        <ScrollZoomReveal
+          leftText="One calm place"
+          rightText="See it work"
+          buttonText="Enter Workspace"
+          buttonLink="#live"
+          textColor="#ece8f3"
+          buttonTextColor="#10233f"
+          buttonBgColor="#f5a400"
+          iconType="play"
+          image={{
+            src: '/bg/silver-line-waves.jpg',
+            alt: 'Relay workspace preview',
+          }}
+          scrollDistance="220vh"
+          onButtonClick={() => {
+            const el = document.getElementById('live');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+        />
+      </section>
+
       <section className="ap-intro ap-reveal" id="live">
         <h2>See the workspace work</h2>
         <p>Pages, databases, sharing and search, running the way they do inside Relay.</p>
@@ -90,7 +114,9 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
       <section className="ap-final ap-reveal">
         <h2>Ready when your team is</h2>
         <p>Free to start. Every feature unlocked.</p>
-        <button className="ap-pill blue" onClick={onGetStarted}>Get started free</button>
+        <div style={{ display: 'inline-block', marginTop: 12 }}>
+          <LightBulbButton onClick={onGetStarted} lightColor="#b3ff00" height={48}>Get started free</LightBulbButton>
+        </div>
       </section>
 
       <SiteFooter go={go} />
