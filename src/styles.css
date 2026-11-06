@@ -210,6 +210,26 @@ h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -.01
 .huddle-avatar.connecting { opacity: .45; }
 .huddle-muted { position: absolute; right: -4px; bottom: -4px; font-size: 11px; font-style: normal; line-height: 1; }
 .huddle-stage { display: flex; gap: 10px; padding: 10px 20px; background: var(--side-bg); overflow-x: auto; }
+.screen-max { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 1.5vh 1.5vw; background: rgba(8, 10, 14, .82); backdrop-filter: blur(6px); animation: screen-in .22s var(--spring-pop, ease-out); }
+.screen-max-card { width: min(98vw, 1800px); max-height: 97vh; display: flex; flex-direction: column; gap: 10px; color: #eef3fa; }
+.screen-max-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.screen-max-top strong { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.screen-max-top .icon-btn { color: #eef3fa; }
+.screen-max .screen-tile, .screen-max .screen-tile.mine { flex: 0 1 auto; max-width: none; width: 100%; border-radius: 12px; }
+.screen-max .screen-tile video { max-height: calc(97vh - 130px); }
+.screen-max-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 8px 12px; border-radius: 12px; background: var(--side-bg); }
+.screen-max-tabs { display: flex; gap: 6px; overflow-x: auto; }
+.screen-max-tabs button { padding: 4px 10px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #cdd6e3; font-size: 13px; }
+.screen-max-tabs button.on { background: rgba(255, 255, 255, .14); color: #fff; }
+.screen-mini { position: fixed; right: 18px; bottom: 18px; z-index: 90; width: min(340px, 60vw); border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 10px 34px rgba(0, 0, 0, .45), 0 0 0 1px rgba(255, 255, 255, .12); cursor: grab; touch-action: none; animation: screen-in .22s var(--spring-pop, ease-out); }
+.screen-mini:active { cursor: grabbing; }
+.screen-mini .screen-tile, .screen-mini .screen-tile.mine { flex: none; max-width: none; border-radius: 0; }
+.screen-mini .screen-tile video { max-height: 200px; pointer-events: none; }
+.screen-mini-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity .15s; }
+.screen-mini:hover .screen-mini-actions, .screen-mini:focus-within .screen-mini-actions { opacity: 1; }
+.screen-mini-actions .icon-btn { background: rgba(0, 0, 0, .65); color: #fff; border-radius: 8px; }
+@keyframes screen-in { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .screen-max, .screen-mini { animation: none; } }
 .screen-tile { position: relative; margin: 0; flex: 1 1 320px; max-width: 720px; border-radius: 10px; overflow: hidden; background: #000; }
 .screen-tile.mine { flex: 0 0 180px; }
 .screen-tile video { display: block; width: 100%; max-height: 40vh; object-fit: contain; }
@@ -235,6 +255,9 @@ h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -.01
 .plan-card h3 { margin: 6px 0; }
 .feature-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .feature-list li { padding: 8px 12px; background: var(--raised); border-radius: 9px; }
+.workflows-page { flex: 1; min-height: 0; overflow-y: auto; padding: 20px max(20px, calc((100% - 880px) / 2)) 96px; display: grid; gap: 14px; align-content: start; }
+.workflows-page > .row:last-child { position: sticky; bottom: -80px; padding: 12px; margin-top: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+.workflows-page .workflow { padding: 16px; }
 .workflow { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; background: var(--raised); }
 .sched-item { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--raised); border-radius: 10px; }
 .sched-item small { display: block; color: var(--muted); }

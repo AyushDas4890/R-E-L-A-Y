@@ -219,26 +219,31 @@ export function SchedulePicker({ text, channelId, onClose }: { text: string; cha
   );
 }
 
-export function WorkflowModal({ onClose }: { onClose: () => void }) {
+// The Workflow Builder, as a full page in the main pane.
+export function WorkflowsView() {
   const { snap, send } = useRelayCtx();
   const [list, setList] = useState<Workflow[]>(snap.workflows);
+  const [saved, setSaved] = useState(true);
+  const setListDirty = (next: Workflow[]) => { setList(next); setSaved(false); };
   const channels = Object.values(snap.channels).filter((c) => c.kind !== 'dm');
-  const patch = (id: string, fn: (w: Workflow) => Workflow) => setList(list.map((w) => (w.id === id ? fn(w) : w)));
+  const patch = (id: string, fn: (w: Workflow) => Workflow) => setListDirty(list.map((w) => (w.id === id ? fn(w) : w)));
 
   const add = () =>
-    setList([
+    setListDirty([
       ...list,
       { id: crypto.randomUUID(), name: 'New workflow', enabled: true, trigger: { type: 'keyword', keyword: 'hello', channelId: 'any' }, reply: 'Hi there!' },
     ]);
 
   return (
-    <Modal title="Workflow Builder" onClose={onClose} wide>
+    <>
+      <header className="channel-head"><div className="channel-title"><h2>Workflows</h2><p className="topic">Teach Relay Bot to reply on its own: on a keyword, when someone joins, or on a schedule</p></div></header>
+      <div className="workflows-page">
       {list.map((w) => (
         <div key={w.id} className="workflow">
           <div className="row">
             <input className="grow" value={w.name} onChange={(e) => patch(w.id, (x) => ({ ...x, name: e.target.value }))} />
             <label className="check"><input type="checkbox" checked={w.enabled} onChange={(e) => patch(w.id, (x) => ({ ...x, enabled: e.target.checked }))} /> On</label>
-            <button className="ghost-btn danger" onClick={() => setList(list.filter((x) => x.id !== w.id))}>Delete</button>
+            <button className="ghost-btn danger" onClick={() => setListDirty(list.filter((x) => x.id !== w.id))}>Delete</button>
           </div>
           <div className="row">
             <select
@@ -289,7 +294,7 @@ export function WorkflowModal({ onClose }: { onClose: () => void }) {
               {channels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
             </select>
           </div>
-          <textarea value={w.reply} onChange={(e) => patch(w.id, (x) => ({ ...x, reply: e.target.value }))} placeholder="Bot reply" />
+          <textarea value={w.reply} onChange={(e) => patch(w.id, (x) => ({ ...x, reply: e.target.value }))} placeholder={w.trigger.type === 'join' ? 'Bot reply. Use {user} to mention the person who joined.' : 'Bot reply. Use {user} to mention the sender, {channel} for the channel name.'} />
           {w.trigger.type === 'keyword' && (
             w.branch ? (
               <div className="branch">
@@ -315,15 +320,21 @@ export function WorkflowModal({ onClose }: { onClose: () => void }) {
           value=""
           onChange={(e) => {
             const tpl = WORKFLOW_TEMPLATES[Number(e.target.value)];
-            if (tpl) setList([...list, { ...tpl, id: crypto.randomUUID() }]);
+            if (tpl) setListDirty([...list, { ...tpl, id: crypto.randomUUID() }]);
           }}
         >
           <option value="">Start from a template…</option>
           {WORKFLOW_TEMPLATES.map((tpl, i) => <option key={tpl.name} value={i}>{tpl.name}</option>)}
         </select>
         <span className="spacer" />
-        <button className="send-btn" onClick={() => { send({ t: 'workflows', list }); onClose(); }}>Publish</button>
+        <button className="send-btn" onClick={() => {
+          // Stamp schedules with this browser's time zone so "9:30" means 9:30 where the publisher is.
+          const tzOffset = new Date().getTimezoneOffset();
+          send({ t: 'workflows', list: list.map((w) => (w.trigger.type === 'schedule' ? { ...w, trigger: { ...w.trigger, tzOffset } } : w)) });
+          setSaved(true);
+        }}>{saved ? 'Published' : 'Publish'}</button>
       </div>
-    </Modal>
+      </div>
+    </>
   );
 }

@@ -1,6 +1,9 @@
 // One line-icon set for the whole interface: 24px grid, 1.5 stroke, colored by the surrounding text.
 const PATHS = {
   lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
+  maximize: 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7',
+  minimize: 'M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7',
+  pip: 'M3 5h18v14H3zM12 12h7v5h-7z',
   headphones: 'M3 14v-2a9 9 0 0 1 18 0v2M3 14h4v6H5a2 2 0 0 1-2-2zM21 14h-4v6h2a2 2 0 0 0 2-2z',
   bellOff: 'M8.7 3A6 6 0 0 1 18 8c0 2.7.6 4.5 1.2 5.6M6.3 6.3C6.1 6.9 6 7.4 6 8c0 7-3 9-3 9h14M10.3 21a2 2 0 0 0 3.4 0M2 2l20 20',
   bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a2 2 0 0 0 3.4 0',
@@ -47,6 +50,10 @@ const PATHS = {
   inbox: 'M22 12h-6l-2 3h-4l-2-3H2M5.5 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.7 4H7.3a2 2 0 0 0-1.8 1.1Z',
   panelLeft: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM9 3v18',
   back: 'm15 6-6 6 6 6',
+  database: 'M12 8c4.4 0 8-1.3 8-3s-3.6-3-8-3-8 1.3-8 3 3.6 3 8 3ZM4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+  layout: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM3 9h18M9 21V9',
+  calendar: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
 } as const;
 
 export type IconName = keyof typeof PATHS;

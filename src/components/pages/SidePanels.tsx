@@ -227,7 +227,7 @@ export function AssistantPanel({ doc, onClose, onOpen }: { doc: PageDocApi; onCl
 
   return (
     <aside className="side-panel" aria-label="Assistant">
-      <header><h2>✨ Assistant</h2><button className="icon-btn" aria-label="Close assistant" onClick={onClose}>✕</button></header>
+      <header><h2>Assistant</h2><button className="icon-btn" aria-label="Close assistant" onClick={onClose}>✕</button></header>
       <p className="muted db-note">Runs in your browser. It finds and condenses text that is already here; it doesn’t write new content, and nothing leaves your workspace.</p>
       <div className="ai-actions">
         <button className="ghost-btn" disabled={!text} onClick={() => run('Summary', summarize(text, 4).length ? summarize(text, 4) : [text.slice(0, 280)])}>Summarize</button>

@@ -153,6 +153,9 @@ function saveWorkspace(id: string): void {
   }
 }
 
+// The email last signed in with, so the sign-in page can offer "Continue as …" next time.
+const remember = (email?: string | null) => { if (email) try { localStorage.setItem('relay.lastEmail', email); } catch { /* storage blocked */ } };
+
 export interface Session {
   token: string;
   invite: string;
@@ -198,13 +201,14 @@ export function useAuthToken(): { token: string | null; ready: boolean; signOut:
     // onAuthStateChange still signs the user in when the session does arrive.
     const giveUp = setTimeout(() => setReady(true), 4000);
     supabase.auth.getSession()
-      .then(({ data }) => setToken(data.session?.access_token ?? null))
+      .then(({ data }) => { remember(data.session?.user?.email); setToken(data.session?.access_token ?? null); })
       .catch((err) => console.warn('session check failed', err))
       .finally(() => {
         clearTimeout(giveUp);
         setReady(true);
       });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      remember(session?.user?.email);
       setToken(session?.access_token ?? null);
     });
     return () => {

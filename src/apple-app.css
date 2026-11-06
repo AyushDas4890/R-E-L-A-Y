@@ -230,7 +230,9 @@
 @media (min-width: 761px) {
   [data-theme^='apple'] .hs { background: var(--wall); padding: var(--gap); gap: var(--gap); }
   [data-theme^='apple'] .hs-side { height: calc(100vh - 2 * var(--gap)); top: var(--gap); border-radius: var(--card-r); background: var(--side-bg); backdrop-filter: var(--ap-blur); -webkit-backdrop-filter: var(--ap-blur); border-right: 0; box-shadow: 0 0 0 .5px var(--hair-c), 0 20px 50px -28px var(--shadow); }
-  [data-theme^='apple'] .hs-main { max-width: none; background: var(--surface); border-radius: var(--card-r); box-shadow: 0 0 0 .5px var(--hair-c), 0 24px 60px -30px var(--shadow); min-height: calc(100vh - 2 * var(--gap)); }
+  /* The rounded panel is the stage, so the drop overlay stays inside its rounded corners. */
+  [data-theme^='apple'] .hs-stage { background: var(--surface); border-radius: var(--card-r); box-shadow: 0 0 0 .5px var(--hair-c), 0 24px 60px -30px var(--shadow); min-height: calc(100vh - 2 * var(--gap)); }
+  [data-theme^='apple'] .hs-main { max-width: none; background: transparent; min-height: calc(100vh - 2 * var(--gap)); }
 }
 [data-theme^='apple'] .hs-main h1 { letter-spacing: -.035em; font-weight: 700; }
 [data-theme^='apple'] .hs-nav { border-radius: 9px; transition: background-color .15s ease, transform .12s var(--ap-spring); }

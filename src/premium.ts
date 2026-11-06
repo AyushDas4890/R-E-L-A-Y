@@ -43,11 +43,22 @@ const SCHEDULE_WINDOW_MIN = 5;
 export function scheduleDue(trigger: Extract<Workflow['trigger'], { type: 'schedule' }>, now: Date): string | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(trigger.time);
   if (!m) return null;
-  const day = now.getDay();
+  // With a tzOffset, read the clock in the publisher's zone; without one, in the server's.
+  const z = typeof trigger.tzOffset === 'number' ? new Date(now.getTime() - trigger.tzOffset * 60_000) : null;
+  const day = z ? z.getUTCDay() : now.getDay();
+  const hours = z ? z.getUTCHours() : now.getHours();
+  const minutes = z ? z.getUTCMinutes() : now.getMinutes();
   if (trigger.weekdaysOnly && (day === 0 || day === 6)) return null;
-  const elapsed = now.getHours() * 60 + now.getMinutes() - (Number(m[1]) * 60 + Number(m[2]));
+  const elapsed = hours * 60 + minutes - (Number(m[1]) * 60 + Number(m[2]));
   if (elapsed < 0 || elapsed >= SCHEDULE_WINDOW_MIN) return null;
-  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+  return z ? `${z.getUTCFullYear()}-${z.getUTCMonth() + 1}-${z.getUTCDate()}` : `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
+// {user} becomes a mention of whoever triggered the workflow; {channel} the channel's name.
+export function fillWorkflow(text: string, vars: { userId?: string; channel?: string }): string {
+  return text
+    .replace(/\{user\}/gi, vars.userId ? `<@${vars.userId}>` : 'there')
+    .replace(/\{channel\}/gi, vars.channel ? `#${vars.channel}` : 'this channel');
 }
 
 export function pruneRetention(messages: Message[], retentionDays: number, legalHolds: string[], now: number) {
@@ -103,6 +114,36 @@ export function searchAnswer(question: string, messages: Message[]): Message | n
     if (score > 0 && (!best || score > best.score || (score === best.score && m.ts > best.m.ts))) best = { m, score };
   }
   return best && best.score >= Math.min(2, terms.length) ? best.m : null;
+}
+
+export const BOT_HELP =
+  'Here’s what I can do:\n• `/remind me <what> in 10m` or `/remind #channel <what> in 2h` sets a reminder\n• `/summarize` recaps this channel or thread, `/recap` DMs you a daily recap\n• `/explain <term>` finds where your team defined it\n• `/huddle` starts a call, `/topic <text>` sets the topic\n• Ask me a question here and I’ll look through your messages for the answer. Press Ctrl+K to search everything.';
+
+const TOPIC_ANSWERS: [RegExp, string][] = [
+  [/huddle|call|voice|meet/i, 'Hit Huddle in any channel, or type /huddle. When it ends I post the notes back to the channel.'],
+  [/canvas|doc/i, 'Every channel has a canvas for docs right beside the chat. Edits sync live.'],
+  [/remind|schedule|later/i, 'Try /remind me stretch in 10m, or /remind #channel ship notes in 2h.'],
+  [/workflow|automat/i, 'Workflow Builder can welcome new members, answer keywords and branch on conditions.'],
+  [/price|cost|free|paid|plan/i, 'Everything is unlocked. No seat limits, no paywalls.'],
+];
+
+// What Relay Bot says when someone talks to it (in its DM, or by @mentioning it).
+// `messages` should only hold what the asker can see, without the bot's own posts.
+export function botReply(text: string, messages: Message[], users: Record<string, User>, botId: string): string {
+  const q = text.replace(new RegExp(`<@${botId}>`, 'g'), '').trim();
+  if (/^(help|what can you do\??|commands)\??$/i.test(q) || /\bwhat can you do\b/i.test(q)) return BOT_HELP;
+  if (/^(hi|hey|hello|yo|hiya)\b[\s!.?]*$/i.test(q)) return 'Hey! Ask me a question about your workspace, or say "help" to see what I can do.';
+  if (/\b(who are you|what are you)\b/i.test(q)) return 'I’m Relay Bot. I recap channels, run reminders and workflows, and answer questions from your messages.';
+  const topic = TOPIC_ANSWERS.find(([re]) => re.test(q));
+  // A question gets searched in messages first; a plain statement about a feature gets the canned answer.
+  if (topic && !/\?\s*$/.test(q)) return topic[1];
+  const hit = searchAnswer(q, messages);
+  if (hit) {
+    const who = users[hit.userId]?.name ?? 'someone';
+    return `**${who}** said:\n> ${plainText(hit.text, users).slice(0, 240)}\n_The closest match in channels you can see._`;
+  }
+  if (topic) return topic[1];
+  return 'I couldn’t find that in channels you can see. Try /explain <term>, /summarize or /recap, or say "help".';
 }
 
 export function dailyRecap(

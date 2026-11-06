@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
+import { Starfield } from './Starfield.tsx';
 import '../apple.css';
 import { supabase, authEnabled } from '../supabase.ts';
 
@@ -15,7 +16,7 @@ interface Props {
   onBack?: () => void;
 }
 
-type Provider = 'github' | 'google';
+type Provider = 'github' | 'google' | 'email';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
@@ -36,6 +37,9 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
   const [code, setCode] = useState(invite);
   const [devName, setDevName] = useState('');
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [known, setKnown] = useState(() => { try { return localStorage.getItem('relay.lastEmail') ?? ''; } catch { return ''; } });
+  const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState<Provider | null>(null);
   // Which OAuth providers the Supabase project has switched on (null until known).
   const [enabled, setEnabled] = useState<Record<string, boolean> | null>(null);
@@ -58,7 +62,18 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
     return () => window.removeEventListener('pageshow', onShow);
   }, []);
 
-  async function oauth(provider: Provider) {
+  // Email sign-in: Supabase mails a one-time link; opening it signs the person in on this site.
+  async function emailLink(to = email) {
+    setOauthError(null);
+    if (!supabase) { setOauthError('Email sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, or continue with a name below.'); return; }
+    setBusy('email');
+    const emailRedirectTo = `${window.location.origin}${code ? `?invite=${encodeURIComponent(code)}` : ''}`;
+    const { error } = await supabase.auth.signInWithOtp({ email: to, options: { emailRedirectTo } });
+    setBusy(null);
+    if (error) setOauthError(error.message); else setSent(true);
+  }
+
+  async function oauth(provider: 'github' | 'google') {
     if (!supabase) return;
     setOauthError(null);
     if (enabled && !enabled[provider]) {
@@ -80,6 +95,7 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
   return (
     <div className="ap-si">
       <div className="ap-sky" aria-hidden />
+      <Starfield />
       <header className="ap-si-nav">
         <button className="ap-brand" onClick={onBack} disabled={!onBack}><LogoMark size={22} />Relay</button>
         {onBack && <button className="ap-link-btn" onClick={onBack}><Icon n="back" size={14} /> Home</button>}
@@ -88,12 +104,30 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
         <div className="ap-si-card">
           <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
           <h1>{signedIn ? 'Join a workspace' : 'Sign in to Relay'}</h1>
-          <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : 'Use your GitHub or Google account.'}</p>
+          <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : 'Use GitHub, or get a sign-in link by email.'}</p>
 
           {!signedIn && (
             <button className="ap-pill dark full" onClick={() => (authEnabled ? oauth('github') : setOauthError('GitHub sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, or continue with a name below.'))} disabled={!!busy}>
               <GithubIcon />{busy === 'github' ? 'Opening GitHub…' : 'Continue with GitHub'}
             </button>
+          )}
+          {!signedIn && (
+            sent ? (
+              <p className="ap-si-sub" role="status">Check {email || known} for your sign-in link. You can close this tab.</p>
+            ) : known ? (
+              <>
+                <button className="ap-pill quiet full" disabled={!!busy} onClick={() => { setEmail(known); void emailLink(known); }}>{busy === 'email' ? 'Sending link…' : `Continue as ${known}`}</button>
+                <button className="ap-link-btn" onClick={() => setKnown('')}>Use a different email</button>
+              </>
+            ) : (
+              <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void emailLink(); }}>
+                <label className="ap-si-field">
+                  Email
+                  <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value.trim())} placeholder="you@gmail.com" maxLength={120} />
+                </label>
+                <button className="ap-pill quiet full" disabled={!email || !!busy}>{busy === 'email' ? 'Sending link…' : 'Continue with email'}</button>
+              </form>
+            )
           )}
 
           {signedIn ? (
@@ -107,9 +141,6 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
             </>
           ) : authEnabled ? (
             <>
-              <button className="ap-pill quiet full" onClick={() => oauth('google')} disabled={!!busy}>
-                <GoogleIcon />{busy === 'google' ? 'Opening Google…' : 'Continue with Google'}
-              </button>
               <div className="ap-si-divider">Have an invite?</div>
               <label className="ap-si-field">
                 Invite code

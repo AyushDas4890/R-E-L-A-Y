@@ -71,14 +71,14 @@ const write = (key: string, value: string | null) => {
   }
 };
 
-// The Apple look is the default for a browser that has never picked one: no photo background and the
+// The Apple dark look is the default for a browser that has never picked one: no photo background and the
 // theme's own accent (an old purple accent would repaint its blue). A browser that already adopted
-// Minimal, or chose anything else, is left alone, so nobody is moved twice. White or black follows
-// the system setting.
+// Minimal, or chose anything else, is left alone, so nobody is moved twice. The system light/dark
+// setting does not decide it.
 export function firstLook(adopted: boolean, prefersDark: boolean): { theme: string; bg: string; accent: string } | null {
-  // White is the default look; the system setting no longer decides it.
+  // Apple dark is the default look; the system setting no longer decides it.
   void prefersDark;
-  return adopted ? null : { theme: 'apple', bg: 'none', accent: '' };
+  return adopted ? null : { theme: 'apple-dark', bg: 'none', accent: '' };
 }
 
 // The Notion look lets people drag the sidebar edge. Anything unusable falls back to the default width.

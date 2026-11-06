@@ -23,3 +23,9 @@ test('recap and explain parse', () => {
   assert.deepEqual(parseSlash('/explain SLO'), { kind: 'explain', term: 'SLO' });
   assert.equal(parseSlash('/explain')?.kind, 'usage');
 });
+
+test('/remind #channel targets a channel', async () => {
+  const { parseSlash } = await import('./slash.ts');
+  const s = parseSlash('/remind #launch ship notes in 2h');
+  assert.deepEqual(s && s.kind === 'remind' ? [s.channel, s.text, s.inMs] : null, ['launch', 'ship notes', 7_200_000]);
+});

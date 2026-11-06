@@ -778,12 +778,12 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
       {doc.notice && <div className="pg-banner warn" role="status"><span>{doc.notice}</span><button className="icon-btn" aria-label="Dismiss" onClick={doc.dismissNotice}>×</button></div>}
 
       <div className="pg-actions">
-        {meta.verified && meta.verified.until > Date.now() && <span className="pg-verified" title={`Verified by ${snap.users[meta.verified.by]?.name ?? 'someone'} until ${new Date(meta.verified.until).toLocaleDateString()}`}>✔ Verified</span>}
+        {meta.verified && meta.verified.until > Date.now() && <span className="pg-verified" title={`Verified by ${snap.users[meta.verified.by]?.name ?? 'someone'} until ${new Date(meta.verified.until).toLocaleDateString()}`}><Icon n="check" size={14} /> Verified</span>}
         {meta.verified && meta.verified.until <= Date.now() && <span className="pg-verified expired">Verification expired</span>}
         <span className="muted pg-edited">Edited {new Date(meta.editedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
         {!rowRef && !trashed && <button className="ghost-btn pg-share" aria-haspopup="dialog" onClick={share.toggle}>Share</button>}
-        <button className={`icon-btn ${panel === 'comments' ? 'lit' : ''}`} aria-label="Comments" aria-pressed={panel === 'comments'} onClick={() => setPanel(panel === 'comments' ? null : 'comments')}>💬{doc.comments.filter((c) => !c.parent && !c.resolved).length > 0 && <sup>{doc.comments.filter((c) => !c.parent && !c.resolved).length}</sup>}</button>
-        <button className={`icon-btn ${panel === 'assistant' ? 'lit' : ''}`} aria-label="Assistant" aria-pressed={panel === 'assistant'} onClick={() => setPanel(panel === 'assistant' ? null : 'assistant')}>✨</button>
+        <button className={`icon-btn ${panel === 'comments' ? 'lit' : ''}`} aria-label="Comments" aria-pressed={panel === 'comments'} onClick={() => setPanel(panel === 'comments' ? null : 'comments')}><Icon n="message" />{doc.comments.filter((c) => !c.parent && !c.resolved).length > 0 && <sup>{doc.comments.filter((c) => !c.parent && !c.resolved).length}</sup>}</button>
+        <button className={`icon-btn ${panel === 'assistant' ? 'lit' : ''}`} aria-label="Assistant" aria-pressed={panel === 'assistant'} onClick={() => setPanel(panel === 'assistant' ? null : 'assistant')}><Icon n="bot" /></button>
         {!rowRef && <button className={`icon-btn ${isFav ? 'lit' : ''}`} aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'} aria-pressed={isFav} onClick={() => send({ t: 'pageFavorite', id: pageId, on: !isFav })}><Icon n="star" fill={isFav} /></button>}
         <button className="icon-btn" aria-label="Page options" onClick={(e) => setPopup({ kind: 'pageMenu', rect: rectOf(e.currentTarget) })}><Icon n="more" /></button>
       </div>
@@ -793,7 +793,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
         {meta.icon && <button className="pg-icon" aria-label="Change icon" disabled={!editable} onClick={(e) => setPopup({ kind: 'icon', rect: rectOf(e.currentTarget) })}>{meta.icon}</button>}
         {editable && (!meta.icon || (!meta.cover && !rowRef)) && (
           <div className="pg-add">
-            {!meta.icon && <button className="ghost-btn" onClick={(e) => setPopup({ kind: 'icon', rect: rectOf(e.currentTarget) })}>☺ Add icon</button>}
+            {!meta.icon && <button className="ghost-btn" onClick={(e) => setPopup({ kind: 'icon', rect: rectOf(e.currentTarget) })}><Icon n="smile" /> Add icon</button>}
             {!meta.cover && !rowRef && <button className="ghost-btn" onClick={(e) => setPopup({ kind: 'cover', rect: rectOf(e.currentTarget) })}>▣ Add cover</button>}
           </div>
         )}
