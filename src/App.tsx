@@ -11,7 +11,7 @@ import { gsap } from 'gsap';
 import { pageTransition } from './transition.ts';
 import { Avatar } from './components/Avatar.tsx';
 import { Composer } from './components/Composer.tsx';
-import { HuddleBar } from './components/Huddle.tsx';
+import { HuddleBar, ScreenOverlay } from './components/Huddle.tsx';
 import { useHuddleCalls } from './huddle-call.ts';
 import { MessageList } from './components/MessageList.tsx';
 import {
@@ -432,6 +432,7 @@ export default function App() {
 
   return (
     <Ctx.Provider value={ctx}>
+      <ScreenOverlay />
       <div
         className={`shell ${navOpen ? 'nav-open' : ''} ${panel ? 'has-panel' : ''} ${notion && sideCollapsed ? 'side-collapsed' : ''}`}
         style={notion ? ({ '--side': `${sideW}px` } as CSSProperties) : undefined}
