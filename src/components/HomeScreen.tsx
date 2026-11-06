@@ -6,7 +6,6 @@ import type { ClientEvent, HomeItem, HomeKind, HomeTask, WorkspaceSummary } from
 import { progress } from '../home.ts';
 import { LogoMark } from './LogoIntro.tsx';
 import { WorkspaceTile } from './Workspaces.tsx';
-import { Constellation } from './Constellation.tsx';
 import { carriesFiles, carriesTextOrLink, classifyDrop, isTextFile, moveBefore, nudge, orderBy, useReorder, useSavedOrder, WORKSPACE_ORDER_KEY } from '../dnd.ts';
 import '../home.css';
 import '../dnd.css';
@@ -180,8 +179,6 @@ export function HomeScreen({ name, items, mine, lastWorkspace, send, onEnter, on
         onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false); }}
         onDrop={(e) => void onDrop(e)}
       >
-        <Constellation mine={sorted} onEnter={onEnter} />
-        {mine.length > 0 && <p className="hs-hint" aria-hidden="true">Hover a glowing node to peek, click to jump in, drag to move it around</p>}
         {dropping && <div className="hs-drop" aria-hidden="true"><b>Drop to add to Home</b><span>A link becomes a link card, text becomes a note</span></div>}
         {notice && <p className="hs-notice" role="status">{notice}</p>}
         <main className="hs-main">
