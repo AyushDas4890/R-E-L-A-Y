@@ -1,5 +1,5 @@
 export type Slash =
-  | { kind: 'remind'; text: string; inMs: number; label: string }
+  | { kind: 'remind'; text: string; inMs: number; label: string; channel?: string }
   | { kind: 'topic'; text: string }
   | { kind: 'huddle' }
   | { kind: 'summarize' }
@@ -18,10 +18,14 @@ export function parseSlash(input: string): Slash | null {
   switch (cmd) {
     case 'remind': {
       const m = arg.match(/^(?:me\s+)?(.+?)\s+in\s+(\d+)\s*([smhd])$/i);
-      if (!m) return { kind: 'usage', text: 'Usage: /remind me <what> in <10m|2h|1d>' };
+      if (!m) return { kind: 'usage', text: 'Usage: /remind me <what> in <10m|2h|1d>, or /remind #channel <what> in <10m|2h|1d>' };
       const n = Number(m[2]);
       const unit = m[3].toLowerCase();
-      return { kind: 'remind', text: m[1], inMs: n * UNITS[unit], label: `${n}${unit}` };
+      // "/remind #launch ship notes in 2h" posts the reminder in that channel instead of a DM.
+      const target = m[1].match(/^#([\w-]+)\s+(.+)$/);
+      return target
+        ? { kind: 'remind', text: target[2], inMs: n * UNITS[unit], label: `${n}${unit}`, channel: target[1].toLowerCase() }
+        : { kind: 'remind', text: m[1], inMs: n * UNITS[unit], label: `${n}${unit}` };
     }
     case 'topic':
       return arg ? { kind: 'topic', text: arg } : { kind: 'usage', text: 'Usage: /topic <new topic>' };

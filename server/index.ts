@@ -31,8 +31,11 @@ import {
   barred,
   canPost,
   computeAnalytics,
+  BOT_HELP,
+  botReply,
   dailyRecap,
   explainTerm,
+  fillWorkflow,
   huddleNote,
   isAdmin,
   pruneRetention,
@@ -146,7 +149,7 @@ function seed(name = 'Relay HQ', createdBy?: string, inviteOnly = false): DB {
         name: 'Answer "help"',
         enabled: true,
         trigger: { type: 'keyword', keyword: '!help', channelId: 'any' },
-        reply: 'Slash commands: /remind, /topic, /me, /shrug, /huddle, /summarize. Press ⌘K to search anything.',
+        reply: BOT_HELP,
       },
     ],
     scheduled: [],
@@ -492,14 +495,15 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       const { keyword, channelId } = wf.trigger;
       if (channelId !== 'any' && channelId !== message.channelId) continue;
       if (!message.text.toLowerCase().includes(keyword.toLowerCase())) continue;
-      postMessage(message.channelId, BOT_ID, workflowReply(wf, message.text), { threadId: message.threadId ?? message.id });
+      const vars = { userId: message.userId, channel: db.channels[message.channelId]?.name };
+      postMessage(message.channelId, BOT_ID, fillWorkflow(workflowReply(wf, message.text), vars), { threadId: message.threadId ?? message.id });
     }
   }
 
-  function runJoinWorkflows(channelId: string): void {
+  function runJoinWorkflows(channelId: string, userId?: string): void {
     for (const wf of db.workflows) {
       if (wf.enabled && wf.trigger.type === 'join' && wf.trigger.channelId === channelId) {
-        postMessage(channelId, BOT_ID, wf.reply);
+        postMessage(channelId, BOT_ID, fillWorkflow(wf.reply, { userId, channel: db.channels[channelId]?.name }));
       }
     }
   }
@@ -565,7 +569,10 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
     } else if (t.type === 'join') {
       trigger = { type: 'join', channelId: t.channelId };
     } else if (t.type === 'schedule') {
-      trigger = { type: 'schedule', channelId: t.channelId, time: str(t.time, 5), weekdaysOnly: !!t.weekdaysOnly };
+      const time = str(t.time, 5);
+      if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(time)) return null;
+      const tz = typeof t.tzOffset === 'number' && Number.isFinite(t.tzOffset) && Math.abs(t.tzOffset) <= 840 ? Math.round(t.tzOffset) : undefined;
+      trigger = { type: 'schedule', channelId: t.channelId, time, weekdaysOnly: !!t.weekdaysOnly, ...(tz === undefined ? {} : { tzOffset: tz }) };
     } else return null;
     const id = str(w.id, 64) || randomUUID();
     const prev = db.workflows.find((p) => p.id === id);
@@ -576,7 +583,8 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       (!!target && mayPost(target, userId));
     if (!allowed) return null;
     const reply = str(w.reply, 4000);
-    const branch = w.branch && typeof w.branch.contains === 'string' && w.branch.contains.trim()
+    if (!reply.trim()) return null;
+    const branch = w.branch && typeof w.branch.contains === 'string' && w.branch.contains.trim() && str(w.branch.reply, 4000).trim()
       ? { contains: w.branch.contains.slice(0, 100), reply: str(w.branch.reply, 4000) }
       : undefined;
     return { id, name: str(w.name, 80) || 'Workflow', enabled: !!w.enabled, trigger, reply, branch };
@@ -629,7 +637,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       send(ws, { t: 'init', snapshot: snapshotFor(userId) });
       broadcastUser(user);
       broadcast({ t: 'presence', online: onlineIds() });
-      if (!isMember) runJoinWorkflows('general');
+      if (!isMember) runJoinWorkflows('general', userId);
       persist();
       return 'ok';
     }
@@ -729,17 +737,29 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
               send(ws, { t: 'error', message: 'You can have up to 100 reminders and scheduled messages.' });
               return;
             }
+            const target = slash.channel ? Object.values(db.channels).find((c) => c.kind !== 'dm' && c.name.toLowerCase() === slash.channel && canSee(c, userId) && canPost(c, db.users[userId])) : undefined;
+            if (slash.channel && !target) {
+              postMessage(ev.channelId, BOT_ID, `I can't find a channel called #${slash.channel} that you can post in.`, { system: true, threadId: threadId });
+              return;
+            }
+            const at = Date.now() + slash.inMs;
             const sched: Scheduled = {
               id: randomUUID(),
-              channelId: dmId(userId, BOT_ID),
+              channelId: target ? target.id : dmId(userId, BOT_ID),
               userId,
-              text: `Reminder: ${slash.text}`,
-              at: Date.now() + slash.inMs,
+              text: target ? slash.text : `Reminder: ${slash.text}`,
+              at,
             };
-            openDM(userId, BOT_ID);
+            if (!target) openDM(userId, BOT_ID);
             db.scheduled.push(sched);
             sendScheduled(userId);
-            postMessage(ev.channelId, BOT_ID, `Got it — I'll remind <@${userId}> to "${slash.text}" in ${slash.label}.`, { system: true });
+            const when = new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            postMessage(
+              ev.channelId,
+              BOT_ID,
+              target ? `Done. I'll post "${slash.text}" in #${target.name} at ${when}.` : `Got it — I'll remind <@${userId}> to "${slash.text}" in ${slash.label}.`,
+              { system: true },
+            );
           } else if (slash.kind === 'topic') {
             ch.topic = slash.text.slice(0, 250);
             broadcastChannel(ch, { t: 'channel', channel: ch });
@@ -767,6 +787,11 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
         const stored = uploads.length ? await Promise.all(uploads.map((f) => files.offload(f))) : undefined;
         const posted = postMessage(ev.channelId, userId, ev.text, { threadId: threadId, files: stored });
         if (posted) void addPreview(posted);
+        // Talking to Relay Bot (its DM, or an @mention) gets an answer.
+        if (posted && (ch.id === dmId(userId, BOT_ID) || ev.text.includes(`<@${BOT_ID}>`))) {
+          const visible = db.messages.filter((m) => m.userId !== BOT_ID && db.channels[m.channelId] && canSee(db.channels[m.channelId], userId));
+          postMessage(ch.id, BOT_ID, botReply(ev.text, visible, db.users, BOT_ID), { threadId: threadId ?? (ch.kind === 'dm' ? undefined : posted.id) });
+        }
         return;
       }
       case 'edit': {
@@ -863,7 +888,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
         if (!ensureMember(ch, userId)) return;
         broadcastChannel(ch, { t: 'channel', channel: ch });
         postMessage(ch.id, BOT_ID, `<@${userId}> joined the channel.`, { system: true });
-        runJoinWorkflows(ch.id);
+        runJoinWorkflows(ch.id, userId);
         persist();
         return;
       }
@@ -1082,10 +1107,11 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
           send(ws, { t: 'error', message: 'Only admins can add guests to channels.' });
           return;
         }
-        ensureMember(ch, ev.userId);
+        const added = ensureMember(ch, ev.userId);
         broadcastChannel(ch, { t: 'channel', channel: ch });
         resendInit(ev.userId);
         postMessage(ch.id, BOT_ID, `<@${userId}> added <@${ev.userId}>.`, { system: true });
+        if (added) runJoinWorkflows(ch.id, ev.userId);
         audit(userId, 'channel.addMember', `${db.users[ev.userId].name} → #${ch.name}`);
         return;
       }
@@ -1398,7 +1424,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       const key = scheduleDue(wf.trigger, now);
       if (!key || scheduleFired.get(wf.id) === key) continue;
       scheduleFired.set(wf.id, key);
-      postMessage(wf.trigger.channelId, BOT_ID, wf.reply);
+      postMessage(wf.trigger.channelId, BOT_ID, fillWorkflow(wf.reply, { channel: db.channels[wf.trigger.channelId]?.name }));
     }
   }, 20_000));
 

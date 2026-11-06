@@ -21,7 +21,7 @@ import {
   ScheduledModal,
   SchedulePicker,
   SearchPalette,
-  WorkflowModal,
+  WorkflowsView,
 } from './components/Modals.tsx';
 import { CanvasPanel, DetailsPanel, ThreadPanel } from './components/Panels.tsx';
 import { AdminModal, TermsGate } from './components/Admin.tsx';
@@ -45,9 +45,9 @@ import { TeamspaceModal } from './components/pages/TeamspaceModal.tsx';
 import { pushRecent } from './recent.ts';
 import { PageView } from './components/pages/PageView.tsx';
 
-type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'workflows' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
+type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
-type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page' | 'home' | 'calendar' | 'library';
+type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page' | 'home' | 'calendar' | 'library' | 'workflows';
 type Menu = null | 'workspace' | 'more' | 'create' | 'dnd' | 'bell' | 'addTab' | 'addChannel';
 interface Place { view: View; channel: string; page?: string }
 
@@ -60,7 +60,7 @@ if (params.get('ws')) try { localStorage.setItem('relay.workspace', params.get('
 // Back would drop the visitor mid-page, on a section they didn't ask for.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const LEVEL_LABEL: Record<ChannelLevel, string> = { all: 'All new posts', mentions: 'Just mentions', mute: 'Mute' };
-const VIEW_LABEL: Record<Exclude<View, 'channel' | 'page'>, string> = { activity: 'Inbox', dms: 'Direct messages', saved: 'Later', directory: 'People', huddles: 'Huddles', home: 'Home', calendar: 'Calendar', library: 'Templates' };
+const VIEW_LABEL: Record<Exclude<View, 'channel' | 'page'>, string> = { activity: 'Inbox', dms: 'Direct messages', saved: 'Later', directory: 'People', huddles: 'Huddles', home: 'Home', calendar: 'Calendar', library: 'Templates', workflows: 'Workflows' };
 const remember = (key: string, value: string) => {
   try { localStorage.setItem(key, value); } catch { /* storage blocked: the setting just won't persist */ }
 };
@@ -491,7 +491,7 @@ export default function App() {
             <button className="rail-btn" title="More" aria-expanded={menu === 'more'} onClick={() => toggleMenu('more')}><Icon n="more" size={20} /><span>More</span>{snap.scheduled.length > 0 && <b className="rail-badge">{snap.scheduled.length}</b>}</button>
             {menu === 'more' && (
               <div className="menu side" role="menu">
-                <button role="menuitem" onClick={() => { setModal('workflows'); setMenu(null); }}><Icon n="zap" /> Workflows</button>
+                <button role="menuitem" onClick={() => { showView('workflows'); setMenu(null); }}><Icon n="zap" /> Workflows</button>
                 <button role="menuitem" onClick={() => { setModal('scheduled'); setMenu(null); }}><Icon n="clock" /> Scheduled messages{snap.scheduled.length ? ` (${snap.scheduled.length})` : ''}</button>
                 <button role="menuitem" onClick={() => showView('huddles')}><Icon n="headphones" /> Huddles</button>
                 <button role="menuitem" onClick={() => showView('directory')}><Icon n="users" /> People</button>
@@ -615,7 +615,7 @@ export default function App() {
             )}
           </div>
           <div className="side-bottom notion-only">
-            <button className="side-item" onClick={() => setModal('workflows')}><span className="hash"><Icon n="zap" /></span><span className="label">Workflows</span></button>
+            <button className="side-item" onClick={() => showView('workflows')}><span className="hash"><Icon n="zap" /></span><span className="label">Workflows</span></button>
             <button className="side-item" onClick={() => setModal('scheduled')}><span className="hash"><Icon n="clock" /></span><span className="label">Scheduled messages</span>{snap.scheduled.length > 0 && <span className="count">{snap.scheduled.length}</span>}</button>
             {admin && <button className="side-item" onClick={() => setModal('admin')}><span className="hash"><Icon n="settings" /></span><span className="label">Admin console</span>{(snap.admin?.flags.length ?? 0) > 0 && <span className="count">{snap.admin?.flags.length}</span>}</button>}
             <button className="side-item" onClick={() => setModal('plan')}><span className="hash"><Icon n="gem" /></span><span className="label">Plan</span></button>
@@ -633,6 +633,7 @@ export default function App() {
             : view === 'home' ? <HomeView onOpen={openPage} onNew={(db) => createPage(null, null, db ? { db: true } : {})} onLibrary={() => showView('library')} onCalendar={() => showView('calendar')} />
             : view === 'calendar' ? <CalendarApp onOpen={openPage} />
             : view === 'library' ? <LibraryView onOpen={openPage} />
+            : view === 'workflows' ? <WorkflowsView />
             : view === 'activity' ? (notion ? <InboxView onOpen={openPage} /> : <ActivityView />)
             : view === 'saved' ? <SavedView />
             : view === 'dms' ? <DmsView onNew={() => showView('directory')} />
@@ -682,7 +683,7 @@ export default function App() {
                       <div className="menu" role="menu">
                         <button role="menuitem" onClick={() => { setPanel({ kind: 'canvas' }); setMenu(null); }}><Icon n="file" /> Canvas</button>
                         <button role="menuitem" onClick={() => { setPanel({ kind: 'list' }); setMenu(null); }}><Icon n="checkSquare" /> List</button>
-                        <button role="menuitem" onClick={() => { setModal('workflows'); setMenu(null); }}><Icon n="zap" /> Workflow</button>
+                        <button role="menuitem" onClick={() => { showView('workflows'); setMenu(null); }}><Icon n="zap" /> Workflow</button>
                       </div>
                     )}
                   </div>
@@ -700,7 +701,7 @@ export default function App() {
                       <strong>Write a canvas</strong><small>A shared doc for plans and notes</small>
                       <span className="starter-art" aria-hidden><i /><i /><i /></span>
                     </button>
-                    <button className="starter-card c2" onClick={() => setModal('workflows')}>
+                    <button className="starter-card c2" onClick={() => showView('workflows')}>
                       <strong>Start from a template</strong><small>Standups, triage, help desk and more</small>
                       <span className="starter-art" aria-hidden><i /><i /><i /></span>
                     </button>
@@ -786,7 +787,6 @@ export default function App() {
       {modal === 'profile' && <ProfileModal onClose={() => setModal(null)} appearance={appearance} />}
       {modal === 'plan' && <PlanModal onClose={() => setModal(null)} />}
       {modal === 'scheduled' && <ScheduledModal onClose={() => setModal(null)} />}
-      {modal === 'workflows' && <WorkflowModal onClose={() => setModal(null)} />}
       {modal === 'admin' && admin && <AdminModal onClose={() => setModal(null)} />}
       {modal === 'invite' && <InviteModal snap={snap} send={send} onClose={() => setModal(null)} />}
       {modal === 'createWs' && <CreateWorkspaceModal onClose={() => setModal(null)} onCreate={createWorkspace} />}

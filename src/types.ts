@@ -77,7 +77,8 @@ export interface Workflow {
   trigger:
     | { type: 'keyword'; keyword: string; channelId: string | 'any' }
     | { type: 'join'; channelId: string }
-    | { type: 'schedule'; channelId: string; time: string; weekdaysOnly: boolean };
+    // tzOffset is the publisher's Date.getTimezoneOffset() (minutes behind UTC), so "9:30" means their 9:30.
+    | { type: 'schedule'; channelId: string; time: string; weekdaysOnly: boolean; tzOffset?: number };
   reply: string;
   branch?: { contains: string; reply: string };
   // Who published it. Only they (or an admin) may change or delete it.
