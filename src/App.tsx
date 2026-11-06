@@ -73,14 +73,9 @@ export default function App() {
   const { token, ready, signOut } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
   const [invite, setInvite] = useState(inviteFromUrl);
-  // Show the scroll-zoom intro overlay once per session on first load.
-  const [showIntro, setShowIntro] = useState(() => {
-    try { return !sessionStorage.getItem('relay.introSeen'); } catch { return true; }
-  });
-  const doneIntro = () => {
-    try { sessionStorage.setItem('relay.introSeen', '1'); } catch { /* ignore */ }
-    setShowIntro(false);
-  };
+  // Show the scroll-zoom intro overlay on every page load / refresh.
+  const [showIntro, setShowIntro] = useState(true);
+  const doneIntro = () => setShowIntro(false);
   // Help pages are public and also open for signed-in people, so they are decided before anything else.
   const [siteRoute, goSite] = useRoute();
   const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
