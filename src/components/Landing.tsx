@@ -7,6 +7,7 @@ import { Icon } from './Icon.tsx';
 import { FeaturePage } from './Features.tsx';
 import { HelpPage } from './Help.tsx';
 import { LiveDemo } from './LiveDemo.tsx';
+import { Settle } from './Settle.tsx';
 import { Tour } from './TourScenes.tsx';
 import { ENTER } from '../motion.ts';
 import { RouteLink, SiteFooter, SiteNav, useRoute, type Route } from './Site.tsx';
@@ -73,6 +74,7 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
       <section className="ap-intro ap-words">
         <h2>{words('Everything your team says,')}<br />{words('in one calm place')}</h2>
         <p>Chat, pages and databases side by side, with a teammate that keeps the follow-ups from slipping.</p>
+        <Settle />
       </section>
 
       <section className="ap-intro ap-reveal" id="live">

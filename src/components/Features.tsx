@@ -336,10 +336,26 @@ const searchBuild: Build = (q) => {
   return tl;
 };
 
+// Small drawn pictures for the overview tiles: each one is the feature, not an icon of it.
+function FactArt({ kind }: { kind: string }) {
+  switch (kind) {
+    case 'history': return <div className="fa fa-history" aria-hidden><b>∞</b><span>messages kept</span></div>;
+    case 'huddle': return <div className="fa fa-huddle" aria-hidden>{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ animationDelay: `${(i * 97) % 900}ms` }} />)}</div>;
+    case 'canvas': return <div className="fa fa-canvas" aria-hidden><i /><i /><i /><i className="caret" /></div>;
+    case 'list': return <div className="fa fa-list" aria-hidden><span><em className="done" />Ship notes<u>Done</u></span><span><em className="doing" />Review copy<u>Doing</u></span><span><em />Book venue<u>To do</u></span></div>;
+    case 'flow': return <div className="fa fa-flow" aria-hidden><code>!standup</code><span /><b>Relay Bot replies</b></div>;
+    case 'remind': return <div className="fa fa-remind" aria-hidden><code>/remind me stretch in 10m</code></div>;
+    case 'search': return <div className="fa fa-search" aria-hidden><kbd>Ctrl</kbd><kbd>K</kbd></div>;
+    case 'private': return <div className="fa fa-private" aria-hidden><Icon n="lock" size={16} /><code>design-leads</code></div>;
+    case 'admin': return <div className="fa fa-admin" aria-hidden><span>Owner</span><span>Admin</span><span>Member</span><span>Guest</span></div>;
+    default: return null;
+  }
+}
+
 // ======================= Page content =======================
 
 interface Detail { chapter: number; eyebrow: string; title: string; text: string; points: string[] }
-interface Fact { icon: IconName; title: string; text: string }
+interface Fact { icon: IconName; title: string; text: string; art?: string }
 interface PageDef {
   eyebrow: string;
   title: ReactNode;
@@ -363,15 +379,15 @@ const PAGE_DEFS: Record<FeatureRoute, PageDef> = {
       { chapter: 3, eyebrow: 'Relay Bot', title: 'Catch up in one message', text: 'Recap summarises a channel in seconds. The same bot answers questions, sends reminders and posts huddle notes.', points: ['Channel recaps and thread summaries', 'Daily recaps and file summaries', 'Answers from your own messages'] },
     ],
     facts: [
-      { icon: 'message', title: 'Unlimited history', text: 'Every message stays searchable. Nothing ages out.' },
-      { icon: 'headphones', title: 'Huddles', text: 'Voice and screen share in any channel.' },
-      { icon: 'file', title: 'Canvases', text: 'A document for every channel, beside the chat.' },
-      { icon: 'checkSquare', title: 'Lists', text: 'Track work by status and owner.' },
-      { icon: 'zap', title: 'Workflows', text: 'Keyword, join and schedule triggers.' },
-      { icon: 'clock', title: 'Reminders', text: 'Scheduled messages and /remind.' },
-      { icon: 'search', title: 'Search', text: 'Ctrl K, with answers to questions.' },
-      { icon: 'lock', title: 'Private channels', text: 'Plus guest access and user groups.' },
-      { icon: 'settings', title: 'Admin console', text: 'Roles, invites and moderation.' },
+      { icon: 'message', art: 'history', title: 'Nothing ages out', text: 'Scroll back to the very first message. It is still there, and still searchable.' },
+      { icon: 'headphones', art: 'huddle', title: 'Talk it through', text: 'Voice and screen share, one click from any channel.' },
+      { icon: 'file', art: 'canvas', title: 'A doc beside every chat', text: 'Plans live next to the conversation that made them.' },
+      { icon: 'checkSquare', art: 'list', title: 'Work with an owner', text: 'Status, assignee and due date.' },
+      { icon: 'zap', art: 'flow', title: 'Teach the bot your routines', text: 'Triggers on a keyword, a join or the clock.' },
+      { icon: 'clock', art: 'remind', title: 'Never lose the follow-up', text: 'Scheduled messages, or just type /remind.' },
+      { icon: 'search', art: 'search', title: 'Ask, don’t dig', text: 'Press Ctrl K, ask a question, get the message.' },
+      { icon: 'lock', art: 'private', title: 'Doors that close', text: 'Private channels, guests and user groups.' },
+      { icon: 'settings', art: 'admin', title: 'You hold the keys', text: 'Roles, invites and moderation.' },
     ],
     next: 'huddles',
   },
@@ -501,11 +517,12 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
       </section>
 
       <section className="fp-facts ap-reveal">
-        <h2>{page === 'overview' ? 'Everything included, every plan' : `${def.eyebrow} at a glance`}</h2>
-        <div className="fp-fact-grid">
+        <h2>{page === 'overview' ? <>One plan.<br />All of it, unlocked.</> : `${def.eyebrow} at a glance`}</h2>
+        {page === 'overview' && <p className="fp-facts-sub">There is no tier to climb and nothing held back for later.</p>}
+        <div className={page === 'overview' ? 'fp-bento' : 'fp-fact-grid'}>
           {def.facts.map((f) => (
-            <div key={f.title} className="fp-fact">
-              <Icon n={f.icon} size={22} />
+            <div key={f.title} className={`fp-fact ${f.art ? `art-${f.art}` : ''}`}>
+              {f.art ? <FactArt kind={f.art} /> : <Icon n={f.icon} size={22} />}
               <h3>{f.title}</h3>
               <p>{f.text}</p>
             </div>
