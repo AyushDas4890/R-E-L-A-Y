@@ -1,8 +1,8 @@
 /* Landing hero: the feature shelf (see featureShelf.ts). Everything is prefixed fs- so it cannot touch the rest of the app. */
-.fs{--H:min(38svh,33vw,440px);--blue:#0071e3;--blue-ink:#0066cc;--out:cubic-bezier(.32,.72,0,1);--soft:cubic-bezier(.25,.1,.25,1);position:relative;display:flex;flex-direction:column;align-items:center;margin:0 -24px;padding:96px 0 20px;min-height:max(100svh,760px);color:#1d1d1f;user-select:none}
+.fs{--H:min(38svh,33vw,440px);--blue:#7c3aed;--blue-ink:#5b21b6;--out:cubic-bezier(.32,.72,0,1);--soft:cubic-bezier(.25,.1,.25,1);position:relative;display:flex;flex-direction:column;align-items:center;margin:0 -24px;padding:96px 0 20px;min-height:max(100svh,760px);color:#1a0a2e;user-select:none}
 :where(.fs,.fs-sheet) button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .fs-h{font-weight:600;font-size:clamp(30px,4vw,54px);letter-spacing:-.035em;line-height:1.05;text-align:center;padding:0 24px;margin:0}
-.fs-sub{margin:10px 0 0;padding:0 24px;text-align:center;font-size:clamp(16px,1.6vw,21px);color:#6e6e73;letter-spacing:-.01em}
+.fs-sub{margin:10px 0 0;padding:0 24px;text-align:center;font-size:clamp(16px,1.6vw,21px);color:#5a4a73;letter-spacing:-.01em}
 .fs-act-row{display:flex;gap:20px;align-items:center;margin:18px 0 4px}
 .fs-shelf{position:relative;width:100%;height:calc(var(--H) + 64px);margin-top:2px;perspective:1400px;touch-action:pan-y;cursor:grab}
 .fs-shelf.drag{cursor:grabbing}
@@ -35,7 +35,7 @@
 .fs-arr svg{width:14px;height:14px;fill:none;stroke:#1d1d1f;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .fs-dots{display:flex;gap:8px;align-items:center;padding:10px 14px;border-radius:999px;background:rgba(0,0,0,.05)}
 .fs-dots button{width:7px;height:7px;padding:0;border-radius:4px;background:rgba(0,0,0,.22);transition:width .5s var(--out),background-color .3s var(--soft)}
-.fs-dots button.on{width:22px;background:#1d1d1f}
+.fs-dots button.on{width:22px;background:#7c3aed}
 /* the detail sheet is on the body */
 .fs-sheet{position:fixed;inset:0;z-index:200;display:none;font-family:var(--ap-font,system-ui,sans-serif);color:#1d1d1f;-webkit-font-smoothing:antialiased}.fs-sheet.on{display:block}
 .fs-scrim{position:absolute;inset:0;background:rgba(245,245,247,.55);backdrop-filter:blur(30px) saturate(160%);-webkit-backdrop-filter:blur(30px) saturate(160%)}
@@ -45,8 +45,8 @@
 .fs-txt{display:grid;gap:14px;max-width:460px}
 .fs-txt .k{color:#6e6e73;font-size:17px}.fs-txt h2{font-weight:600;font-size:clamp(40px,5vw,64px);letter-spacing:-.04em;line-height:1.02;margin:0}
 .fs-txt p{font-size:21px;line-height:1.4;color:#3a3a3c;margin:0}.fs-txt .hint{color:#6e6e73;font-size:15px}
-.fs-go{margin-top:8px;height:44px;padding:0 22px;border-radius:999px;background:#0071e3;color:#fff;font-weight:500;font-size:16px;width:max-content}
-.fs-go:hover{background:#0077ed}
+.fs-go{margin-top:8px;height:44px;padding:0 22px;border-radius:999px;background:#7c3aed;color:#fff;font-weight:500;font-size:16px;width:max-content;box-shadow:0 4px 16px rgba(124,58,237,.35)}
+.fs-go:hover{background:#6d28d9}
 .fs-slot{height:100%;aspect-ratio:474/900;justify-self:end}
 .fs-hero{position:fixed;border-radius:26px;overflow:hidden;box-shadow:0 30px 60px -28px rgba(0,0,0,.4),0 0 0 1px rgba(0,0,0,.06);background:#fff;transform-origin:0 0}
 @media(max-width:767px){
@@ -54,6 +54,6 @@
 .fs-panel{width:calc(100vw - 24px);height:92svh;margin:calc(92svh/-2) 0 0 calc((100vw - 24px)/-2);grid-template-columns:1fr;grid-template-rows:auto 1fr;padding:56px 24px 24px;overflow:auto;gap:20px;align-items:start}
 .fs-slot{order:-1;height:40svh;justify-self:center}.fs-txt h2{font-size:38px}
 }
-.fs button:focus-visible,.fs-sheet button:focus-visible{outline:2px solid #0071e3;outline-offset:3px;border-radius:8px}
-.fs-sp .t{color:#1d1d1f}
+.fs button:focus-visible,.fs-sheet button:focus-visible{outline:2px solid #7c3aed;outline-offset:3px;border-radius:8px}
+.fs-sp .t{color:#1a0a2e}
 @media(prefers-reduced-motion:reduce){.fs-dots button,.fs-arr,.fs-more{transition:none}}
