@@ -1,0 +1,14 @@
+/* "One calm place": scattered chips that settle into a single channel. */
+.st { max-width: 760px; margin: 56px auto 0; padding: 150px 0 0; position: relative; }
+.st-frame { border-radius: 22px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .06), 0 18px 48px -24px rgba(0, 0, 0, .18); text-align: left; overflow: visible; }
+.st-bar { display: flex; align-items: baseline; gap: 8px; padding: 16px 22px; border-bottom: 1px solid rgba(0, 0, 0, .07); font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ap-ink, #1d1d1f); }
+.st-hash { color: var(--ap-ink-3, #86868b); font-weight: 500; }
+.st-bar em { margin-left: auto; font-style: normal; font-weight: 400; font-size: 13px; color: var(--ap-ink-3, #86868b); }
+.st-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 22px; }
+.st-chip { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px 0 12px; border-radius: 999px; background: #f2f3f5; font-size: 15px; font-weight: 500; letter-spacing: -.01em; color: var(--ap-ink, #1d1d1f); will-change: transform; }
+.st-chip .icon { color: var(--ap-blue, #0071e3); }
+@media (max-width: 600px) {
+  .st { padding-top: 90px; margin-top: 32px; }
+  .st-bar em { display: none; }
+  .st-row { padding: 16px; gap: 8px; }
+}
