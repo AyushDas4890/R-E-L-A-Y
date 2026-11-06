@@ -1,3 +1,4 @@
+import { Starfield } from './Starfield.tsx';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -74,6 +75,7 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
     <div className="ap" ref={root} id="top">
       <section className="ap-hero">
         <div className="ap-sky" aria-hidden />
+        <div className="ap-stars-wrap" aria-hidden><Starfield /></div>
         <SiteNav route="home" go={go} onGetStarted={onGetStarted} />
 
         <div className="ap-hero-copy">

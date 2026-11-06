@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
+import { Starfield } from './Starfield.tsx';
 import '../apple.css';
 import { supabase, authEnabled } from '../supabase.ts';
 
@@ -80,6 +81,7 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
   return (
     <div className="ap-si">
       <div className="ap-sky" aria-hidden />
+      <Starfield />
       <header className="ap-si-nav">
         <button className="ap-brand" onClick={onBack} disabled={!onBack}><LogoMark size={22} />Relay</button>
         {onBack && <button className="ap-link-btn" onClick={onBack}><Icon n="back" size={14} /> Home</button>}
