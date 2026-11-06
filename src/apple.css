@@ -202,5 +202,8 @@
 
 /* Living background: drifting dots and glowing nodes behind the landing hero and the sign-in card. */
 .ap-stars { display: block; width: 100%; height: 100%; color: #1d1d1f; pointer-events: none; }
-.ap .ap-hero > .ap-stars-wrap { position: sticky; top: 0; height: 100vh; margin-bottom: -100vh; z-index: 0; pointer-events: none; }
+/* On the scrolling public pages the backdrop is fixed to the window, so every section sits on the same sky. */
+.ap { isolation: isolate; }
+.ap > .ap-stars-wrap { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.ap .ap-sky { z-index: -2; }
 .ap-si > canvas.ap-stars { position: absolute; inset: 0; z-index: 0; }

@@ -1,3 +1,4 @@
+import { Starfield } from './Starfield.tsx';
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -461,6 +462,7 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
 
   return (
     <div className="ap fp" ref={root}>
+      <div className="ap-stars-wrap" aria-hidden><Starfield /></div>
       <section className="ap-hero fp-hero">
         <div className="ap-sky" aria-hidden />
         <SiteNav route={page} go={go} onGetStarted={onGetStarted} />

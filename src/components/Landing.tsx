@@ -73,9 +73,9 @@ function Home({ go, onGetStarted }: Props & { go: (r: Route) => void }) {
 
   return (
     <div className="ap" ref={root} id="top">
+      <div className="ap-stars-wrap" aria-hidden><Starfield /></div>
       <section className="ap-hero">
         <div className="ap-sky" aria-hidden />
-        <div className="ap-stars-wrap" aria-hidden><Starfield /></div>
         <SiteNav route="home" go={go} onGetStarted={onGetStarted} />
 
         <div className="ap-hero-copy">
