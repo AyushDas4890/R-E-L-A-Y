@@ -205,11 +205,12 @@ export default function App() {
   }, [snap?.workspace.id]);
 
   // A new workspace opens on its Home page (channel stays #general for when you go to Messages), with a clean history.
+  // Coming back from the main Home into the same workspace also starts at its Home.
   useEffect(() => {
-    if (!snap) return;
+    if (!snap || atHome) return;
     setHistory({ stack: [{ view: 'home', channel: 'general' }], at: 0 });
     setPanel(null);
-  }, [snap?.workspace.id]);
+  }, [snap?.workspace.id, atHome]);
 
   useEffect(() => {
     if (snap && view === 'channel' && snap.channels[active]) markRead(active);
@@ -629,7 +630,7 @@ export default function App() {
           {!connected && <div className="banner">Reconnecting…</div>}
           {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
           {view === 'page' && place.page ? <PageView key={place.page} pageId={place.page} onOpen={openPage} onGone={() => go({ view: 'channel' })} />
-            : view === 'home' ? <HomeView onChannel={openChannel} onOpen={openPage} onNew={(db) => createPage(null, null, db ? { db: true } : {})} onLibrary={() => showView('library')} onCalendar={() => showView('calendar')} />
+            : view === 'home' ? <HomeView onOpen={openPage} onNew={(db) => createPage(null, null, db ? { db: true } : {})} onLibrary={() => showView('library')} onCalendar={() => showView('calendar')} />
             : view === 'calendar' ? <CalendarApp onOpen={openPage} />
             : view === 'library' ? <LibraryView onOpen={openPage} />
             : view === 'workflows' ? <WorkflowsView />
