@@ -31,7 +31,18 @@ interface Props {
 }
 
 type Drop = { id: string; where: 'before' | 'inside' | 'after' } | null;
-export const iconOf = (n: PageNode): string => n.icon || (n.kind === 'database' ? '🗂️' : '📄');
+export const iconOf = (n: PageNode): ReactNode => {
+  if (n.icon) {
+    if (n.icon === '📄') return <i className="fa-solid fa-file-lines" aria-hidden="true" />;
+    if (n.icon === '📁') return <i className="fa-solid fa-folder" style={{ color: '#f59e0b' }} aria-hidden="true" />;
+    if (n.icon === '🗂️') return <i className="fa-solid fa-database" style={{ color: '#38bdf8' }} aria-hidden="true" />;
+    if (n.icon === '🏠') return <i className="fa-solid fa-house" style={{ color: '#a855f7' }} aria-hidden="true" />;
+    return n.icon;
+  }
+  return n.kind === 'database'
+    ? <i className="fa-solid fa-database" style={{ color: '#38bdf8' }} aria-hidden="true" />
+    : <i className="fa-solid fa-file-lines" aria-hidden="true" />;
+};
 
 // The menu behind a "+": a page, a database, or a ready-made one.
 function NewMenu({ anchor, onClose, onPick, withTemplates }: { anchor: HTMLElement | null; onClose: () => void; onPick: (o: NewPageOptions) => void; withTemplates: boolean }) {
@@ -206,12 +217,12 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
     );
   };
 
-  const head = (key: string, label: string, add?: (el: HTMLElement) => void, onDropHere?: () => void, extra?: ReactNode) => (
+  const head = (key: string, label: ReactNode, add?: (el: HTMLElement) => void, onDropHere?: () => void, extra?: ReactNode) => (
     <div className="side-section" onDragOver={(e) => { if (drag && onDropHere) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); onDropHere?.(); setDrag(null); }}>
       <button className={`side-toggle ${sections[key] ? 'closed' : ''}`} aria-expanded={!sections[key]} onClick={() => setSections((s) => ({ ...s, [key]: !s[key] }))}><i aria-hidden>▾</i> {label}</button>
       <span>
         {extra}
-        {add && <button title={`New page in ${label}`} aria-label={`New page in ${label}`} onClick={(e) => add(e.currentTarget)}>+</button>}
+        {add && <button title="New page" aria-label="New page" onClick={(e) => add(e.currentTarget)}>+</button>}
       </span>
     </div>
   );
@@ -235,10 +246,22 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
       )}
       {teamspaces.map((s) => {
         const pages = live.filter((n) => n.teamspaceId === s.id);
-        const displayIcon = s.icon === '🏠' ? '🏢' : s.icon;
+        const iconNode = s.icon === '🏠' || s.icon === '🏢' || s.id === 'general' ? (
+          <i className="fa-solid fa-house" style={{ color: '#a855f7', marginRight: 6, fontSize: 13 }} aria-hidden="true" />
+        ) : (
+          <span style={{ marginRight: 6 }}>{s.icon}</span>
+        );
         return (
           <div key={s.id}>
-            {head(`ts-${s.id}`, `${displayIcon} ${s.name}`, openPlus(null, s.id), () => drag && send({ t: 'pageMove', id: drag, parentId: null, teamspaceId: s.id, shared: true, after: null }))}
+            {head(
+              `ts-${s.id}`,
+              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                {iconNode}
+                <span>{s.name}</span>
+              </span>,
+              openPlus(null, s.id),
+              () => drag && send({ t: 'pageMove', id: drag, parentId: null, teamspaceId: s.id, shared: true, after: null })
+            )}
             {!sections[`ts-${s.id}`] && pages.map((n) => row(n, 0, new Set()))}
             {!sections[`ts-${s.id}`] && pages.length === 0 && <p className="side-hint muted">{s.id === 'general' ? 'Pages everyone in the workspace can edit.' : 'Nothing here yet.'}</p>}
           </div>
