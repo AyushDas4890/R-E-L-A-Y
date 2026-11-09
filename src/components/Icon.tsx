@@ -1,4 +1,61 @@
-// One line-icon set for the whole interface: 24px grid, 1.5 stroke, colored by the surrounding text.
+// One line-icon set for the whole interface: Font Awesome Classic icons with SVG path fallback.
+export const FA_CLASS_MAP = {
+  lock: 'fa-solid fa-lock',
+  maximize: 'fa-solid fa-expand',
+  minimize: 'fa-solid fa-compress',
+  pip: 'fa-solid fa-window-restore',
+  headphones: 'fa-solid fa-headphones',
+  bellOff: 'fa-solid fa-bell-slash',
+  bell: 'fa-solid fa-bell',
+  menu: 'fa-solid fa-bars',
+  moon: 'fa-solid fa-moon',
+  message: 'fa-solid fa-comment',
+  bookmark: 'fa-solid fa-bookmark',
+  zap: 'fa-solid fa-bolt',
+  clock: 'fa-solid fa-clock',
+  users: 'fa-solid fa-users',
+  gem: 'fa-solid fa-gem',
+  settings: 'fa-solid fa-gear',
+  plus: 'fa-solid fa-plus',
+  building: 'fa-solid fa-building',
+  pencil: 'fa-solid fa-pen-to-square',
+  star: 'fa-solid fa-star',
+  user: 'fa-solid fa-user',
+  check: 'fa-solid fa-check',
+  file: 'fa-solid fa-file-lines',
+  checkSquare: 'fa-solid fa-square-check',
+  sparkles: 'fa-solid fa-wand-magic-sparkles',
+  megaphone: 'fa-solid fa-bullhorn',
+  smile: 'fa-solid fa-face-smile',
+  mic: 'fa-solid fa-microphone',
+  micOff: 'fa-solid fa-microphone-slash',
+  video: 'fa-solid fa-video',
+  paperclip: 'fa-solid fa-paperclip',
+  send: 'fa-solid fa-paper-plane',
+  stop: 'fa-solid fa-stop',
+  pin: 'fa-solid fa-thumbtack',
+  trash: 'fa-solid fa-trash-can',
+  flag: 'fa-solid fa-flag',
+  monitor: 'fa-solid fa-desktop',
+  logout: 'fa-solid fa-arrow-right-from-bracket',
+  volumeX: 'fa-solid fa-volume-xmark',
+  search: 'fa-solid fa-magnifying-glass',
+  command: 'fa-solid fa-keyboard',
+  bot: 'fa-solid fa-robot',
+  home: 'fa-solid fa-house',
+  more: 'fa-solid fa-ellipsis',
+  grid: 'fa-solid fa-table-cells-large',
+  bolt: 'fa-solid fa-bolt-lightning',
+  chevron: 'fa-solid fa-chevron-right',
+  inbox: 'fa-solid fa-inbox',
+  panelLeft: 'fa-solid fa-table-columns',
+  back: 'fa-solid fa-arrow-left',
+  database: 'fa-solid fa-database',
+  layout: 'fa-solid fa-table',
+  calendar: 'fa-solid fa-calendar-days',
+  globe: 'fa-solid fa-globe',
+} as const;
+
 const PATHS = {
   lock: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4',
   maximize: 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7',
@@ -59,6 +116,25 @@ const PATHS = {
 export type IconName = keyof typeof PATHS;
 
 export function Icon({ n, size = 16, fill }: { n: IconName; size?: number; fill?: boolean }) {
+  const faCls = FA_CLASS_MAP[n];
+  if (faCls) {
+    return (
+      <i
+        className={`${faCls} icon ${fill ? 'filled' : ''}`}
+        style={{
+          fontSize: `${size}px`,
+          width: `${size}px`,
+          height: `${size}px`,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          lineHeight: 1,
+          verticalAlign: 'middle',
+        }}
+        aria-hidden="true"
+      />
+    );
+  }
   return (
     <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill={fill ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d={PATHS[n]} />

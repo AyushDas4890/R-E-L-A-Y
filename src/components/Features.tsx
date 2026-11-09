@@ -7,6 +7,7 @@ import { ENTER, EXIT, T, arrive, pointAt, typing } from '../motion.ts';
 import { Icon, type IconName } from './Icon.tsx';
 import { RouteLink, SiteFooter, SiteNav, type FeatureRoute, type Route } from './Site.tsx';
 import FlexibleAccordion from './framer/FlexibleAccordion.tsx';
+import { InteractiveNodeDiagram } from './InteractiveNodeDiagram.tsx';
 import '../apple.css';
 import '../features.css';
 
@@ -586,15 +587,24 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
       <section className="fp-facts ap-reveal">
         <h2>{page === 'overview' ? <>One plan.<br />All of it, unlocked.</> : `${def.eyebrow} at a glance`}</h2>
         {page === 'overview' && <p className="fp-facts-sub">There is no tier to climb and nothing held back for later.</p>}
-        <div className={page === 'overview' ? 'fp-bento' : 'fp-fact-grid'}>
-          {def.facts.map((f) => (
-            <div key={f.title} className={`fp-fact ${f.art ? `art-${f.art}` : ''}`}>
-              {f.art ? <FactArt kind={f.art} /> : <Icon n={f.icon} size={22} />}
-              <h3>{f.title}</h3>
-              <p>{f.text}</p>
-            </div>
-          ))}
-        </div>
+        {page === 'overview' ? (
+          <div className="fp-bento">
+            {def.facts.map((f) => (
+              <div key={f.title} className={`fp-fact ${f.art ? `art-${f.art}` : ''}`}>
+                {f.art ? <FactArt kind={f.art} /> : <Icon n={f.icon} size={22} />}
+                <h3>{f.title}</h3>
+                <p>{f.text}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <InteractiveNodeDiagram
+            category={page}
+            title={`${def.eyebrow} at a glance`}
+            subtitle="Interactive Node Architecture"
+            nodes={def.facts}
+          />
+        )}
       </section>
 
       <section className="ap-final ap-reveal">

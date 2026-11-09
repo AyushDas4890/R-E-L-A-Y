@@ -1,8 +1,7 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
-import DynamicIslandNav from './framer/DynamicIslandNav.tsx';
-import LightBulbButton from './framer/LightBulbButton.tsx';
+import BouncyNavPill from './framer/BouncyNavPill.tsx';
 
 // Public site routes. Each feature in the nav has its own page at a real path
 // (Vercel rewrites every path to index.html, and Vite's dev server does the same).
@@ -46,67 +45,86 @@ export function RouteLink({ to, go, className, children }: { to: Route; go: (r: 
   return <a href={pathOf(to)} className={className} onClick={onClick}>{children}</a>;
 }
 
-const ISLAND_ITEMS = [
-  { label: 'Overview', icon: 'grid', link: '/overview', route: 'overview' as const },
-  { label: 'Huddles', icon: 'headphones', link: '/huddles', route: 'huddles' as const },
-  { label: 'Workflows', icon: 'sparkle', link: '/workflows', route: 'workflows' as const },
-  { label: 'Search', icon: 'search', link: '/search', route: 'search' as const },
-  { label: 'Help', icon: 'book', link: '/help', route: 'help' as const },
+const BOUNCY_MENU_ITEMS = [
+  { label: 'Overview', link: '/overview', route: 'overview' as const },
+  { label: 'Huddles', link: '/huddles', route: 'huddles' as const },
+  { label: 'Workflows', link: '/workflows', route: 'workflows' as const },
+  { label: 'Search', link: '/search', route: 'search' as const },
+  { label: 'Help', link: '/help', route: 'help' as const },
 ];
 
 export function SiteNav({ route, go, onGetStarted, signedIn }: { route: Route; go: (r: Route) => void; onGetStarted: () => void; signedIn?: boolean }) {
   const to = (r: Route) => { go(r); };
 
-  const active = route === 'overview' ? 1
-    : route === 'huddles' ? 2
-    : route === 'workflows' ? 3
-    : route === 'search' ? 4
-    : route === 'help' ? 5
-    : 0;
+  const activeIndex = route === 'overview' ? 0
+    : route === 'huddles' ? 1
+    : route === 'workflows' ? 2
+    : route === 'search' ? 3
+    : route === 'help' ? 4
+    : -1;
 
   return (
-    <header className="ap-nav ap-nav-island">
-      <RouteLink to="home" go={to} className="ap-brand"><LogoMark size={22} />Relay</RouteLink>
-      <div className="ap-island-wrap">
-        <DynamicIslandNav
-          items={ISLAND_ITEMS}
-          active={active}
-          theme="Dark"
-          colors={{
-            fill: 'rgba(28, 24, 37, 0.82)',
-            border: 'rgba(255, 255, 255, 0.1)',
-            pill: 'rgba(154, 107, 255, 0.22)',
-            icon: 'rgba(236, 232, 243, 0.65)',
-            active: '#ffffff',
-            divider: 'rgba(255, 255, 255, 0.1)',
-            focus: '#9a6bff',
-            shadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
-          }}
-          compact={true}
-          labels="Active"
-          margin={[0, 0, 0, 0]}
-          padding={[4, 6, 4, 6]}
-          itemSize={36}
-          iconSize={18}
-          radius="999px"
-          onSelect={(i: number) => {
-            const it = ISLAND_ITEMS[i];
-            if (it) to(it.route);
-          }}
-        />
-      </div>
-      <div className="ap-nav-end">
-        <LightBulbButton
-          onClick={onGetStarted}
-          lightColor={signedIn ? '#3ccf7c' : '#b3ff00'}
-          buttonColor="#181522"
-          substrateColor="#09080e"
-          height={38}
-        >
-          {signedIn ? 'Open Relay' : 'Sign in'}
-        </LightBulbButton>
-      </div>
-    </header>
+    <BouncyNavPill
+      logo={{
+        type: 'text',
+        text: '✦ Relay',
+        textColor: '#ffffff',
+        link: '/',
+        textFont: { fontSize: '20px', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: '1em' },
+      }}
+      menuItems={BOUNCY_MENU_ITEMS}
+      menuStyle={{
+        font: { fontSize: '15px', fontWeight: 500, letterSpacing: '-0.01em', lineHeight: '1em' },
+        itemPadding: '10px 18px',
+        itemRadius: 999,
+        itemGap: 4,
+        dropdownRadius: 18,
+        dropdownGap: 14,
+        dropdownWidth: 200,
+        dropdownItemTextColor: 'rgba(255, 255, 255, 0.7)',
+        dropdownItemHoverTextColor: '#ffffff',
+        dropdownItemHoverBackground: 'rgba(124, 58, 237, 0.25)',
+      }}
+      cta={{
+        enabled: true,
+        label: signedIn ? 'Open Relay' : 'Sign in',
+        href: '#',
+        font: { fontSize: '14px', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: '1em' },
+        padding: '10px 22px',
+        radius: 999,
+      }}
+      layout={{
+        maxWidth: 1060,
+        navbarPadding: '8px 10px 8px 22px',
+        borderRadius: 999,
+        shadow: true,
+      }}
+      colors={{
+        navbarBackground: 'rgba(20, 14, 34, 0.92)',
+        borderColor: 'rgba(124, 58, 237, 0.35)',
+        textMuted: 'rgba(240, 235, 255, 0.78)',
+        menuHoverBackground: '#7c3aed',
+        menuHoverText: '#ffffff',
+        ctaBackground: '#7c3aed',
+        ctaHoverBackground: '#9055ff',
+        ctaText: '#ffffff',
+        ctaHoverText: '#ffffff',
+      }}
+      activePreviewIndex={activeIndex}
+      sticky={true}
+      stickyOffset={16}
+      bounceStiffness={500}
+      bounceDamping={24}
+      onSelect={(item: any) => {
+        if (item?.route) to(item.route);
+        else if (item?.link) {
+          const matched = PAGES.find(p => p.path === item.link);
+          if (matched) to(matched.route);
+        }
+      }}
+      onCtaClick={onGetStarted}
+      onLogoClick={() => to('home')}
+    />
   );
 }
 
