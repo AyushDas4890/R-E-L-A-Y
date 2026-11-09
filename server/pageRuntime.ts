@@ -27,7 +27,7 @@ const MAX_DUPLICATE = 200;
 const MAX_INBOX = 200;
 
 // The default teamspace is not stored; every non-guest member is in it.
-export const defaultSpace = (name: string): Teamspace => ({ id: GENERAL, name, icon: '🏠', description: 'Everyone in the workspace', kind: 'default', members: {} });
+export const defaultSpace = (name: string): Teamspace => ({ id: GENERAL, name, icon: '🏢', description: 'Everyone in the workspace', kind: 'default', members: {} });
 
 export function createPageRuntime(deps: PageDeps) {
   const { store, index } = deps;
@@ -337,7 +337,7 @@ export function createPageRuntime(deps: PageDeps) {
       }
       case 'pageTrash':
       case 'pageRestore': {
-        const page = need(ws, userId, ev.id, 'full');
+        const page = need(ws, userId, ev.id, 'edit');
         if (!page) return true;
         const trash = ev.t === 'pageTrash';
         if (trash === (page.trashedAt !== undefined)) return true;
@@ -350,7 +350,7 @@ export function createPageRuntime(deps: PageDeps) {
         return true;
       }
       case 'pageDelete': {
-        const page = need(ws, userId, ev.id, 'full');
+        const page = need(ws, userId, ev.id, 'edit');
         if (!page) return true;
         if (page.trashedAt === undefined) {
           deps.send(ws, { t: 'error', message: 'Move the page to the trash before deleting it for good.' });

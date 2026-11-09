@@ -856,7 +856,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
           <button role="menuitem" onClick={() => { exportMd(); setPopup(null); }}>Export as Markdown</button>
           {editable && <button role="menuitem" onClick={() => { setPanel('history'); setPopup(null); }}>Page history</button>}
           {doc.level === 'full' && !rowRef && <button role="menuitem" onClick={() => { send({ t: 'pageVerify', id: pageId, days: meta.verified && meta.verified.until > Date.now() ? 0 : 90 }); setPopup(null); }}>{meta.verified && meta.verified.until > Date.now() ? 'Remove verification' : 'Verify page (90 days)'}</button>}
-          {doc.level === 'full' && !trashed && !rowRef && <button role="menuitem" className="danger" onClick={() => { send({ t: 'pageTrash', id: pageId }); setPopup(null); }}>Move to trash</button>}
+          {(canEdit || doc.level === 'full') && !trashed && !rowRef && <button role="menuitem" className="danger" onClick={() => { send({ t: 'pageTrash', id: pageId }); setPopup(null); }}>Move to trash</button>}
           {rowRef && editable && <button role="menuitem" className="danger" onClick={() => { rowDb.removeRow(rowRef.rowId); setPopup(null); onOpen(rowRef.dbId); }}>Delete row</button>}
           <hr />
           <p className="menu-note">{stats.words} words · {stats.chars} characters</p>

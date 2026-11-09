@@ -27,7 +27,7 @@ export function visibleSpaces(core: Core, userId: string): Teamspace[] {
   if (!who || who.inactive) return [];
   const guest = who.role === 'guest';
   const out: Teamspace[] = [];
-  if (!guest) out.push({ id: GENERAL, name: core.deps.workspaceName() || 'General', icon: '🏠', description: 'Everyone in the workspace', kind: 'default', members: {} });
+  if (!guest) out.push({ id: GENERAL, name: core.deps.workspaceName() || 'General', icon: '🏢', description: 'Everyone in the workspace', kind: 'default', members: {} });
   for (const s of Object.values(core.index.teamspaces)) {
     if (s.members[userId] || (!guest && s.kind !== 'private')) out.push(s);
   }

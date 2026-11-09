@@ -50,6 +50,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
   const [open, setOpen] = useState<Record<string, boolean>>(loadOpen);
   const [sections, setSections] = useState<Record<string, boolean>>({});
   const [menu, setMenu] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const [drag, setDrag] = useState<string | null>(null);
   const [drop, setDrop] = useState<Drop>(null);
   const plus = usePopover();
@@ -127,21 +128,75 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           onDrop={(e) => { e.preventDefault(); dropOn(n); }}
         >
           <button className={`pt-arrow ${isOpen ? 'open' : ''} ${sub.length ? '' : 'none'}`} aria-label={isOpen ? 'Collapse' : 'Expand'} aria-expanded={isOpen} onClick={() => toggle(n.id)}><Icon n="chevron" size={12} /></button>
-          <button className="pt-main" onClick={() => onOpen(n.id)} title={n.title || 'Untitled'}>
-            <span className="hash pt-icon" aria-hidden>{iconOf(n)}</span>
-            <span className="label">{n.title || 'Untitled'}</span>
-            {n.published && <span className="pt-pub" title="Published to the web" aria-label="Published"><Icon n="globe" size={14} /></span>}
-          </button>
+          {renaming === n.id ? (
+            <div className="pt-main" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
+              <span className="hash pt-icon" aria-hidden>{iconOf(n)}</span>
+              <input
+                autoFocus
+                className="pt-rename-input"
+                defaultValue={n.title || ''}
+                placeholder="Untitled"
+                style={{
+                  background: 'rgba(255,255,255,0.12)',
+                  border: '1px solid #7c3aed',
+                  borderRadius: 6,
+                  color: 'inherit',
+                  fontSize: 13,
+                  padding: '2px 8px',
+                  width: '100%',
+                  outline: 'none',
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value.trim();
+                  send({ t: 'pageUpdate', id: n.id, patch: { title: val } });
+                  setRenaming(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = e.currentTarget.value.trim();
+                    send({ t: 'pageUpdate', id: n.id, patch: { title: val } });
+                    setRenaming(null);
+                  } else if (e.key === 'Escape') {
+                    setRenaming(null);
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <button className="pt-main" onClick={() => onOpen(n.id)} onDoubleClick={(e) => { e.stopPropagation(); setRenaming(n.id); }} title={`${n.title || 'Untitled'} (double-click to rename)`}>
+              <span className="hash pt-icon" aria-hidden>{iconOf(n)}</span>
+              <span className="label">{n.title || 'Untitled'}</span>
+              {n.published && <span className="pt-pub" title="Published to the web" aria-label="Published"><Icon n="globe" size={14} /></span>}
+            </button>
+          )}
           <span className="pt-tools">
+            {(n.level === 'edit' || n.level === 'full' || n.createdBy === me) && (
+              <button
+                className="icon-btn"
+                title="Delete page"
+                aria-label="Delete page"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm(`Move "${n.title || 'Untitled'}" to trash?`)) {
+                    send({ t: 'pageTrash', id: n.id });
+                  }
+                }}
+              >
+                <Icon n="trash" size={13} />
+              </button>
+            )}
             <button className="icon-btn" aria-label="Page options" onClick={() => setMenu(menu === n.id ? null : n.id)}><Icon n="more" size={14} /></button>
             {(n.level === 'edit' || n.level === 'full') && <button className="icon-btn" aria-label="Add a page inside" onClick={(e) => { if (!isOpen) toggle(n.id); setPlusFor({ parentId: n.id, space: null }); plus.toggle(e); }}><Icon n="plus" size={14} /></button>}
           </span>
           {menu === n.id && (
             <div className="menu pt-menu" role="menu" onMouseLeave={() => setMenu(null)}>
+              <button role="menuitem" onClick={() => { setRenaming(n.id); setMenu(null); }}><Icon n="pencil" size={13} /> Rename</button>
               <button role="menuitem" onClick={() => { send({ t: 'pageFavorite', id: n.id, on: !favorites.includes(n.id) }); setMenu(null); }}>{favorites.includes(n.id) ? 'Remove from favorites' : 'Add to favorites'}</button>
               <button role="menuitem" onClick={() => { send({ t: 'pageDuplicate', id: n.id }); setMenu(null); }}>Duplicate</button>
               <button role="menuitem" onClick={() => { void navigator.clipboard?.writeText(`${location.origin}/?p=${n.id}`); setMenu(null); }}>Copy link</button>
-              {n.level === 'full' && <button role="menuitem" className="danger" onClick={() => { send({ t: 'pageTrash', id: n.id }); setMenu(null); }}>Move to trash</button>}
+              {(n.level === 'edit' || n.level === 'full' || n.createdBy === me) && (
+                <button role="menuitem" className="danger" onClick={() => { send({ t: 'pageTrash', id: n.id }); setMenu(null); }}><Icon n="trash" size={13} /> Move to trash</button>
+              )}
             </div>
           )}
         </div>
@@ -180,9 +235,10 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
       )}
       {teamspaces.map((s) => {
         const pages = live.filter((n) => n.teamspaceId === s.id);
+        const displayIcon = s.icon === '🏠' ? '🏢' : s.icon;
         return (
           <div key={s.id}>
-            {head(`ts-${s.id}`, `${s.icon} ${s.name}`, openPlus(null, s.id), () => drag && send({ t: 'pageMove', id: drag, parentId: null, teamspaceId: s.id, shared: true, after: null }))}
+            {head(`ts-${s.id}`, `${displayIcon} ${s.name}`, openPlus(null, s.id), () => drag && send({ t: 'pageMove', id: drag, parentId: null, teamspaceId: s.id, shared: true, after: null }))}
             {!sections[`ts-${s.id}`] && pages.map((n) => row(n, 0, new Set()))}
             {!sections[`ts-${s.id}`] && pages.length === 0 && <p className="side-hint muted">{s.id === 'general' ? 'Pages everyone in the workspace can edit.' : 'Nothing here yet.'}</p>}
           </div>
@@ -205,9 +261,38 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
         <>
           {head('ptrash', `Trash (${trashed.length})`)}
           {!sections.ptrash && trashed.map((n) => (
-            <button key={n.id} className={`side-item ${current === n.id ? 'active' : ''}`} onClick={() => onOpen(n.id)}>
-              <span className="hash pt-icon" aria-hidden><Icon n="trash" size={16} /></span><span className="label">{n.title || 'Untitled'}</span>
-            </button>
+            <div key={n.id} className="side-item pt-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button className="pt-main" onClick={() => onOpen(n.id)} title={n.title || 'Untitled'}>
+                <span className="hash pt-icon" aria-hidden><Icon n="trash" size={14} /></span>
+                <span className="label" style={{ opacity: 0.7 }}>{n.title || 'Untitled'}</span>
+              </button>
+              <span className="pt-tools" style={{ display: 'flex', gap: 4 }}>
+                <button
+                  className="icon-btn"
+                  title="Restore page"
+                  aria-label="Restore page"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    send({ t: 'pageRestore', id: n.id });
+                  }}
+                >
+                  <Icon n="back" size={12} />
+                </button>
+                <button
+                  className="icon-btn danger"
+                  title="Delete permanently"
+                  aria-label="Delete permanently"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm(`Permanently delete "${n.title || 'Untitled'}"? This cannot be undone.`)) {
+                      send({ t: 'pageDelete', id: n.id });
+                    }
+                  }}
+                >
+                  <Icon n="trash" size={12} />
+                </button>
+              </span>
+            </div>
           ))}
         </>
       )}
