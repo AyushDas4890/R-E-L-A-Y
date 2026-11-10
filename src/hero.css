@@ -1,0 +1,62 @@
+/* Landing hero on the Higgsfield visual: the loop plays behind the title and the feature shelf,
+   the layers drift with the pointer, a spotlight follows the cursor and messages float around the
+   title. Everything is scoped to .ap-hero.hf so the rest of the (light) landing page is untouched. */
+
+.ap-hero.hf { --mx: 0; --my: 0; --sx: 50%; --sy: 30%; position: relative; color: #fff; overflow: hidden; background: #0b0618; }
+.ap-hero.hf > .ap-sky { display: none; }
+.ap-hero.hf > .hf-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hf-shade { position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(11,6,24,.62) 0%, rgba(11,6,24,.30) 28%, rgba(11,6,24,.42) 62%, rgba(11,6,24,.92) 86%, var(--ap-bg) 100%); }
+.hf-spot { position: absolute; inset: 0; mix-blend-mode: screen;
+  background: radial-gradient(520px circle at var(--sx) var(--sy), rgba(196,181,253,.38), rgba(124,58,237,.10) 40%, transparent 68%); }
+.hf-grain { position: absolute; inset: 0; opacity: .06; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* Title, copy and shelf chrome in white on the dark visual. */
+.hf .fs { color: #fff; }
+.hf .fs-h { color: #fff; background: linear-gradient(100deg, #fff 0%, #e9e2ff 35%, #c4b5fd 50%, #fff 65%, #fff 100%); background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: hf-shimmer 7s linear infinite; }
+.hf .fs-sub { color: rgba(255,255,255,.78); }
+.hf .fs-ti .ti, .hf .fs-stack .ti { color: #fff; }
+.hf .fs-stack .de { color: rgba(255,255,255,.66); }
+.hf .fs-more, .hf .ap-more { color: #ddd6fe; }
+.hf .fs-more:hover { background: rgba(255,255,255,.1); }
+.hf .fs-arr { background: rgba(255,255,255,.12); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hf .fs-arr:hover { background: rgba(255,255,255,.22); }
+.hf .fs-arr svg { stroke: #fff; }
+.hf .fs-dots { background: rgba(255,255,255,.1); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.hf .fs-dots button { background: rgba(255,255,255,.4); }
+.hf .fs-dots button.on { background: #c4b5fd; }
+.hf .fs-floor { background: radial-gradient(50% 50% at 50% 40%, rgba(167,139,250,.55), rgba(124,58,237,.18) 55%, transparent 72%); filter: blur(6px); }
+.hf .fs-sp .t { color: #1a0a2e; }
+.hf .ap-pill.blue { box-shadow: 0 8px 30px rgba(124,58,237,.6), inset 0 0 0 1px rgba(255,255,255,.2); }
+.hf .fs-act-row > * { will-change: transform; }
+
+/* Messages drifting around the title. */
+.ap-hero.hf > .hf-chips { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.hf-chip { position: absolute; display: flex; align-items: center; gap: 10px; padding: 9px 14px 9px 9px; border-radius: 999px; pointer-events: auto; cursor: default;
+  background: rgba(20,12,40,.5); color: #fff; font-size: 13px; white-space: nowrap; backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 14px 30px -12px rgba(0,0,0,.7);
+  transform: translate(calc(var(--mx) * var(--d) * 1px), calc(var(--my) * var(--d) * .7px)); transition: transform .25s ease-out, background-color .2s;
+  }
+.hf-chip:hover { background: rgba(124,58,237,.65); }
+.hf-chip i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-weight: 600; font-size: 11px; background: linear-gradient(135deg, #a78bfa, #7c3aed); }
+.hf-chip small { color: rgba(255,255,255,.55); margin-left: 2px; }
+.hf-chip b { font-weight: 500; }
+
+/* Entrances */
+.hf .fs-h { animation: hf-shimmer 7s linear infinite, hf-rise 1s .1s cubic-bezier(.16,1,.3,1) both; }
+.hf .fs-sub { animation: hf-rise .9s .25s cubic-bezier(.16,1,.3,1) both; }
+.hf .fs-act-row > * { animation: hf-rise .8s .4s cubic-bezier(.16,1,.3,1) both; }
+.hf .fs-act-row > :nth-child(2) { animation-delay: .5s; }
+.hf-chip { animation: hf-float 7s ease-in-out infinite, hf-pop .9s cubic-bezier(.34,1.56,.64,1) both; animation-delay: var(--t), calc(.7s + var(--p, 0) * .12s); }
+@keyframes hf-rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes hf-pop { from { opacity: 0; scale: .6; } to { opacity: 1; scale: 1; } }
+@keyframes hf-shimmer { to { background-position: -220% 0; } }
+@keyframes hf-float { 0%, 100% { margin-top: 0; } 50% { margin-top: -12px; } }
+
+@media (max-width: 900px) { .hf-chips { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .hf-chip, .hf .fs-act-row > * { transform: none !important; animation: none !important; }
+  .hf .fs-h { animation: none; }
+}

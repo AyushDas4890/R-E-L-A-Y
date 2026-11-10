@@ -3,6 +3,7 @@ import type { ClientEvent, Snapshot, WorkspaceSummary } from '../types.ts';
 import { Icon } from './Icon.tsx';
 import { Modal } from './Modals.tsx';
 import { LogoMark } from './LogoIntro.tsx';
+import { Aurora } from './Aurora.tsx';
 import { moveBefore, nudge, orderBy, useReorder, useSavedOrder, WORKSPACE_ORDER_KEY } from '../dnd.ts';
 import '../apple.css';
 import '../dnd.css';
@@ -138,6 +139,7 @@ export function WorkspacePicker({ message, mine, discover, onSwitch, onCreate, o
   const [code, setCode] = useState('');
   return (
     <div className="ws-picker">
+      <Aurora motes={18} />
       <div className="ap-sky" aria-hidden />
       <header className="ap-si-nav">
         <span className="ap-brand"><LogoMark size={22} />Relay</span>

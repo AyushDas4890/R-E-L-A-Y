@@ -86,6 +86,26 @@ const ART: Record<string, () => string> = {
     return P(i, av(82, y + 48, 26, (r[0] as string)[0]) + tx(124, y + 42, r[0] as string, 21, r[3] ? 600 : 500) + tx(418, y + 42, r[2] as string, 16, 400, MUT, 'end') + tx(124, y + 72, r[1] as string, 18, 400, MUT) + (r[3] ? `<circle class="m${i === 0 ? ' xo5' : ''}" cx="406" cy="${y + 64}" r="7" fill="${BLUE}"/>` : '') + (i < 3 ? hl(58, y + 108, 358) : '')); }).join(''),
 };
 
+// Where the pointer sits at each step of a cover's loop (art coordinates): a cursor travels between
+// these points and clicks on arrival, so every loop reads as someone using the UI.
+const CUR: Record<string, [number, number][]> = {
+  channels: [[150, 104], [150, 104], [140, 176], [140, 240], [140, 304], [160, 396], [120, 448]],
+  threads: [[220, 74], [220, 140], [220, 186], [220, 286], [220, 386], [110, 488]],
+  mentions: [[160, 60], [170, 120], [170, 150], [240, 320]],
+  huddles: [[142, 150], [332, 150], [142, 332], [332, 332], [142, 150], [304, 505]],
+  canvases: [[160, 70], [72, 184], [72, 246], [72, 310], [220, 470]],
+  lists: [[200, 58], [357, 131], [357, 239], [357, 347], [357, 455]],
+  workflows: [[200, 58], [88, 140], [88, 280], [88, 420], [88, 420], [88, 420], [200, 520]],
+  search: [[237, 57], [170, 67], [237, 170], [237, 278], [237, 386], [200, 500]],
+  recap: [[108, 70], [84, 170], [84, 262], [84, 354], [150, 500]],
+  relaybot: [[108, 70], [250, 160], [250, 160], [200, 266], [250, 388], [250, 388], [200, 490]],
+  calendar: [[200, 62], [293, 211], [293, 211], [310, 250], [200, 486]],
+  inbox: [[240, 72], [240, 206], [240, 340], [240, 474]],
+};
+function cursor(f: Feature): string {
+  return `<g class="fs-cur" style="animation-name:fs-cur-${f.id}"><circle class="fs-clk" style="animation-name:fs-clk-${f.id}" r="16" fill="rgba(124,58,237,.18)" stroke="${BLUE}" stroke-width="2"/><path d="M0 0 L0 21 L5.2 16.2 L8.8 24.4 L12.2 23 L8.6 14.8 L15.4 14.8 Z" fill="#111" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/></g>`;
+}
+
 const BAR: Record<string, string> = { channels: 'Relay, #general', threads: 'Relay, #launch', mentions: 'Relay, #launch', huddles: 'Huddle, #design', canvases: 'Relay, Canvas', lists: 'Relay, List', workflows: 'Relay, Workflows', search: 'Relay, Search', recap: 'Relay, #launch', relaybot: 'Relay, #general', calendar: 'Relay, Calendar', inbox: 'Relay, Inbox' };
 
 interface Feature { id: string; t: string; su: string; cat: string; g?: string; i?: string; d: string; key: string }
@@ -109,7 +129,7 @@ function winFrame(f: Feature): string {
   return '<rect x="30" y="252" width="414" height="604" rx="22" fill="#fff" stroke="rgba(0,0,0,.1)" filter="url(#fs-cs)"/><path d="M30 296V274a22 22 0 0 1 22-22h370a22 22 0 0 1 22 22v22z" fill="#f6f6f8"/><path d="M30 296H444" stroke="rgba(0,0,0,.08)"/><circle cx="58" cy="274" r="6" fill="#ff5f57"/><circle cx="78" cy="274" r="6" fill="#febc2e"/><circle cx="98" cy="274" r="6" fill="#28c840"/>' + tx(237, 279, BAR[f.id], 14, 500, MUT, 'middle');
 }
 function poster(f: Feature): string {
-  return '<rect width="474" height="900" fill="#fff"/>' + tx(36, 64, f.cat, 19, 500, MUT) + tx(34, 142, f.t, f.t.length > 8 ? 64 : 72, 600, INK).replace('letter-spacing="-0.2"', 'letter-spacing="-3"') + tx(36, 184, f.su.replace(/\.$/, ''), 22, 400, MUT) + winFrame(f) + `<g transform="translate(0,300)">${ART[f.id]()}</g>`;
+  return '<rect width="474" height="900" fill="#fff"/>' + tx(36, 64, f.cat, 19, 500, MUT) + tx(34, 142, f.t, f.t.length > 8 ? 64 : 72, 600, INK).replace('letter-spacing="-0.2"', 'letter-spacing="-3"') + tx(36, 184, f.su.replace(/\.$/, ''), 22, 400, MUT) + winFrame(f) + `<g transform="translate(0,300)">${ART[f.id]()}${cursor(f)}</g>`;
 }
 
 // The cover loops are generated here: step k of a 10 second loop starts at 2 + 8k percent; each step
@@ -120,17 +140,35 @@ function keyframes(): string {
   const out: string[] = [];
   for (let k = 0; k < 9; k++) {
     const s = 2 + 8 * k, e = s + 5;
-    out.push(`@keyframes fs-p${k}{0%,${s}%{opacity:0;transform:translateY(8px)}${e}%,91%{opacity:1;transform:none}97%,100%{opacity:0;transform:none}}`);
+    out.push(`@keyframes fs-p${k}{0%,${s}%{opacity:0;transform:translateY(14px) scale(.97)}${e}%,91%{opacity:1;transform:none}97%,100%{opacity:0;transform:translateY(-6px)}}`);
     out.push(`@keyframes fs-w${k}{0%,${s + 3}%{transform:scaleX(1)}${s + 13}%,91%{transform:scaleX(0)}97%,100%{transform:scaleX(1)}}`);
     out.push(`@keyframes fs-d${k}{0%,${s}%{stroke-dashoffset:1}${e + 2}%,91%{stroke-dashoffset:0}97%,100%{stroke-dashoffset:1}}`);
     out.push(`@keyframes fs-xi${k}{0%,${s}%{opacity:0}${e}%,91%{opacity:1}97%,100%{opacity:0}}`);
     out.push(`@keyframes fs-xo${k}{0%,${s}%{opacity:1}${e}%,91%{opacity:0}97%,100%{opacity:1}}`);
     out.push(`@keyframes fs-ty${k}{0%,${s}%{opacity:0}${s + 2}%,${s + 8}%{opacity:1}${s + 10}%,100%{opacity:0}}`);
   }
+  // Cursor travel: it rests on the step's target, slides to the next one just before that step lands,
+  // and a ring blips on arrival. Travel takes 3% of the loop (0.3s) and lands 1% before the step.
+  for (const id of Object.keys(CUR)) {
+    const pts = CUR[id], at = (k: number) => 2 + 8 * k, tr = (p: [number, number]) => `transform:translate(${p[0]}px,${p[1]}px)`;
+    const mv: string[] = [`0%{opacity:0;${tr(pts[0])}}`, `${at(0) + 2}%{opacity:1;${tr(pts[0])}}`];
+    const ck: string[] = ['0%{opacity:0;transform:scale(.3)}'];
+    pts.forEach((p, k) => {
+      if (k > 0) { mv.push(`${at(k) - 4}%{${tr(pts[k - 1])}}`); mv.push(`${at(k) - 1}%{${tr(p)}}`); }
+      const c = k === 0 ? at(0) + 2 : at(k);
+      ck.push(`${c - 0.5}%{opacity:0;transform:scale(.3)}${c}%{opacity:.9;transform:scale(.4)}${c + 3}%{opacity:0;transform:scale(1.6)}`);
+    });
+    mv.push(`91%{opacity:1;${tr(pts[pts.length - 1])}}`, `96%,100%{opacity:0;${tr(pts[pts.length - 1])}}`);
+    ck.push('100%{opacity:0;transform:scale(.3)}');
+    out.push(`@keyframes fs-cur-${id}{${mv.join('')}}`, `@keyframes fs-clk-${id}{${ck.join('')}}`);
+  }
   let rules = '';
   for (let k = 0; k < 9; k++) rules += `.fs-act .p${k}{animation-name:fs-p${k}}.fs-act .w${k}{animation-name:fs-w${k}}.fs-act .d${k}{animation-name:fs-d${k}}.fs-act .xi${k}{animation-name:fs-xi${k}}.fs-act .xo${k}{animation-name:fs-xo${k}}.fs-act .ty${k}{animation-name:fs-ty${k}}`;
   return out.join('') +
-    '.fs-act .m{animation-duration:10s;animation-iteration-count:infinite;animation-timing-function:cubic-bezier(.32,.72,0,1);animation-fill-mode:both}' + rules +
+    '.fs-act .m{animation-duration:10s;animation-iteration-count:infinite;animation-timing-function:cubic-bezier(.22,1.1,.36,1);animation-fill-mode:both}' + rules +
+    // The cursor and its click ring. At rest (no .fs-act) the cursor is hidden so the poster reads as a finished frame.
+    '.fs-cur{opacity:0;transform-box:view-box}.fs-act .fs-cur{animation-duration:10s;animation-iteration-count:infinite;animation-timing-function:cubic-bezier(.4,0,.2,1);animation-fill-mode:both}' +
+    '.fs-clk{opacity:0;transform-box:fill-box;transform-origin:center}.fs-act .fs-clk{animation-duration:10s;animation-iteration-count:infinite;animation-timing-function:cubic-bezier(.2,.8,.2,1);animation-fill-mode:both}' +
     // The selection steps down the channel list, one channel at a time.
     '@keyframes fs-sw{0%,30%{transform:translateY(0);opacity:0}34%,50%{transform:translateY(0);opacity:1}56%,70%{transform:translateY(64px);opacity:1}76%,88%{transform:translateY(128px);opacity:1}94%,100%{transform:translateY(128px);opacity:0}}' +
     // The speaker ring moves to whoever is talking.
@@ -141,7 +179,7 @@ function keyframes(): string {
     '.fs-act path[pathLength]{stroke-dasharray:1}.fs-act .m.w1,.fs-act .m[class*=" w"]{transform-box:fill-box;transform-origin:100% 50%}' +
     // Covers at rest (and reduced motion) show the finished frame: wipes, outgoing states and typing bubbles hidden.
     '.m[class*=" w"],.m[class*=" xo"],.m[class*=" ty"]{opacity:0}' +
-    '@media (prefers-reduced-motion:reduce){.fs-act .m,.fs-act .tyd{animation:none!important}}';
+    '@media (prefers-reduced-motion:reduce){.fs-act .m,.fs-act .tyd,.fs-act .fs-cur,.fs-act .fs-clk{animation:none!important}}';
 }
 
 export function mountShelf(host: HTMLElement, onGetStarted: () => void): () => void {

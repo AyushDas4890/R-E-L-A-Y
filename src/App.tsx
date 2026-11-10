@@ -4,6 +4,7 @@ import { channelLabel } from './format.tsx';
 import { getDevSession, saveDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
 import { authEnabled } from './supabase.ts';
 import { Login } from './components/Login.tsx';
+import { Boot } from './components/Boot.tsx';
 import { Landing } from './components/Landing.tsx';
 import { PageIntro } from './components/PageIntro.tsx';
 import { HelpPage } from './components/Help.tsx';
@@ -261,7 +262,7 @@ export default function App() {
     return <HelpPage go={goSite} signedIn={!!session && !authError} onGetStarted={() => (session ? goSite('home') : openLogin())} />;
   }
   if (!session || (authError && authError.code === 'auth-required')) {
-    if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
+    if (!ready) return <Boot status="Starting Relay…" />;
     if (!showLogin && !authError) return (
       <>
         {showIntro && <PageIntro onDone={doneIntro} />}
@@ -296,7 +297,7 @@ export default function App() {
   }
   // Opening the app lands here: your own page, with the workspaces you can enter on the side.
   if (atHome && !snap) {
-    if (!connected && !home.name && !workspaces.mine.length) return <div className="welcome"><p className="muted">Connecting to Relay server…</p><p className="muted"><small>The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.</small></p></div>;
+    if (!connected && !home.name && !workspaces.mine.length) return <Boot status="Connecting to Relay server…" hint="The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own." />;
     return (
       <>
         {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
@@ -308,10 +309,10 @@ export default function App() {
   }
   if (!snap) {
     return (
-      <div className="welcome">
-        <p className="muted">{connected ? 'Loading workspace…' : 'Connecting to Relay server…'}</p>
-        {!connected && <p className="muted"><small>The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.</small></p>}
-      </div>
+      <Boot
+        status={connected ? 'Loading workspace…' : 'Connecting to Relay server…'}
+        hint={connected ? undefined : 'The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.'}
+      />
     );
   }
 

@@ -1,4 +1,5 @@
-import { Starfield } from './Starfield.tsx';
+import { Aurora } from './Aurora.tsx';
+import { useGlow } from '../glow.ts';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ARTICLES, CATEGORIES, articleBySlug, searchArticles, type Article, type Block } from '../help.ts';
 import { Icon } from './Icon.tsx';
@@ -29,6 +30,7 @@ export function HelpPage({ go, onGetStarted, signedIn }: { go: (r: Route) => voi
   const [slug, setSlug] = useState(() => slugFromPath(location.pathname));
   const [query, setQuery] = useState('');
   const root = useRef<HTMLDivElement>(null);
+  useGlow(root);
   const article = articleBySlug(slug);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export function HelpPage({ go, onGetStarted, signedIn }: { go: (r: Route) => voi
 
   return (
     <div className="ap hp" ref={root}>
-      <div className="ap-stars-wrap" aria-hidden><Starfield /></div>
+      <div className="ap-stars-wrap" aria-hidden><Aurora /></div>
       <section className="ap-hero hp-hero">
         <div className="ap-sky" aria-hidden />
         <SiteNav route="help" go={go} onGetStarted={onGetStarted} signedIn={signedIn} />

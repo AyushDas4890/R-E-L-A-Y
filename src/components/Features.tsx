@@ -1,4 +1,5 @@
-import { Starfield } from './Starfield.tsx';
+import { Aurora } from './Aurora.tsx';
+import { useGlow } from '../glow.ts';
 import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -490,6 +491,7 @@ const FEATURE_ACCORDION_IMAGES: Record<FeatureRoute, string[]> = {
 export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go: (r: Route) => void; onGetStarted: () => void }) {
   const def = PAGE_DEFS[page];
   const root = useRef<HTMLDivElement>(null);
+  useGlow(root);
   const { Mock } = def.film;
 
   const accordionItems = def.details.map((d, i) => ({
@@ -525,7 +527,7 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
 
   return (
     <div className="ap fp" ref={root}>
-      <div className="ap-stars-wrap" aria-hidden><Starfield /></div>
+      <div className="ap-stars-wrap" aria-hidden><Aurora /></div>
       <section className="ap-hero fp-hero">
         <div className="ap-sky" aria-hidden />
         <SiteNav route={page} go={go} onGetStarted={onGetStarted} />
@@ -608,11 +610,13 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
       </section>
 
       <section className="ap-final ap-reveal">
+        <div className="ap-cta">
         <h2>Ready when your team is</h2>
         <p>Free to start. Every feature unlocked.</p>
         <div className="fp-final-actions">
           <button className="ap-pill blue" onClick={onGetStarted}>Get started free</button>
           <RouteLink to={def.next} go={go} className="ap-more">Next: {NEXT_LABEL[def.next]} <Icon n="chevron" size={14} /></RouteLink>
+        </div>
         </div>
       </section>
 

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
-import { Starfield } from './Starfield.tsx';
+import { Aurora } from './Aurora.tsx';
 import LightBulbButton from './framer/LightBulbButton.tsx';
 import '../apple.css';
+import '../signin.css';
 import { supabase, authEnabled } from '../supabase.ts';
 
 interface Props {
@@ -93,15 +94,57 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
     if (error) { setOauthError(error.message); setBusy(null); }
   }
 
+  // Pointer tracking: the backdrop drifts, the visual tilts and a spotlight follows the cursor.
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = root.current;
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0, tx = 0, ty = 0, cx = 0, cy = 0, px = 0, py = 0;
+    const onMove = (e: PointerEvent) => {
+      tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      px = e.clientX; py = e.clientY;
+    };
+    const tick = () => {
+      cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08;
+      el.style.setProperty('--mx', cx.toFixed(4));
+      el.style.setProperty('--my', cy.toFixed(4));
+      el.style.setProperty('--sx', `${px}px`);
+      el.style.setProperty('--sy', `${py}px`);
+      raf = requestAnimationFrame(tick);
+    };
+    window.addEventListener('pointermove', onMove);
+    raf = requestAnimationFrame(tick);
+    return () => { window.removeEventListener('pointermove', onMove); cancelAnimationFrame(raf); };
+  }, []);
+
+  // Little messages drifting over the visual: a taste of the workspace before signing in.
+  const chips = [
+    { who: 'M', text: 'deploy is green', when: 'now', style: { top: '9%', left: '8%', '--d': 18, '--t': '0s' } },
+    { who: 'A', text: 'standup moved to 10:30', when: '2m', style: { top: '24%', right: '6%', '--d': -24, '--t': '-2s' } },
+    { who: 'J', text: 'huddle? 🎧', when: '5m', style: { top: '46%', left: '12%', '--d': 30, '--t': '-4s' } },
+  ] as const;
+
   return (
-    <div className="ap-si">
-      <div className="ap-sky" aria-hidden />
-      <Starfield />
+    <div className="ap-si si-v2" ref={root}>
+      <div className="si-bg" aria-hidden><Aurora /></div>
+      <div className="si-spot" aria-hidden />
       <header className="ap-si-nav">
         <button className="ap-brand" onClick={onBack} disabled={!onBack}><LogoMark size={22} />Relay</button>
         {onBack && <button className="ap-link-btn" onClick={onBack}><Icon n="back" size={14} /> Home</button>}
       </header>
       <main className="ap-si-main">
+        <div className="si-visual" aria-hidden>
+          <img src="/hf/relay-hero.jpg" alt="" />
+          <div className="si-shine" />
+          {chips.map((c) => (
+            <span key={c.text} className="si-chip" style={c.style as React.CSSProperties}><i>{c.who}</i>{c.text}<small>{c.when}</small></span>
+          ))}
+          <div className="si-caption">
+            <h2>Where the team actually talks.</h2>
+            <p>Channels, pages, huddles and databases in one place.</p>
+          </div>
+        </div>
         <div className="ap-si-card">
           <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
           <h1>{signedIn ? 'Join a workspace' : 'Sign in to Relay'}</h1>

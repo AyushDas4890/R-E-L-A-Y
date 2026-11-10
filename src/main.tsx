@@ -12,6 +12,8 @@ import './help.css';
 import './notion-site.css';
 import './apple-public.css';
 import './apple-app.css';
+import './site.css';
+import './preview-dark.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

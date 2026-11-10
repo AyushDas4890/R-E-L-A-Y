@@ -1,67 +1,141 @@
-/* Sign-in: the Relay robot on a 3D stage beside a tilting glass card. */
-.si {
-  --u: min(0.5vh, 0.42vw);
-  position: relative; height: 100%; min-height: 560px; overflow: hidden; color: #fff; font-family: var(--font);
-  background: radial-gradient(120% 90% at 30% 0%, #f2b98c 0%, #c8693c 24%, #6e2a1a 52%, #1c0b07 82%, #0f0604 100%);
+/* Boot (loading) screen and the sign-in page. Both sit on a Higgsfield-generated violet visual
+   (public/hf/relay-hero.png and its motion loop) and react to the pointer. */
+
+/* ===== Boot ===== */
+.rl-boot {
+  --mx: 0; --my: 0;
+  position: fixed; inset: 0; z-index: 50; overflow: hidden; display: grid; place-items: center;
+  background: #0b0618; color: #fff; cursor: crosshair; user-select: none;
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-.si-sky { position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(40vmax 40vmax at 78% 18%, rgba(157,245,197,.18), transparent 70%), radial-gradient(30vmax 30vmax at 20% 80%, rgba(255,200,120,.18), transparent 70%); }
+.rl-boot-video { position: absolute; inset: -4%; animation: rl-boot-fade 1.4s ease-out both; }
+.rl-boot-video .au { position: absolute; inset: 0; }
+.rl-boot-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 55%, rgba(11,6,24,.15) 0%, rgba(11,6,24,.55) 55%, rgba(11,6,24,.85) 100%); }
+.rl-boot-glow {
+  position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(circle, rgba(167,139,250,.35), rgba(124,58,237,.12) 35%, transparent 65%);
+  left: 50%; top: 50%;
+  transform: translate(calc(-50% + var(--mx) * 18vw), calc(-50% + var(--my) * 14vh));
+  animation: rl-boot-breathe 5s ease-in-out infinite;
+}
+.rl-boot-ripple {
+  position: absolute; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; pointer-events: none;
+  border: 1.5px solid rgba(221,214,254,.9); box-shadow: 0 0 24px rgba(167,139,250,.6);
+  animation: rl-boot-ripple 1.2s cubic-bezier(.16,1,.3,1) forwards;
+}
+.rl-boot-lockup {
+  position: relative; display: grid; justify-items: center; gap: 14px; text-align: center; padding: 0 24px;
+  transform: translate(calc(var(--mx) * 10px), calc(var(--my) * 8px));
+}
+.rl-boot-mark { display: grid; place-items: center; width: 96px; height: 96px; border-radius: 28px; color: #fff;
+  background: rgba(255,255,255,.08); backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 30px 60px -20px rgba(124,58,237,.7);
+  animation: rl-boot-pop .9s cubic-bezier(.16,1,.3,1) both; }
+.rl-boot-mark .rl-mark path { fill: #fff; }
+.rl-boot-mark .rl-spark { display: none; }
+.rl-boot-word { display: flex; font-size: clamp(40px, 7vw, 72px); font-weight: 500; line-height: 1; letter-spacing: -.04em; overflow: hidden; }
+.rl-boot-word span { display: inline-block; animation: rl-boot-rise .8s cubic-bezier(.16,1,.3,1) both; }
+.rl-boot-status { margin: 4px 0 0; font-size: 17px; color: rgba(255,255,255,.85); animation: rl-boot-fade .8s .3s ease-out both; }
+.rl-boot-bar { width: min(260px, 60vw); height: 3px; border-radius: 3px; overflow: hidden; background: rgba(255,255,255,.14); }
+.rl-boot-bar i { display: block; height: 100%; width: 40%; border-radius: 3px; background: linear-gradient(90deg, #c4b5fd, #fff, #a78bfa); animation: rl-boot-slide 1.6s cubic-bezier(.65,0,.35,1) infinite; transition: width .4s ease; }
+.rl-boot-warm { margin: 0; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.rl-boot-warm b { display: inline-block; font-weight: 600; color: #ddd6fe; animation: rl-boot-rise .5s cubic-bezier(.16,1,.3,1) both; }
+.rl-boot-hint { margin: 6px 0 0; max-width: 380px; padding: 8px 14px; border-radius: 12px; background: rgba(11,6,24,.45); font-size: 13px; line-height: 1.5; color: rgba(255,255,255,.8); animation: rl-boot-fade .6s ease-out both; }
+.rl-boot-foot { position: absolute; bottom: 20px; left: 0; right: 0; margin: 0; text-align: center; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.35); }
 
-.si-nav { position: absolute; inset: 0 0 auto; z-index: 5; display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid rgba(255,255,255,.25); }
-.si-brand { display: inline-flex; align-items: center; gap: 10px; border: 0; background: none; color: #fff; font: 400 22px var(--nx-font); cursor: pointer; padding: 0; }
-.si-brand:disabled { cursor: default; }
+@keyframes rl-boot-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rl-boot-pop { from { opacity: 0; transform: scale(.6) rotate(-12deg); } to { opacity: 1; transform: none; } }
+@keyframes rl-boot-rise { from { opacity: 0; transform: translateY(110%); } to { opacity: 1; transform: none; } }
+@keyframes rl-boot-slide { 0% { transform: translateX(-120%); } 100% { transform: translateX(300%); } }
+@keyframes rl-boot-breathe { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+@keyframes rl-boot-ripple { to { width: 360px; height: 360px; margin: -180px 0 0 -180px; opacity: 0; border-width: .5px; } }
 
-/* The scene tilts in 3D toward the cursor. Its own box must not catch clicks: tilted, it sits in
-   front of the card's lower half, so the bottom buttons (GitHub) missed most clicks. */
-.si-scene { position: absolute; inset: 64px 0 0; display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; perspective: 1400px; transform-style: preserve-3d; pointer-events: none; }
-.si-stage { position: relative; height: 100%; transform-style: preserve-3d; perspective: 1000px; }
-/* The base robot is in-flow (home hero); on sign-in it stands on the floor ring. */
-.si-stage .nx-bot { position: absolute; left: calc(50% - 40 * var(--u)); bottom: 16%; }
+/* ===== Sign-in ===== */
+.ap-si.si-v2 {
+  --mx: 0; --my: 0; --sx: 50%; --sy: 50%;
+  --ap-ink: #f5f3ff; --ap-ink-2: rgba(245,243,255,.72); --ap-ink-3: rgba(245,243,255,.45);
+  --ap-bg: #0b0618; --ap-line: rgba(255,255,255,.12);
+  min-height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--ap-bg); color: var(--ap-ink);
+}
+.si-v2 .si-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.si-v2 .si-bg .au { position: absolute; inset: 0; }
+.si-v2 .si-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,6,24,0) 0%, rgba(11,6,24,.35) 55%, rgba(11,6,24,.8) 100%); }
+.si-v2 .si-spot { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(420px circle at var(--sx) var(--sy), rgba(196,181,253,.28), rgba(124,58,237,.08) 40%, transparent 70%); }
+.si-v2 > *:not(.si-bg):not(.si-spot) { position: relative; z-index: 1; }
 
-.si-floor { position: absolute; left: -20%; right: -20%; bottom: -10%; height: 55%; transform-origin: 50% 100%; transform: rotateX(72deg); overflow: hidden;
-  -webkit-mask-image: radial-gradient(ellipse at 50% 100%, #000 30%, transparent 70%); mask-image: radial-gradient(ellipse at 50% 100%, #000 30%, transparent 70%); }
-.si-floor-grid { position: absolute; inset: -80px 0 0; background-image: linear-gradient(rgba(157,245,197,.45) 1px, transparent 1px), linear-gradient(90deg, rgba(157,245,197,.45) 1px, transparent 1px); background-size: 80px 80px; }
+.si-v2 .ap-si-nav { background: rgba(20,12,40,.55); color: #fff; backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px -10px rgba(0,0,0,.6); }
+.si-v2 .ap-si-nav .ap-brand, .si-v2 .ap-link-btn { color: #fff; }
+.si-v2 .ap-link-btn:hover { color: #ddd6fe; }
+.si-v2 .ap-brand .rl-mark path { fill: #fff; }
 
-.si-ring { position: absolute; left: 50%; bottom: calc(16% + 4 * var(--u)); border-radius: 50%; border: 2px solid rgba(255,233,176,.55); transform-style: preserve-3d; box-shadow: 0 0 30px rgba(255,200,100,.25), inset 0 0 30px rgba(255,200,100,.15); }
-.si-ring.a { width: calc(130 * var(--u)); height: calc(130 * var(--u)); margin-left: calc(-65 * var(--u)); margin-bottom: calc(-38 * var(--u)); border-style: dashed; opacity: .7; }
-.si-ring.b { width: calc(100 * var(--u)); height: calc(100 * var(--u)); margin-left: calc(-50 * var(--u)); margin-bottom: calc(-24 * var(--u)); border-color: rgba(157,245,197,.5); }
-.si-ring { transform: rotateX(75deg); }
+.si-v2 .ap-si-main { flex: 1; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: center; gap: 40px;
+  width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 20px 0 40px; }
 
-.si-orbit { position: absolute; left: 50%; bottom: calc(16% + 60 * var(--u)); width: 0; height: 0; transform-style: preserve-3d; }
-.si-bubble { position: absolute; left: 0; top: 0; transform-style: preserve-3d; }
-.si-bubble em { display: block; translate: -50% -50%; padding: 8px 14px; border-radius: 16px 16px 16px 4px; background: rgba(255,255,255,.92); color: #1c0b07; font: 600 13px var(--font); font-style: normal; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,.25); backface-visibility: hidden; }
+/* Left: the Higgsfield visual, tilting toward the pointer, with messages drifting across it. */
+.si-v2 .si-visual { position: relative; width: 100%; aspect-ratio: 4 / 5; max-height: 72vh; border-radius: 32px; overflow: hidden; perspective: 1200px;
+  transform: rotateY(calc(var(--mx) * 7deg)) rotateX(calc(var(--my) * -7deg)); transform-style: preserve-3d; transition: transform .15s ease-out;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 50px 100px -30px rgba(124,58,237,.6), 0 30px 60px -30px rgba(0,0,0,.8);
+  animation: si-rise .9s cubic-bezier(.16,1,.3,1) both; }
+.si-v2 .si-visual img { position: absolute; inset: -8%; width: 116%; height: 116%; object-fit: cover;
+  transform: translate(calc(var(--mx) * 16px), calc(var(--my) * 12px)) scale(1.02); transition: transform .15s ease-out; }
+.si-v2 .si-visual::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,6,24,0) 40%, rgba(11,6,24,.75) 100%); }
+.si-v2 .si-shine { position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: radial-gradient(360px circle at var(--sx) var(--sy), rgba(255,255,255,.22), transparent 60%); }
+.si-v2 .si-caption { position: absolute; left: 28px; right: 28px; bottom: 28px; z-index: 3; display: grid; gap: 6px; }
+.si-v2 .si-caption h2 { margin: 0; font-size: clamp(24px, 2.6vw, 34px); font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: #fff; }
+.si-v2 .si-caption p { margin: 0; font-size: 14px; color: rgba(255,255,255,.7); }
+.si-v2 .si-chip { position: absolute; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 10px; border-radius: 999px;
+  background: rgba(20,12,40,.55); color: #fff; font-size: 13px; white-space: nowrap; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 12px 30px -12px rgba(0,0,0,.7);
+  transform: translateZ(60px) translate(calc(var(--mx) * var(--d) * 1px), calc(var(--my) * var(--d) * .7px)); transition: transform .2s ease-out;
+  animation: si-float 6s ease-in-out infinite; animation-delay: var(--t); cursor: default; }
+.si-v2 .si-chip:hover { background: rgba(124,58,237,.6); }
+.si-v2 .si-chip i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-weight: 600; font-size: 11px;
+  background: linear-gradient(135deg, #a78bfa, #7c3aed); }
+.si-v2 .si-chip small { color: rgba(255,255,255,.55); margin-left: 4px; }
 
-.si-card { pointer-events: auto; position: relative; z-index: 3; justify-self: start; width: min(420px, 90%); display: grid; gap: 14px; padding: 34px 30px; border-radius: 24px;
-  background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.05)); border: 1px solid rgba(255,255,255,.25); backdrop-filter: blur(22px) saturate(140%); -webkit-backdrop-filter: blur(22px) saturate(140%);
-  box-shadow: 0 40px 80px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.3); }
+/* Right: the glass card. */
+.si-v2 .ap-si-card { width: min(440px, 100%); justify-self: center; display: grid; gap: 13px; padding: 36px 36px 28px; border-radius: 28px; text-align: center;
+  background: rgba(20,12,40,.55); color: var(--ap-ink); backdrop-filter: blur(28px) saturate(160%); -webkit-backdrop-filter: blur(28px) saturate(160%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 40px 80px -30px rgba(0,0,0,.8); animation: si-rise .9s .08s cubic-bezier(.16,1,.3,1) both; }
+.si-v2 .ap-si-mark { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 16px; color: #fff;
+  background: linear-gradient(135deg, rgba(167,139,250,.5), rgba(124,58,237,.3)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+.si-v2 .ap-si-mark .rl-mark path { fill: #fff; }
+.si-v2 .ap-si-card h1 { margin: 0; font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -.03em; color: #fff; }
+.si-v2 .ap-si-sub { margin: -4px 0 12px; font-size: 16px; line-height: 1.45; color: var(--ap-ink-2); }
+.si-v2 .ap-si-field { display: grid; gap: 8px; text-align: left; font-size: 13px; font-weight: 500; color: var(--ap-ink-2); }
+.si-v2 .ap-si-field input { height: 52px; padding: 0 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff;
+  font-size: 17px; font-weight: 400; font-family: inherit; transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease, transform .2s ease; }
+.si-v2 .ap-si-field input::placeholder { color: var(--ap-ink-3); }
+.si-v2 .ap-si-field input:focus { outline: none; border-color: #a78bfa; background: rgba(255,255,255,.1); box-shadow: 0 0 0 4px rgba(167,139,250,.25), 0 0 40px -10px rgba(167,139,250,.8); transform: translateY(-1px); }
+.si-v2 .ap-si-form { display: grid; gap: 14px; }
+.si-v2 .ap-si-divider { display: flex; align-items: center; gap: 12px; margin: 6px 0; font-size: 12px; color: var(--ap-ink-3); }
+.si-v2 .ap-si-divider::before, .si-v2 .ap-si-divider::after { content: ''; flex: 1; height: 1px; background: var(--ap-line); }
+.si-v2 .ap-si-error { margin: 0; padding: 12px 16px; border-radius: 12px; background: rgba(255,80,100,.14); color: #ffb3bd; font-size: 14px; text-align: left; box-shadow: inset 0 0 0 1px rgba(255,80,100,.3); }
+.si-v2 .ap-si-foot { margin: 8px 0 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ap-ink-3); }
+.si-v2 .ap-pill.quiet { background: rgba(255,255,255,.06); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.si-v2 .ap-pill.quiet:hover:not(:disabled) { background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
+.si-v2 .si-magnet { display: contents; }
+.si-v2 .si-magnet > * { transition: transform .25s cubic-bezier(.16,1,.3,1); }
+.si-v2 :focus-visible { outline: 3px solid rgba(167,139,250,.5); outline-offset: 2px; border-radius: 10px; }
+.si-v2 .ap-si-field input:focus-visible { outline: none; }
 
-.si-kicker { margin: 0; color: var(--mint); font: 400 12px var(--nx-font); letter-spacing: .2em; text-transform: uppercase; }
-.si-title { margin: 0 0 6px; font: 400 clamp(26px, 2.6vw, 36px)/1.1 var(--nx-font); }
-.si-form { display: grid; gap: 14px; }
-.si-field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.75); }
-.si-field input { height: 48px; padding: 0 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.25); background: rgba(10,4,2,.35); color: #fff; font: 400 15px var(--font); transition: border-color .2s, box-shadow .2s; }
-.si-field input::placeholder { color: rgba(255,255,255,.45); }
-.si-field input:focus { outline: none; border-color: var(--mint); box-shadow: 0 0 0 4px rgba(157,245,197,.18); }
-.si-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 50px; border-radius: 14px; border: 1px solid rgba(255,255,255,.25); background: rgba(10,4,2,.55); color: #fff; font: 600 15px var(--font); cursor: pointer; transition: transform .2s cubic-bezier(.2,.8,.2,1), background .2s, box-shadow .2s; }
-.si-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,.3); }
-.si-btn:disabled { opacity: .5; cursor: not-allowed; }
-.si-btn.primary { background: #0b0b0c; color: var(--mint); font: 400 15px var(--nx-font); border-color: transparent; }
-.si-btn.google { background: #fff; color: #1f1f1f; border-color: transparent; }
-.si-btn b { font-weight: 400; }
-.si-error { margin: 0; padding: 10px 14px; border-radius: 12px; background: rgba(200,40,63,.25); border: 1px solid rgba(255,120,140,.4); font-size: 13.5px; }
-.si-credit { margin: 10px 0 0; pointer-events: none; font-size: 12px; color: rgba(255,255,255,.6); letter-spacing: .04em; }
-.si-credit b { color: var(--mint); font-weight: 600; }
-.si :focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+@keyframes si-rise { from { opacity: 0; transform: translateY(28px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes si-float { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
 
-@media (max-width: 860px) {
-  .si { --u: min(0.38vh, 0.9vw); overflow-y: auto; }
-  .si-scene { position: relative; inset: auto; padding-top: 64px; grid-template-columns: 1fr; grid-template-rows: 46vh auto; justify-items: center; }
-  .si-stage { width: 100%; }
-  .si-card { justify-self: center; margin: 0 16px 32px; width: calc(100% - 32px); }
-  .si-orbit { display: none; }
+@media (max-width: 900px) {
+  .si-v2 .ap-si-main { grid-template-columns: 1fr; gap: 24px; width: min(560px, calc(100% - 32px)); padding-top: 24px; }
+  .si-v2 .si-visual { aspect-ratio: 16 / 10; max-height: 34vh; transform: none; }
+  .si-v2 .si-chip { display: none; }
+  .si-v2 .ap-si-card { padding: 32px 24px 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .si-btn, .si-field input { transition: none; }
+  .rl-boot-video, .rl-boot-glow, .rl-boot-lockup, .si-v2 .si-visual, .si-v2 .si-visual img, .si-v2 .si-chip { transform: none !important; animation: none !important; }
+  .rl-boot-word span, .rl-boot-mark, .si-v2 .ap-si-card { animation: none; }
 }
-.si-say { position: absolute; z-index: 4; left: calc(50% + 22 * var(--u)); bottom: calc(16% + 100 * var(--u)); margin: 0; max-width: 260px; padding: 12px 16px; border-radius: 18px 18px 18px 4px; background: #0b0b0c; color: var(--mint); font: 400 15px/1.3 var(--nx-font); box-shadow: 0 16px 40px rgba(0,0,0,.35); transform-origin: 0 100%; }
-@media (max-width: 860px) { .si-say { left: 50%; bottom: calc(10% + 90 * var(--u)); font-size: 13px; } }
+@media (prefers-reduced-transparency: reduce) {
+  .si-v2 .ap-si-card, .si-v2 .ap-si-nav, .si-v2 .si-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: #160d2c; }
+}

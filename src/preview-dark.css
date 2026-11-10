@@ -1,0 +1,95 @@
+/* The product previews (feature-page films and clips, the landing tour stage, the live demo) in the
+   dark edition: the mock windows become deep-violet glass so they belong to the page instead of
+   sitting on it as white screens. Loaded after site.css. Three mock systems share one palette:
+   fm- (Film.tsx), ms- (TourScenes.tsx) and ld- (LiveDemo.tsx). */
+
+:root {
+  --pv-bg: #140e26; --pv-bg-2: #1b1332; --pv-bg-3: #241a40; --pv-ink: #f5f3ff; --pv-ink-2: rgba(245,243,255,.72); --pv-ink-3: rgba(245,243,255,.46);
+  --pv-line: rgba(255,255,255,.1); --pv-soft: rgba(255,255,255,.07); --pv-accent: #a78bfa; --pv-accent-ink: #ddd6fe; --pv-tint: rgba(167,139,250,.2);
+}
+
+/* ===== Film player (feature pages) ===== */
+.fm-canvas { --ap-ink: var(--pv-ink); --ap-ink-2: var(--pv-ink-2); --ap-ink-3: var(--pv-ink-3); --ap-bg: var(--pv-bg-2); --ap-line: var(--pv-line); --ap-blue: var(--pv-accent); --ap-blue-ink: var(--pv-accent-ink); color: var(--pv-ink); }
+.fm-stage .fm-fit, .fm-clip .fm-fit { background: var(--pv-bg); }
+.fm-win { background: var(--pv-bg); box-shadow: inset 0 0 0 1px var(--pv-line); }
+.fm-win-bar { background: #100b1f; border-bottom-color: var(--pv-line); }
+.fm-win-bar i { background: rgba(255,255,255,.14); }
+.fm-side { background: #100b1f; }
+.fm-side .fm-side-ch.on { background: var(--pv-soft); color: #fff; box-shadow: inset 0 0 0 1px var(--pv-line); }
+.fm-icon-btn { color: var(--pv-ink-2); }
+.fm-chip-btn { background: var(--pv-soft); color: #fff; box-shadow: inset 0 0 0 1px var(--pv-line); }
+.fm-chip-btn.primary { background: #7c3aed; }
+.fm-msg b em, .fm-kw, .fm-typing, .fm-seg, .fm-res-ico { background: var(--pv-soft); }
+.fm-typing i { background: var(--pv-ink-2); }
+.fm-hl { background: var(--pv-tint); }
+.fm-mention { background: var(--pv-tint); color: var(--pv-accent-ink); }
+.fm-recap, .fm-res.best, .fm-branch { background: var(--pv-bg-3); }
+.fm-composer { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); }
+.fm-caret { background: var(--pv-accent); }
+.fm-thread { background: var(--pv-bg); border-left-color: var(--pv-line); box-shadow: -16px 0 32px -24px rgba(0,0,0,.6); }
+.fm-thread header { border-bottom-color: var(--pv-line); }
+.fm-huddle { background: #0b0618; box-shadow: inset 0 0 0 1px var(--pv-line), 0 16px 40px -16px rgba(0,0,0,.8); }
+.fm-ring { box-shadow: inset 0 0 0 2px #c4b5fd; }
+.fm-screen { background: #080510; box-shadow: inset 0 0 0 1px var(--pv-line), 0 16px 40px rgba(0,0,0,.5); }
+.fm-screen-doc { background: var(--pv-bg-2); }
+.fm-screen-field { box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.fm-scrim { background: rgba(0,0,0,.5); }
+.fm-modal, .fm-palette { background: var(--pv-bg-2); box-shadow: inset 0 0 0 1px var(--pv-line), 0 30px 70px rgba(0,0,0,.6); }
+.fm-input { box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.fm-seg-fill { background: var(--pv-bg-3); box-shadow: inset 0 0 0 1px var(--pv-line); }
+.fm-keys kbd { background: var(--pv-bg-3); color: #fff; box-shadow: 0 3px 0 rgba(0,0,0,.5), inset 0 0 0 1px var(--pv-line); }
+.fm-palette-input { border-bottom-color: var(--pv-line); }
+.fm-res mark { background: var(--pv-tint); }
+.fm-res-ico.blue { background: #7c3aed; }
+.fm-av.bot { background: #7c3aed; }
+
+/* ===== Tour stage (landing) ===== */
+.ms { --ink: var(--pv-ink); --ink-2: var(--pv-ink-2); --ink-3: var(--pv-ink-3); --line: var(--pv-line); --soft: var(--pv-soft); --blue: var(--pv-accent); --blue-ink: var(--pv-accent-ink); --tint: var(--pv-tint);
+  box-shadow: 0 0 0 1px var(--pv-line), 0 30px 60px -30px rgba(0,0,0,.8); }
+.tr-stage { background: rgba(255,255,255,.03); }
+.ms-win, .ms-thread, .ms-step, .ms-pal, .ms-list, .ms-steps { background: var(--pv-bg); }
+.ms-list, .ms-steps { background: #100b1f; }
+.ms-huddle { background: #0b0618; box-shadow: inset 0 0 0 1px var(--pv-line), 0 12px 32px -12px rgba(0,0,0,.8); }
+.ms-ring { box-shadow: inset 0 0 0 2px #c4b5fd; }
+.ms-faces .ms-av { box-shadow: 0 0 0 1.5px var(--pv-bg); }
+.ms-box { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.3); }
+.ms-pill { background: var(--pv-soft); }
+.ms-wire { background: rgba(255,255,255,.12); }
+.ms-keys kbd { background: var(--pv-bg-3); box-shadow: inset 0 0 0 1px var(--pv-line), 0 2px 0 rgba(0,0,0,.5); }
+.ms-r b u { background: var(--pv-tint); }
+.ms-av.bot { background: #7c3aed; }
+.ms-tick, .ms-r-ico.blue { background: #7c3aed; }
+
+/* ===== Live demo (landing) ===== */
+.ld { --ld-bg: var(--pv-bg); --ld-text: var(--pv-ink); --ld-line: var(--pv-line); --ld-muted: var(--pv-ink-2); --ld-faint: var(--pv-ink-3); --ld-accent: var(--pv-accent); --ld-accent-ink: var(--pv-accent-ink); --ld-tint: var(--pv-tint); }
+.ld-seg button, .ld-pause { background: var(--pv-soft); color: #fff; box-shadow: inset 0 0 0 1px var(--pv-line); }
+.ld-seg button:hover, .ld-pause:hover { background: rgba(255,255,255,.14); }
+.ld-seg button.on { background: #fff; color: #111; }
+.ld-chrome, .ld-nav, .ld-bbar, .ld-find { background: #100b1f; }
+.ld-chrome i, .ld-bbar i { background: rgba(255,255,255,.14); }
+.ld-nav span.on { background: var(--pv-soft); color: #fff; box-shadow: inset 0 0 0 1px var(--pv-line); }
+.ld-ws i, .ld-share.hot, .ld-ai-btns button.on { background: #7c3aed; color: #fff; }
+.ld-count, .ld-badge, .ld-btn { background: #7c3aed; }
+.ld-progress i { background: rgba(255,255,255,.14); }
+.ld-progress u { background: #c4b5fd; }
+.ld-icon, .ld-callout, .ld-ri, .ld-out, .ld-pill, .ld-menu span.on, .ld-results li:nth-child(1), .ld-ai-btns button, .ld-keys kbd.down { background: var(--pv-soft); }
+.ld-share, .ld-invite > span:first-child, .ld-sel, .ld-ask { box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+.ck { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.3); }
+.ck.on { background: #7c3aed; }
+.ld-todos li.done { text-decoration-color: rgba(255,255,255,.4); }
+.ld-switch i { background: rgba(255,255,255,.18); }
+.ld-ghost { color: #fff; }
+.ld-db { color: var(--pv-ink); }
+
+/* ===== Shared: glowing pointer, sheen, live badge ===== */
+.fm-cursor, .mo-cursor, .ld-ptr { filter: drop-shadow(0 0 6px rgba(167,139,250,.9)) drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+.fm-cursor path, .mo-cursor path, .ld-ptr path { fill: #fff; stroke: #4c1d95; }
+.fm-fit::after, .ld-frame::after, .ms-win::before { content: ''; position: absolute; inset: 0; z-index: 25; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(115deg, transparent 35%, rgba(255,255,255,.06) 48%, rgba(255,255,255,.015) 54%, transparent 65%); background-size: 240% 100%; animation: pv-sheen 9s ease-in-out infinite; }
+.ld-frame { position: relative; }
+.fm-stage { position: relative; }
+.fm-stage::before { content: 'Live preview'; position: absolute; top: 24px; right: 28px; z-index: 30; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 999px;
+  background: rgba(11,6,24,.6); color: #ddd6fe; font: 600 11px/1 var(--ap-font); letter-spacing: .06em; text-transform: uppercase; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: pv-pulse 2.4s ease-out infinite; }
+@keyframes pv-sheen { 0%, 100% { background-position: 120% 0; } 50% { background-position: -120% 0; } }
+@keyframes pv-pulse { 0% { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 0 0 0 rgba(196,181,253,.6); } 100% { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 0 0 12px rgba(196,181,253,0); } }
+@media (prefers-reduced-motion: reduce) { .fm-fit::after, .ld-frame::after, .ms-win::before, .fm-stage::before { animation: none; } }
