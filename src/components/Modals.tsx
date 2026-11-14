@@ -21,10 +21,17 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   useEffect(() => {
     const el = dialog.current;
     if (el && !el.contains(document.activeElement)) el.focus();
+    // The restore waits a tick and is cancelled if the effect re-runs (StrictMode mounts twice in dev), so an
+    // autoFocus field inside the dialog is never robbed of focus by the development double-mount.
+    let restore = 0;
     return () => {
-      if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+      restore = window.setTimeout(() => { if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus(); }, 0);
+      // A re-mount (StrictMode) cancels the pending restore; a real close lets it run.
+      pending.current = restore;
     };
   }, [opener]);
+  const pending = useRef(0);
+  useEffect(() => { if (pending.current) { clearTimeout(pending.current); pending.current = 0; } });
   return (
     <div className="scrim" onMouseDown={onClose}>
       <div ref={dialog} tabIndex={-1} className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>

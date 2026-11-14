@@ -501,9 +501,10 @@ export default function App() {
       if (to) { e.preventDefault(); openChannel(to); }
       return;
     }
-    // Not while a dialog or the palette (the 'search' modal) is open.
-    if (mod && e.shiftKey && !modal && e.key.toLowerCase() === 'k') { e.preventDefault(); return showView('dms'); }
-    if (mod && e.shiftKey && !modal && e.key.toLowerCase() === 'a') { e.preventDefault(); return showView('activity'); }
+    // Not while any dialog is open: App-level modals, the palette (the 'search' modal), or a dialog a view opened itself.
+    const dialogOpen = !!modal || !!document.querySelector('[role="dialog"], [aria-modal="true"]');
+    if (mod && e.shiftKey && !dialogOpen && e.key.toLowerCase() === 'k') { e.preventDefault(); return showView('dms'); }
+    if (mod && e.shiftKey && !dialogOpen && e.key.toLowerCase() === 'a') { e.preventDefault(); return showView('activity'); }
     // Esc from a field inside the right panel (the thread reply composer, say) closes the panel too.
     const fieldOutsidePanel = typingInField && !target?.closest('.panel');
     if (e.key === 'Escape' && panel && !modal && !menu && !fieldOutsidePanel && !e.defaultPrevented) return setPanel(null);
