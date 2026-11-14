@@ -234,7 +234,7 @@ In the console, `await relayHuddle.stats()` shows the bytes and frames sent and 
 - Every event is checked against channel visibility, posting policy, roles and information barriers on the server.
 - Attachments are accepted only as inline uploads; link previews refuse private, loopback and link-local addresses, including on redirects and DNS answers.
 - Each socket is rate limited, dead sockets are dropped by a heartbeat, and pending writes are flushed when the host restarts the server.
-- Without Supabase, identity is a local account (or just a name) stored on the server, so run that mode only behind a trusted network. With `NODE_ENV=production` the server refuses name-only sign-in unless `RELAY_ALLOW_DEV_AUTH=1` is set.
+- Without Supabase, identity is a local account (or just a name) stored on the server, so run that mode only behind a trusted network. With `NODE_ENV=production` the server refuses name-only sign-in unless `RELAY_ALLOW_DEV_AUTH=1` is set. With dev auth on, emails are unproven, so anyone could register the owner email first; never enable it on a public deployment.
 </details>
 
 ---
@@ -276,7 +276,7 @@ Server environment variables:
 | `SUPABASE_JWT_SECRET` | Project Settings → API → JWT Settings → JWT Secret. Lets the server verify tokens locally. |
 | `SUPABASE_JWKS_URL` | `https://<ref>.supabase.co/auth/v1/.well-known/jwks.json`, for projects on asymmetric signing keys. Use it instead of the secret. With neither set, the server checks each token with a call to Supabase. |
 | `RELAY_OWNER_EMAIL` | The person with this email becomes owner on first sign-in. Without it, the first person to sign in becomes owner. |
-| `RELAY_ALLOW_DEV_AUTH` | Set to `1` to allow offline dev sign-in in production. Not recommended. |
+| `RELAY_ALLOW_DEV_AUTH` | Set to `1` to allow offline dev sign-in in production. Not recommended. With dev auth on, emails are unproven, so anyone could register the owner email first; never enable it on a public deployment. |
 | `RELAY_APP_URL` | The UI's public address, used in notification emails. |
 | `RELAY_EMAIL_PROVIDER`, `RESEND_API_KEY`, `RELAY_EMAIL_FROM` | Notification email, see [docs/email-notifications.md](docs/email-notifications.md). |
 | `PORT`, `DATA_DIR` | Listen port (default 8787) and where file state is stored. |

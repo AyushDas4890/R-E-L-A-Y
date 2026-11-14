@@ -63,7 +63,7 @@ and Client Secret into Supabase, then enable the provider.
 
 - **GitHub:** create an OAuth App at https://github.com/settings/developers and set the authorization callback URL to the callback above.
 - **Google:** create an OAuth client in Google Cloud Console (configure the consent screen first) and add the callback as an authorized redirect URI.
-- **Microsoft:** in Supabase this provider is called **Azure**. Register an application in Microsoft Entra ID (Azure portal → App registrations), add the callback as a Web redirect URI, and create a client secret. Paste the Application (client) ID and the secret value into Supabase. Set the Azure Tenant URL if you want to limit sign-in to one tenant. Relay requests the scopes `email openid profile`, and the account must return an email address.
+- **Microsoft:** in Supabase this provider is called **Azure**. Register an application in Microsoft Entra ID (Azure portal → App registrations), add the callback as a Web redirect URI, and create a client secret. Paste the Application (client) ID and the secret value into Supabase. Set the Azure Tenant URL if you want to limit sign-in to one tenant. Relay requests the scopes `email openid profile`, and the account must return an email address. Microsoft lets tenant admins set any email on an account without proving it, so either register the app as single-tenant (Accounts in this organisational directory only) and set the Azure Tenant URL to your organisation's tenant, or enable the `xms_edov` optional claim so only domain-verified emails count. The allowed-domain and owner-email checks are only as strong as the emails they see. Remember too that turning **Confirm email** off makes every email trusted, for every provider.
 
 ### URL configuration
 
@@ -88,7 +88,7 @@ Server (Render or any Node host):
 - `SUPABASE_JWKS_URL`: `https://<ref>.supabase.co/auth/v1/.well-known/jwks.json`. Use this instead of the secret if your project uses asymmetric signing keys. If neither is set, the server verifies each token with a network call to Supabase, which works but is slower.
 - `RELAY_OWNER_EMAIL`: the email of the person who should own the workspace (see below).
 - `RELAY_APP_URL`: the UI's public address, used in notification emails.
-- `RELAY_ALLOW_DEV_AUTH=1`: allows the offline dev sign-in in production. Not recommended.
+- `RELAY_ALLOW_DEV_AUTH=1`: allows the offline dev sign-in in production. Not recommended. With dev auth on, emails are unproven, so anyone could register the owner email first; never enable it on a public deployment.
 - `PORT` (default 8787) and `DATA_DIR` as needed.
 
 Redeploy both after setting variables. Vite bakes `VITE_*` values in at build time.
