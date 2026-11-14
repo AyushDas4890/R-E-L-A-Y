@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
-import { Icon } from './Icon.tsx';
-import { Aurora } from './Aurora.tsx';
 import { MicrosoftIcon } from './MicrosoftIcon.tsx';
-import LightBulbButton from './framer/LightBulbButton.tsx';
-import '../apple.css';
+import { VStack } from '@astryxdesign/core/VStack';
+import { Card } from '@astryxdesign/core/Card';
+import { Button } from '@astryxdesign/core/Button';
+import { Grid } from '@astryxdesign/core/Grid';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
+import { useMediaQuery } from '@astryxdesign/core/hooks';
+import { SiteFrame } from './Site.tsx';
+import { Mascot } from './SiteShots.tsx';
 import '../signin.css';
 import { supabase, authEnabled } from '../supabase.ts';
 import { saveDevSession } from '../store.ts';
@@ -187,9 +192,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, in
     </label>
   );
   const submit = (label: string, busyLabel: string) => (
-    <LightBulbButton type="submit" disabled={!!busy} lightColor="#9a6bff" buttonColor="#241838" substrateColor="#0e0717" width="100%" height={46}>
-      {busy === 'form' ? busyLabel : label}
-    </LightBulbButton>
+    <Button type="submit" variant="primary" size="lg" width="100%" isDisabled={!!busy} label={busy === 'form' ? busyLabel : label} />
   );
   const hint = strength(password);
   // Hide a provider only when Supabase says it is off; in dev mode all three show and explain themselves.
@@ -200,7 +203,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, in
       case 'signin':
         return (
           <>
-            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void signIn(); }}>
+            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); if (!busy) void signIn(); }}>
               {emailField}
               <label className="ap-si-field">
                 Password
@@ -227,7 +230,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, in
       case 'signup':
         return (
           <>
-            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void signUp(); }}>
+            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); if (!busy) void signUp(); }}>
               <label className="ap-si-field">
                 Name
                 <input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" maxLength={40} required />
@@ -251,7 +254,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, in
       case 'forgot':
         return (
           <>
-            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void sendReset(); }}>
+            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); if (!busy) void sendReset(); }}>
               {emailField}
               {submit('Send reset link', 'Sending…')}
             </form>
@@ -297,17 +300,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, in
                 Invite code
                 <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Code" maxLength={32} autoFocus />
               </label>
-              <LightBulbButton
-                disabled={!code}
-                onClick={() => onInvite(code)}
-                lightColor="#9a6bff"
-                buttonColor="#241838"
-                substrateColor="#0e0717"
-                width="100%"
-                height={46}
-              >
-                Join with invite
-              </LightBulbButton>
+              <Button variant="primary" size="lg" width="100%" isDisabled={!code} label="Join with invite" onClick={() => onInvite(code)} />
               <button className="ap-pill quiet full" onClick={onSignOut}>Sign out</button>
             </>
           ) : forms()}
@@ -328,66 +321,31 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, in
   );
 }
 
-// Little messages drifting over the visual: a taste of the workspace before signing in.
-const CHIPS = [
-  { who: 'M', text: 'deploy is green', when: 'now', style: { top: '9%', left: '8%', '--d': 18, '--t': '0s' } },
-  { who: 'A', text: 'standup moved to 10:30', when: '2m', style: { top: '24%', right: '6%', '--d': -24, '--t': '-2s' } },
-  { who: 'J', text: 'huddle? 🎧', when: '5m', style: { top: '46%', left: '12%', '--d': 30, '--t': '-4s' } },
-] as const;
-
-// The sign-in page's backdrop, nav, visual and card. Login and the password reset page render
-// their content inside the card.
+// The sign-in page is the front door: the public site's light nav, Relay Bot with the one-line promise
+// on the left, and the card that Login and the password reset page render their form into on the right.
+// On a phone the promise shrinks to one line above the card. Links in the nav leave sign-in for that page.
 export function SignInStage({ onBack, children }: { onBack?: () => void; children: ReactNode }) {
-  // Pointer tracking: the backdrop drifts, the visual tilts and a spotlight follows the cursor.
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = root.current;
-    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let raf = 0, tx = 0, ty = 0, cx = 0, cy = 0, px = 0, py = 0;
-    const onMove = (e: PointerEvent) => {
-      tx = (e.clientX / window.innerWidth - 0.5) * 2;
-      ty = (e.clientY / window.innerHeight - 0.5) * 2;
-      px = e.clientX; py = e.clientY;
-    };
-    const tick = () => {
-      cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08;
-      el.style.setProperty('--mx', cx.toFixed(4));
-      el.style.setProperty('--my', cy.toFixed(4));
-      el.style.setProperty('--sx', `${px}px`);
-      el.style.setProperty('--sy', `${py}px`);
-      raf = requestAnimationFrame(tick);
-    };
-    window.addEventListener('pointermove', onMove);
-    raf = requestAnimationFrame(tick);
-    return () => { window.removeEventListener('pointermove', onMove); cancelAnimationFrame(raf); };
-  }, []);
-
+  const wide = useMediaQuery('(min-width: 860px)');
   return (
-    <div className="ap-si si-v2" ref={root}>
-      <div className="si-bg" aria-hidden><Aurora /></div>
-      <div className="si-spot" aria-hidden />
-      <header className="ap-si-nav">
-        <button className="ap-brand" onClick={onBack} disabled={!onBack}><LogoMark size={22} />Relay</button>
-        {onBack && <button className="ap-link-btn" onClick={onBack}><Icon n="back" size={14} /> Home</button>}
-      </header>
-      <main className="ap-si-main">
-        <div className="si-visual" aria-hidden>
-          <img src="/hf/relay-hero.jpg" alt="" />
-          <div className="si-shine" />
-          {CHIPS.map((c) => (
-            <span key={c.text} className="si-chip" style={c.style as React.CSSProperties}><i>{c.who}</i>{c.text}<small>{c.when}</small></span>
-          ))}
-          <div className="si-caption">
-            <h2>Where the team actually talks.</h2>
-            <p>Channels, pages, huddles and databases in one place.</p>
-          </div>
-        </div>
-        <div className="ap-si-card">
-          <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
-          {children}
-          <p className="ap-si-foot">Powered by Flo Studios</p>
-        </div>
-      </main>
-    </div>
+    <SiteFrame route="home" footer={false}>
+      <VStack hAlign="center" paddingInline={4} paddingBlockStart={wide ? 10 : 6} paddingBlockEnd={10} className="ap-si si-light">
+        <Grid columns={wide ? 2 : 1} gap={wide ? 10 : 6} width="100%" maxWidth={1000} align="center">
+          <VStack gap={4} hAlign={wide ? 'start' : 'center'}>
+            {wide && <Mascot say="Your channels are right where you left them" />}
+            <Heading level={2} type={wide ? 'display-3' : undefined} weight="semibold" justify={wide ? 'start' : 'center'}>Where teams and work flow together</Heading>
+            {wide && <Text color="secondary">Channels, direct messages, pages and tasks for your whole organisation. Sign in with the account your team invited.</Text>}
+            {onBack && wide && <Button variant="ghost" label="Back to home" onClick={onBack} />}
+          </VStack>
+          <VStack gap={4} hAlign="center">
+            <Card padding={8} elevation="med" width="100%" maxWidth={440} className="ap-si-card">
+              <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
+              {children}
+              <p className="ap-si-foot">Powered by Flo Studios</p>
+            </Card>
+            {onBack && !wide && <Button variant="ghost" label="Back to home" onClick={onBack} />}
+          </VStack>
+        </Grid>
+      </VStack>
+    </SiteFrame>
   );
 }

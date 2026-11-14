@@ -12,11 +12,9 @@ import './apple-shell.css';
 import './pages.css';
 import './db.css';
 import './collab.css';
-import './help.css';
 import './apple-public.css';
 import './apple-app.css';
 import './site.css';
-import './preview-dark.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

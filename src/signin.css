@@ -1,5 +1,4 @@
-/* Boot (loading) screen and the sign-in page. Both sit on a Higgsfield-generated violet visual
-   (public/hf/relay-hero.png and its motion loop) and react to the pointer. */
+/* Boot (loading) screen, on the violet Aurora backdrop, and the light sign-in card. */
 
 /* ===== Boot ===== */
 .rl-boot {
@@ -51,119 +50,40 @@
 @keyframes rl-boot-breathe { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
 @keyframes rl-boot-ripple { to { width: 360px; height: 360px; margin: -180px 0 0 -180px; opacity: 0; border-width: .5px; } }
 
-/* ===== Sign-in ===== */
-.ap-si.si-v2 {
-  --mx: 0; --my: 0; --sx: 50%; --sy: 50%;
-  --ap-ink: #f5f3ff; --ap-ink-2: rgba(245,243,255,.72); --ap-ink-3: rgba(245,243,255,.45);
-  --ap-bg: #0b0618; --ap-line: rgba(255,255,255,.12);
-  min-height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--ap-bg); color: var(--ap-ink);
-}
-.si-v2 .si-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
-.si-v2 .si-bg .au { position: absolute; inset: 0; }
-.si-v2 .si-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(11,6,24,0) 0%, rgba(11,6,24,.35) 55%, rgba(11,6,24,.8) 100%); }
-.si-v2 .si-spot { position: absolute; inset: 0; z-index: 0; pointer-events: none; mix-blend-mode: screen;
-  background: radial-gradient(420px circle at var(--sx) var(--sy), rgba(196,181,253,.28), rgba(124,58,237,.08) 40%, transparent 70%); }
-.si-v2 > *:not(.si-bg):not(.si-spot) { position: relative; z-index: 1; }
+/* ===== Sign-in: a light card inside the public site frame (Login.tsx SignInStage). Tokens only. ===== */
+.si-light .ap-si-card { display: grid; gap: var(--spacing-3); text-align: center; }
+.si-light .ap-si-mark { display: grid; place-items: center; width: var(--spacing-12); height: var(--spacing-12); margin: 0 auto var(--spacing-1); border-radius: var(--radius-container); background: var(--color-background-muted); color: var(--color-text-primary); }
+.si-light .ap-si-card h1 { margin: 0; font-size: var(--font-size-3xl); font-weight: var(--font-weight-semibold); line-height: 1.15; color: var(--color-text-primary); }
+.si-light .ap-si-sub { margin: 0 0 var(--spacing-2); font-size: var(--font-size-base); line-height: 1.45; color: var(--color-text-secondary); }
+.si-light .ap-si-form { display: grid; gap: var(--spacing-3); }
+.si-light .ap-si-field { display: grid; gap: var(--spacing-1-5); text-align: start; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-text-secondary); }
+.si-light :is(.ap-si-field input, .si-dev-name input) { height: var(--size-element-lg); padding: 0 var(--spacing-3); border-radius: var(--radius-element); border: 1px solid var(--color-border); background: var(--color-background-card); color: var(--color-text-primary); font: inherit; font-size: var(--font-size-base); font-weight: var(--font-weight-normal); transition: border-color .2s ease, box-shadow .2s ease; }
+.si-light :is(.ap-si-field input, .si-dev-name input)::placeholder { color: var(--color-text-secondary); opacity: .7; }
+.si-light :is(.ap-si-field input, .si-dev-name input):focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-muted); }
+.si-light .ap-si-divider { display: flex; align-items: center; gap: var(--spacing-3); margin: var(--spacing-1) 0; font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+.si-light .ap-si-divider::before, .si-light .ap-si-divider::after { content: ''; flex: 1; height: 1px; background: var(--color-border); }
+.si-light .ap-si-error { margin: 0; padding: var(--spacing-3) var(--spacing-4); border-radius: var(--radius-element); background: var(--color-error-muted); color: var(--color-on-error-muted); font-size: var(--font-size-sm); text-align: start; }
+.si-light .ap-si-ok { margin: 0; padding: var(--spacing-3) var(--spacing-4); border-radius: var(--radius-element); background: var(--color-success-muted); color: var(--color-on-success-muted); font-size: var(--font-size-sm); text-align: start; }
+.si-light .si-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: var(--spacing-2); }
+.si-light :is(.si-provider, .ap-pill.quiet, .si-dev-name button) { display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-2); height: var(--size-element-lg); padding: 0 var(--spacing-3); border-radius: var(--radius-element); border: 1px solid var(--color-border); background: var(--color-background-card); color: var(--color-text-primary); font: inherit; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); box-shadow: none; cursor: pointer; transition: background-color .2s ease, border-color .2s ease; }
+.si-light .ap-pill.quiet { width: 100%; }
+.si-light :is(.si-provider, .ap-pill.quiet, .si-dev-name button):hover:not(:disabled) { background: var(--color-background-muted); border-color: var(--color-border-emphasized); }
+.si-light :is(.si-provider, .ap-pill.quiet, .si-dev-name button):disabled { opacity: .55; cursor: default; }
+.si-light .si-forgot { justify-self: end; margin: calc(var(--spacing-1) * -1) 0 0; padding: var(--spacing-0-5) var(--spacing-1); font: inherit; font-size: var(--font-size-sm); color: var(--color-text-secondary); background: none; border: 0; cursor: pointer; }
+.si-light .si-forgot:hover { color: var(--color-text-accent); }
+.si-light .si-switch { margin: var(--spacing-0-5) 0 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+.si-light .si-switch button { padding: var(--spacing-0-5) var(--spacing-1); font: inherit; font-weight: var(--font-weight-semibold); color: var(--color-text-accent); background: none; border: 0; cursor: pointer; }
+.si-light .si-switch button:hover { text-decoration: underline; }
+.si-light .si-strength { min-height: var(--spacing-4); margin: calc(var(--spacing-2) * -1) 0 0; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-align: start; color: var(--color-text-secondary); }
+.si-light .si-strength[data-level="weak"] { color: var(--color-text-error); }
+.si-light .si-strength[data-level="good"] { color: var(--color-text-warning); }
+.si-light .si-strength[data-level="strong"] { color: var(--color-text-success); }
+.si-light .si-dev-name { display: flex; gap: var(--spacing-2); }
+.si-light .si-dev-name input { flex: 1; min-width: 0; }
+.si-light .ap-si-foot { margin: var(--spacing-2) 0 0; font-size: var(--font-size-xs); color: var(--color-text-secondary); }
 
-.si-v2 .ap-si-nav { background: rgba(20,12,40,.55); color: #fff; backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 10px 30px -10px rgba(0,0,0,.6); }
-.si-v2 .ap-si-nav .ap-brand, .si-v2 .ap-link-btn { color: #fff; }
-.si-v2 .ap-link-btn:hover { color: #ddd6fe; }
-.si-v2 .ap-brand .rl-mark path { fill: #fff; }
 
-.si-v2 .ap-si-main { flex: 1; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: center; gap: 40px;
-  width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding: 20px 0 40px; }
-
-/* Left: the Higgsfield visual, tilting toward the pointer, with messages drifting across it. */
-.si-v2 .si-visual { position: relative; width: 100%; aspect-ratio: 4 / 5; max-height: 72vh; border-radius: 32px; overflow: hidden; perspective: 1200px;
-  transform: rotateY(calc(var(--mx) * 7deg)) rotateX(calc(var(--my) * -7deg)); transform-style: preserve-3d; transition: transform .15s ease-out;
-  box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 50px 100px -30px rgba(124,58,237,.6), 0 30px 60px -30px rgba(0,0,0,.8);
-  animation: si-rise .9s cubic-bezier(.16,1,.3,1) both; }
-.si-v2 .si-visual img { position: absolute; inset: -8%; width: 116%; height: 116%; object-fit: cover;
-  transform: translate(calc(var(--mx) * 16px), calc(var(--my) * 12px)) scale(1.02); transition: transform .15s ease-out; }
-.si-v2 .si-visual::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,6,24,0) 40%, rgba(11,6,24,.75) 100%); }
-.si-v2 .si-shine { position: absolute; inset: 0; pointer-events: none; z-index: 2;
-  background: radial-gradient(360px circle at var(--sx) var(--sy), rgba(255,255,255,.22), transparent 60%); }
-.si-v2 .si-caption { position: absolute; left: 28px; right: 28px; bottom: 28px; z-index: 3; display: grid; gap: 6px; }
-.si-v2 .si-caption h2 { margin: 0; font-size: clamp(24px, 2.6vw, 34px); font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: #fff; }
-.si-v2 .si-caption p { margin: 0; font-size: 14px; color: rgba(255,255,255,.7); }
-.si-v2 .si-chip { position: absolute; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 10px; border-radius: 999px;
-  background: rgba(20,12,40,.55); color: #fff; font-size: 13px; white-space: nowrap; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 12px 30px -12px rgba(0,0,0,.7);
-  transform: translateZ(60px) translate(calc(var(--mx) * var(--d) * 1px), calc(var(--my) * var(--d) * .7px)); transition: transform .2s ease-out;
-  animation: si-float 6s ease-in-out infinite; animation-delay: var(--t); cursor: default; }
-.si-v2 .si-chip:hover { background: rgba(124,58,237,.6); }
-.si-v2 .si-chip i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-weight: 600; font-size: 11px;
-  background: linear-gradient(135deg, #a78bfa, #7c3aed); }
-.si-v2 .si-chip small { color: rgba(255,255,255,.55); margin-left: 4px; }
-
-/* Right: the glass card. */
-.si-v2 .ap-si-card { width: min(440px, 100%); justify-self: center; display: grid; gap: 13px; padding: 36px 36px 28px; border-radius: 28px; text-align: center;
-  background: rgba(20,12,40,.55); color: var(--ap-ink); backdrop-filter: blur(28px) saturate(160%); -webkit-backdrop-filter: blur(28px) saturate(160%);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 40px 80px -30px rgba(0,0,0,.8); animation: si-rise .9s .08s cubic-bezier(.16,1,.3,1) both; }
-.si-v2 .ap-si-mark { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 4px; border-radius: 16px; color: #fff;
-  background: linear-gradient(135deg, rgba(167,139,250,.5), rgba(124,58,237,.3)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
-.si-v2 .ap-si-mark .rl-mark path { fill: #fff; }
-.si-v2 .ap-si-card h1 { margin: 0; font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -.03em; color: #fff; }
-.si-v2 .ap-si-sub { margin: -4px 0 12px; font-size: 16px; line-height: 1.45; color: var(--ap-ink-2); }
-.si-v2 .ap-si-field { display: grid; gap: 8px; text-align: left; font-size: 13px; font-weight: 500; color: var(--ap-ink-2); }
-.si-v2 .ap-si-field input { height: 52px; padding: 0 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff;
-  font-size: 17px; font-weight: 400; font-family: inherit; transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease, transform .2s ease; }
-.si-v2 .ap-si-field input::placeholder { color: var(--ap-ink-3); }
-.si-v2 .ap-si-field input:focus { outline: none; border-color: #a78bfa; background: rgba(255,255,255,.1); box-shadow: 0 0 0 4px rgba(167,139,250,.25), 0 0 40px -10px rgba(167,139,250,.8); transform: translateY(-1px); }
-.si-v2 .ap-si-form { display: grid; gap: 14px; }
-.si-v2 .ap-si-divider { display: flex; align-items: center; gap: 12px; margin: 6px 0; font-size: 12px; color: var(--ap-ink-3); }
-.si-v2 .ap-si-divider::before, .si-v2 .ap-si-divider::after { content: ''; flex: 1; height: 1px; background: var(--ap-line); }
-.si-v2 .ap-si-error { margin: 0; padding: 12px 16px; border-radius: 12px; background: rgba(255,80,100,.14); color: #ffb3bd; font-size: 14px; text-align: left; box-shadow: inset 0 0 0 1px rgba(255,80,100,.3); }
-/* Success notes: a resent confirmation email. */
-.si-v2 .ap-si-ok { margin: 0; padding: 12px 16px; border-radius: 12px; background: rgba(80,220,150,.12); color: #b4f5d2; font-size: 14px; text-align: left; box-shadow: inset 0 0 0 1px rgba(80,220,150,.3); }
-/* Sign-in forms: provider buttons, mode switch links, strength hint and the dev name entry. */
-.si-v2 .si-providers { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
-.si-v2 .si-provider { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 46px; padding: 0 12px; border-radius: 14px;
-  border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff; font-size: 14px; font-weight: 500; font-family: inherit; cursor: pointer;
-  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease; }
-.si-v2 .si-provider:hover:not(:disabled) { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.3); }
-.si-v2 .si-provider:focus-visible { outline: none; border-color: #a78bfa; box-shadow: 0 0 0 4px rgba(167,139,250,.25); }
-.si-v2 .si-provider:disabled { opacity: .55; cursor: default; }
-.si-v2 .si-forgot { justify-self: end; margin: -6px 0 0; padding: 2px 4px; font-size: 13px; color: var(--ap-ink-2); background: none; border: 0; cursor: pointer; }
-.si-v2 .si-forgot:hover { color: #ddd6fe; }
-.si-v2 .si-switch { margin: 2px 0 0; font-size: 14px; color: var(--ap-ink-2); }
-.si-v2 .si-switch button { padding: 2px 4px; font: inherit; font-weight: 600; color: #c4b5fd; background: none; border: 0; cursor: pointer; }
-.si-v2 .si-switch button:hover { color: #ddd6fe; text-decoration: underline; }
-.si-v2 .si-strength { min-height: 16px; margin: -8px 0 0; font-size: 12px; font-weight: 600; text-align: left; color: var(--ap-ink-3); }
-.si-v2 .si-strength[data-level="weak"] { color: #ffb3bd; }
-.si-v2 .si-strength[data-level="good"] { color: #fcd34d; }
-.si-v2 .si-strength[data-level="strong"] { color: #86efac; }
-.si-v2 .si-dev-name { display: flex; gap: 8px; }
-.si-v2 .si-dev-name input { flex: 1; min-width: 0; height: 40px; padding: 0 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06);
-  color: #fff; font-size: 15px; font-family: inherit; transition: border-color .2s ease, box-shadow .2s ease; }
-.si-v2 .si-dev-name input::placeholder { color: var(--ap-ink-3); }
-.si-v2 .si-dev-name input:focus { outline: none; border-color: #a78bfa; box-shadow: 0 0 0 4px rgba(167,139,250,.25); }
-.si-v2 .si-dev-name button { height: 40px; padding: 0 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.1); color: #fff;
-  font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
-.si-v2 .si-dev-name button:disabled { opacity: .5; cursor: default; }
-.si-v2 .ap-si-foot { margin: 8px 0 0; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ap-ink-3); }
-.si-v2 .ap-pill.quiet { background: rgba(255,255,255,.06); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
-.si-v2 .ap-pill.quiet:hover:not(:disabled) { background: rgba(255,255,255,.12); box-shadow: inset 0 0 0 1px rgba(255,255,255,.3); }
-.si-v2 .ap-pill.quiet:disabled { opacity: .55; cursor: default; }
-.si-v2 .si-magnet { display: contents; }
-.si-v2 .si-magnet > * { transition: transform .25s cubic-bezier(.16,1,.3,1); }
-.si-v2 :focus-visible { outline: 3px solid rgba(167,139,250,.5); outline-offset: 2px; border-radius: 10px; }
-.si-v2 .ap-si-field input:focus-visible { outline: none; }
-
-@keyframes si-rise { from { opacity: 0; transform: translateY(28px) scale(.98); } to { opacity: 1; transform: none; } }
-@keyframes si-float { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
-
-@media (max-width: 900px) {
-  .si-v2 .ap-si-main { grid-template-columns: 1fr; gap: 24px; width: min(560px, calc(100% - 32px)); padding-top: 24px; }
-  .si-v2 .si-visual { aspect-ratio: 16 / 10; max-height: 34vh; transform: none; }
-  .si-v2 .si-chip { display: none; }
-  .si-v2 .ap-si-card { padding: 32px 24px 28px; }
-}
 @media (prefers-reduced-motion: reduce) {
-  .rl-boot-video, .rl-boot-glow, .rl-boot-lockup, .si-v2 .si-visual, .si-v2 .si-visual img, .si-v2 .si-chip { transform: none !important; animation: none !important; }
-  .rl-boot-word span, .rl-boot-mark, .si-v2 .ap-si-card { animation: none; }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .si-v2 .ap-si-card, .si-v2 .ap-si-nav, .si-v2 .si-chip { backdrop-filter: none; -webkit-backdrop-filter: none; background: #160d2c; }
+  .rl-boot-video, .rl-boot-glow, .rl-boot-lockup { transform: none !important; animation: none !important; }
+  .rl-boot-word span, .rl-boot-mark { animation: none; }
 }

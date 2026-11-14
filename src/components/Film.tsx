@@ -209,7 +209,7 @@ export function Win({ channel, topic, actions, children, side = true }: { channe
       <div className={`fm-win-body ${side ? '' : 'no-side'}`}>
         {side && (
           <aside className="fm-side">
-            <b>Flo Studios</b>
+            <b>Relay HQ</b>
             {['launch', 'design', 'general', 'incidents'].map((c) => <span key={c} className={`fm-side-ch ${c === channel ? 'on' : ''}`} data-ch={c}># {c}</span>)}
             <em>Direct messages</em>
             <span><Av c="#c8705a" l="M" className="sm" />Maya</span>

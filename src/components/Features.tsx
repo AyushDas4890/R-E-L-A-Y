@@ -1,18 +1,22 @@
-import { Aurora } from './Aurora.tsx';
-import { useGlow } from '../glow.ts';
-import { useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { VStack } from '@astryxdesign/core/VStack';
+import { HStack } from '@astryxdesign/core/HStack';
+import { Grid } from '@astryxdesign/core/Grid';
+import { Card } from '@astryxdesign/core/Card';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
+import { Button } from '@astryxdesign/core/Button';
+import { Divider } from '@astryxdesign/core/Divider';
+import { Token } from '@astryxdesign/core/Token';
+import { Kbd } from '@astryxdesign/core/Kbd';
+import { useMediaQuery } from '@astryxdesign/core/hooks';
 import { Film, Clip, Win, Msg, Bot, Cursor, typeInto, eraseText, type Build, type Chapter } from './Film.tsx';
 import { ENTER, EXIT, T, arrive, pointAt, typing } from '../motion.ts';
 import { Icon, type IconName } from './Icon.tsx';
-import { RouteLink, SiteFooter, SiteNav, type FeatureRoute, type Route } from './Site.tsx';
-import FlexibleAccordion from './framer/FlexibleAccordion.tsx';
-import { InteractiveNodeDiagram } from './InteractiveNodeDiagram.tsx';
-import '../apple.css';
+import { RouteLink, SiteFrame, SiteSection, scrollToHash, type FeatureRoute, type Route } from './Site.tsx';
+import { Mascot } from './SiteShots.tsx';
 import '../features.css';
-
-gsap.registerPlugin(ScrollTrigger);
 
 // Point at an element on the canvas: the cursor glides there, then presses it.
 const clickAt = (tl: gsap.core.Timeline, q: (s: string) => Element[], target: string, at: number | string, dx = 0.5, dy = 0.5) =>
@@ -339,26 +343,10 @@ const searchBuild: Build = (q) => {
   return tl;
 };
 
-// Small drawn pictures for the overview tiles: each one is the feature, not an icon of it.
-function FactArt({ kind }: { kind: string }) {
-  switch (kind) {
-    case 'history': return <div className="fa fa-history" aria-hidden><b>∞</b><span>messages kept</span></div>;
-    case 'huddle': return <div className="fa fa-huddle" aria-hidden>{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ animationDelay: `${(i * 97) % 900}ms` }} />)}</div>;
-    case 'canvas': return <div className="fa fa-canvas" aria-hidden><i /><i /><i /><i className="caret" /></div>;
-    case 'list': return <div className="fa fa-list" aria-hidden><span><em className="done" />Ship notes<u>Done</u></span><span><em className="doing" />Review copy<u>Doing</u></span><span><em />Book venue<u>To do</u></span></div>;
-    case 'flow': return <div className="fa fa-flow" aria-hidden><code>!standup</code><span /><b>Relay Bot replies</b></div>;
-    case 'remind': return <div className="fa fa-remind" aria-hidden><code>/remind me stretch in 10m</code></div>;
-    case 'search': return <div className="fa fa-search" aria-hidden><kbd>Ctrl</kbd><kbd>K</kbd></div>;
-    case 'private': return <div className="fa fa-private" aria-hidden><Icon n="lock" size={16} /><code>design-leads</code></div>;
-    case 'admin': return <div className="fa fa-admin" aria-hidden><span>Owner</span><span>Admin</span><span>Member</span><span>Guest</span></div>;
-    default: return null;
-  }
-}
-
 // ======================= Page content =======================
 
 interface Detail { chapter: number; eyebrow: string; title: string; text: string; points: string[] }
-interface Fact { icon: IconName; title: string; text: string; art?: string }
+interface Fact { icon: IconName; title: string; text: string }
 interface PageDef {
   eyebrow: string;
   title: ReactNode;
@@ -382,15 +370,15 @@ const PAGE_DEFS: Record<FeatureRoute, PageDef> = {
       { chapter: 3, eyebrow: 'Relay Bot', title: 'Catch up in one message', text: 'Recap summarises a channel in seconds. The same bot answers questions, sends reminders and posts huddle notes.', points: ['Channel recaps and thread summaries', 'Daily recaps and file summaries', 'Answers from your own messages'] },
     ],
     facts: [
-      { icon: 'message', art: 'history', title: 'Nothing ages out', text: 'Scroll back to the very first message. It is still there, and still searchable.' },
-      { icon: 'headphones', art: 'huddle', title: 'Talk it through', text: 'Voice and screen share, one click from any channel.' },
-      { icon: 'file', art: 'canvas', title: 'A doc beside every chat', text: 'Plans live next to the conversation that made them.' },
-      { icon: 'checkSquare', art: 'list', title: 'Work with an owner', text: 'Status, assignee and due date.' },
-      { icon: 'zap', art: 'flow', title: 'Teach the bot your routines', text: 'Triggers on a keyword, a join or the clock.' },
-      { icon: 'clock', art: 'remind', title: 'Never lose the follow-up', text: 'Scheduled messages, or just type /remind.' },
-      { icon: 'search', art: 'search', title: 'Ask, don’t dig', text: 'Press Ctrl K, ask a question, get the message.' },
-      { icon: 'lock', art: 'private', title: 'Doors that close', text: 'Private channels, guests and user groups.' },
-      { icon: 'settings', art: 'admin', title: 'You hold the keys', text: 'Roles, invites and moderation.' },
+      { icon: 'message', title: 'Nothing ages out', text: 'Scroll back to the very first message. It is still there, and still searchable.' },
+      { icon: 'headphones', title: 'Talk it through', text: 'Voice and screen share, one click from any channel.' },
+      { icon: 'file', title: 'A doc beside every chat', text: 'Plans live next to the conversation that made them.' },
+      { icon: 'checkSquare', title: 'Work with an owner', text: 'Status, assignee and due date.' },
+      { icon: 'zap', title: 'Teach the bot your routines', text: 'Triggers on a keyword, a join or the clock.' },
+      { icon: 'clock', title: 'Never lose the follow-up', text: 'Scheduled messages, or just type /remind.' },
+      { icon: 'search', title: 'Ask, don’t dig', text: 'Press Ctrl K, ask a question, get the message.' },
+      { icon: 'lock', title: 'Doors that close', text: 'Private channels, guests and user groups.' },
+      { icon: 'settings', title: 'You hold the keys', text: 'Roles, invites and moderation.' },
     ],
     next: 'huddles',
   },
@@ -461,166 +449,284 @@ const PAGE_DEFS: Record<FeatureRoute, PageDef> = {
 
 const NEXT_LABEL: Record<FeatureRoute, string> = { overview: 'Overview', huddles: 'Huddles', workflows: 'Workflows', search: 'Search' };
 
-const FEATURE_ACCORDION_IMAGES: Record<FeatureRoute, string[]> = {
-  overview: [
-    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1800&q=90',
-    'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1800&q=90',
-    'https://images.unsplash.com/photo-1600607688969-a5bfcd646154?auto=format&fit=crop&w=1800&q=90',
-  ],
-  huddles: [
-    'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?auto=format&fit=crop&w=1800&q=80',
-  ],
-  workflows: [
-    'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1800&q=80',
-  ],
-  search: [
-    'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1800&q=80',
-    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1800&q=80',
-  ],
+// What each page's closing mascot says.
+const MASCOT_SAYS: Record<FeatureRoute, string> = {
+  overview: 'Say hi in #general',
+  huddles: 'Got five minutes?',
+  workflows: 'I will take the busywork',
+  search: 'Ask me with a question mark',
 };
+// Triggers for the workflow recipes, in the order of the workflow facts.
+const RECIPE_CODES = ['!standup', 'Weekdays 9:30', '!incident', '!it', '!win', '/remind'];
 
+type PageProps = { def: PageDef; page: FeatureRoute; wide: boolean; onGetStarted: () => void };
+
+function FilmCard({ def, page }: { def: PageDef; page: FeatureRoute }) {
+  const { Mock } = def.film;
+  return (
+    <Card id="film" padding={3} elevation="high" className="site-film">
+      <Film key={page} label={def.film.label} chapters={def.film.chapters} build={def.film.build}><Mock /></Film>
+    </Card>
+  );
+}
+
+function Actions({ onGetStarted, center }: { onGetStarted: () => void; center?: boolean }) {
+  return (
+    <HStack gap={3} wrap="wrap" justify={center ? 'center' : 'start'}>
+      <Button label="Try it free" variant="primary" size="lg" onClick={onGetStarted} />
+      <Button label="Watch how it works" variant="secondary" size="lg" onClick={() => scrollToHash('#film', true)} />
+    </HStack>
+  );
+}
+
+// Overview and Search open centred over the film; Huddles and Workflows open as a split, the
+// copy on the left and the four steps listed on the right like a table of contents.
+function Hero({ def, page, wide, onGetStarted }: PageProps) {
+  const centred = page === 'overview' || page === 'search';
+  return (
+    <SiteSection paddingBlockStart={10} paddingBlockEnd={6} gap={8}>
+      {centred ? (
+        <VStack gap={4} hAlign="center" className="site-rise">
+          <Text color="secondary" weight="medium">{def.eyebrow}</Text>
+          <Heading level={1} type="display-2" weight="semibold" justify="center" textWrap="balance">{def.title}</Heading>
+          <Text type="large" color="secondary" justify="center" textWrap="balance">{def.lede}</Text>
+          {page === 'search' && <HStack gap={2} vAlign="center"><Kbd keys="mod+k" /><Text type="supporting">from anywhere in Relay</Text></HStack>}
+          <Actions onGetStarted={onGetStarted} center />
+        </VStack>
+      ) : (
+        <Grid columns={wide ? 2 : 1} gap={wide ? 10 : 6} className="site-rise">
+          <VStack gap={4} hAlign="start">
+            <Text color="secondary" weight="medium">{def.eyebrow}</Text>
+            <Heading level={1} type="display-2" weight="semibold" textWrap="balance">{def.title}</Heading>
+            <Text type="large" color="secondary">{def.lede}</Text>
+            <Actions onGetStarted={onGetStarted} />
+          </VStack>
+          <VStack gap={0} vAlign="center">
+            {def.film.chapters.map((c, k) => (
+              <VStack key={c.title} gap={0}>
+                {k > 0 && <Divider />}
+                <HStack gap={4} vAlign="start" paddingBlock={3}>
+                  <Text color="secondary" hasTabularNumbers className="site-time">0{k + 1}</Text>
+                  <VStack gap={0.5}><Text weight="medium">{c.title}</Text><Text type="supporting">{c.text}</Text></VStack>
+                </HStack>
+              </VStack>
+            ))}
+          </VStack>
+        </Grid>
+      )}
+      <FilmCard def={def} page={page} />
+    </SiteSection>
+  );
+}
+
+function Points({ points }: { points: string[] }) {
+  return (
+    <VStack gap={1.5}>
+      {points.map((pt) => <HStack key={pt} gap={2} vAlign="center"><Text color="secondary"><Icon n="check" size={14} /></Text><Text size="sm">{pt}</Text></HStack>)}
+    </VStack>
+  );
+}
+
+function StepClip({ def, page, d }: { def: PageDef; page: FeatureRoute; d: Detail }) {
+  const { Mock } = def.film;
+  return <Clip key={`${page}-${d.chapter}`} build={def.film.build} chapter={d.chapter} count={def.film.chapters.length}><Mock /></Clip>;
+}
+
+// The steps, laid out differently on each page: alternating rows (Overview), a two-by-two grid of
+// cards (Huddles), a numbered run-sheet (Workflows) and a strip of four clips (Search).
+function Steps({ def, page, wide }: PageProps) {
+  const title = { overview: 'How Relay works, step by step', huddles: 'From a click to the notes', workflows: 'Build one in four moves', search: 'Four keystrokes to the answer' }[page];
+  const head = <Heading level={2} type="display-3" weight="semibold">{title}</Heading>;
+  if (page === 'overview') {
+    return (
+      <SiteSection gap={10}>
+        {head}
+        {def.details.map((d, k) => (
+          <Grid key={d.title} columns={wide ? 2 : 1} gap={wide ? 10 : 4} align="center">
+            <VStack gap={3} className={wide && k % 2 ? 'site-order-2' : undefined}>
+              <Text type="supporting">{d.eyebrow}</Text>
+              <Heading level={3}>{d.title}</Heading>
+              <Text color="secondary">{d.text}</Text>
+              <Points points={d.points} />
+            </VStack>
+            <Card variant="muted" padding={3}><StepClip def={def} page={page} d={d} /></Card>
+          </Grid>
+        ))}
+      </SiteSection>
+    );
+  }
+  if (page === 'huddles') {
+    return (
+      <SiteSection gap={6}>
+        {head}
+        <Grid columns={wide ? 2 : 1} gap={4}>
+          {def.details.map((d) => (
+            <Card key={d.title} variant="muted" padding={5}>
+              <VStack gap={4}>
+                <VStack gap={1}><Text type="supporting">{d.eyebrow}</Text><Heading level={3}>{d.title}</Heading></VStack>
+                <Text color="secondary">{d.text}</Text>
+                <StepClip def={def} page={page} d={d} />
+              </VStack>
+            </Card>
+          ))}
+        </Grid>
+      </SiteSection>
+    );
+  }
+  if (page === 'workflows') {
+    return (
+      <SiteSection gap={6}>
+        {head}
+        <VStack gap={0}>
+          {def.details.map((d, k) => (
+            <VStack key={d.title} gap={0}>
+              <Divider />
+              <Grid columns={wide ? 2 : 1} gap={wide ? 8 : 4} className="site-runsheet">
+                <HStack gap={4} vAlign="start">
+                  <Text type="large" color="secondary" hasTabularNumbers className="site-time">0{k + 1}</Text>
+                  <VStack gap={3}>
+                    <Heading level={3}>{d.title}</Heading>
+                    <Text color="secondary">{d.text}</Text>
+                    <Points points={d.points} />
+                  </VStack>
+                </HStack>
+                <StepClip def={def} page={page} d={d} />
+              </Grid>
+            </VStack>
+          ))}
+        </VStack>
+      </SiteSection>
+    );
+  }
+  return (
+    <SiteSection gap={6}>
+      {head}
+      <Grid columns={wide ? 4 : 1} gap={4}>
+        {def.details.map((d) => (
+          <VStack key={d.title} gap={3}>
+            <Card variant="muted" padding={2}><StepClip def={def} page={page} d={d} /></Card>
+            <Text weight="medium">{d.title}</Text>
+            <Text type="supporting">{d.text}</Text>
+          </VStack>
+        ))}
+      </Grid>
+    </SiteSection>
+  );
+}
+
+// The facts, also different per page: a full-bleed plan band (Overview, the #pricing anchor), a dense
+// two-column table (Huddles), recipes with their triggers (Workflows) and shortcut cards (Search).
+function Facts({ def, page, wide }: PageProps) {
+  if (page === 'overview') {
+    return (
+      <VStack as="section" id="pricing" hAlign="center" paddingInline={4} paddingBlock={10} style={{ background: 'var(--color-background-muted)' }} className="site-section">
+        <Grid columns={wide ? 3 : 1} gap={wide ? 10 : 6} width="100%" maxWidth={1080}>
+          <VStack gap={3} hAlign="start">
+            <Heading level={2} type="display-3" weight="semibold">One plan, all of it on</Heading>
+            <Text color="secondary">Free for your organisation. There is no tier to climb and nothing held back for later.</Text>
+          </VStack>
+          {[def.facts.slice(0, 5), def.facts.slice(5)].map((col, c) => (
+            <VStack key={c} gap={0}>
+              {col.map((f, k) => (
+                <VStack key={f.title} gap={0}>
+                  {k > 0 && <Divider />}
+                  <HStack gap={3} vAlign="start" paddingBlock={3}>
+                    <Text color="secondary"><Icon n={f.icon} size={16} /></Text>
+                    <VStack gap={0.5}><Text weight="medium">{f.title}</Text><Text type="supporting">{f.text}</Text></VStack>
+                  </HStack>
+                </VStack>
+              ))}
+            </VStack>
+          ))}
+        </Grid>
+      </VStack>
+    );
+  }
+  if (page === 'huddles') {
+    return (
+      <SiteSection gap={4}>
+        <Heading level={2} type="display-3" weight="semibold">Huddles at a glance</Heading>
+        <Grid columns={wide ? 2 : 1} columnGap={10} rowGap={0}>
+          {def.facts.map((f) => (
+            <VStack key={f.title} gap={0}>
+              <Divider />
+              <HStack gap={4} vAlign="center" justify="between" paddingBlock={3}>
+                <Text weight="medium">{f.title}</Text>
+                <Text type="supporting" justify="end">{f.text}</Text>
+              </HStack>
+            </VStack>
+          ))}
+        </Grid>
+      </SiteSection>
+    );
+  }
+  if (page === 'workflows') {
+    return (
+      <SiteSection gap={4}>
+        <VStack gap={2}>
+          <Heading level={2} type="display-3" weight="semibold">Recipes teams start with</Heading>
+          <Text color="secondary">Each one is a trigger and a reply. Copy the trigger, change the words, save.</Text>
+        </VStack>
+        <Grid columns={wide ? 3 : 1} gap={3}>
+          {def.facts.map((f, k) => (
+            <Card key={f.title} padding={4} variant="muted">
+              <VStack gap={2} hAlign="start">
+                <Token size="sm" label={RECIPE_CODES[k] ?? f.title} />
+                <Text weight="medium">{f.title}</Text>
+                <Text type="supporting">{f.text}</Text>
+              </VStack>
+            </Card>
+          ))}
+        </Grid>
+      </SiteSection>
+    );
+  }
+  const keys = ['mod+k', '', '', '?', '', ''];
+  return (
+    <SiteSection gap={4}>
+      <Heading level={2} type="display-3" weight="semibold">Search at a glance</Heading>
+      <Grid columns={wide ? 3 : 1} gap={3}>
+        {def.facts.map((f, k) => (
+          <Card key={f.title} padding={4}>
+            <HStack gap={3} vAlign="start">
+              {keys[k] ? <Kbd keys={keys[k]} /> : <Text color="secondary"><Icon n={f.icon} size={16} /></Text>}
+              <VStack gap={0.5}><Text weight="medium">{f.title}</Text><Text type="supporting">{f.text}</Text></VStack>
+            </HStack>
+          </Card>
+        ))}
+      </Grid>
+    </SiteSection>
+  );
+}
+
+// A feature page in the public site's light frame. Each page shares the frame, the film and the
+// closing card, and differs in how its hero, steps and facts are laid out.
 export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go: (r: Route) => void; onGetStarted: () => void }) {
   const def = PAGE_DEFS[page];
-  const root = useRef<HTMLDivElement>(null);
-  useGlow(root);
-  const { Mock } = def.film;
-
-  const accordionItems = def.details.map((d, i) => ({
-    tab: d.eyebrow || `0${i + 1}`,
-    eyebrow: `${def.eyebrow} · ${d.eyebrow}`,
-    title: d.title,
-    description: d.text,
-    primaryLabel: 'Try in Relay',
-    primaryLink: '#',
-    secondaryLabel: 'Watch demo',
-    secondaryLink: '#film',
-    image: {
-      src: FEATURE_ACCORDION_IMAGES[page]?.[i] || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1800&q=80',
-      alt: d.title,
-    },
-  }));
-
-  useLayoutEffect(() => {
-    const scroller = root.current!;
-    scroller.scrollTop = 0;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const ctx = gsap.context(() => {
-      gsap.timeline({ defaults: { ease: ENTER } })
-        .from('.ap-nav', { y: -12, opacity: 0, duration: 0.8 })
-        .from('.fp-eyebrow, .fp-title, .fp-lede, .fp-actions', { y: 16, opacity: 0, duration: 0.9, stagger: 0.07 }, 0.1)
-        .from('.fp-film', { y: 32, opacity: 0, duration: 1.1 }, 0.3);
-      gsap.utils.toArray<HTMLElement>('.ap-reveal').forEach((el) => {
-        gsap.from(el, { y: 24, opacity: 0, duration: 0.9, ease: ENTER, scrollTrigger: { trigger: el, scroller, start: 'top 90%' } });
-      });
-    }, root);
-    return () => ctx.revert();
-  }, [page]);
+  const wide = useMediaQuery('(min-width: 860px)');
+  useEffect(() => { scrollToHash(); }, [page]);
+  const props = { def, page, wide, onGetStarted };
 
   return (
-    <div className="ap fp" ref={root}>
-      <div className="ap-stars-wrap" aria-hidden><Aurora /></div>
-      <section className="ap-hero fp-hero">
-        <div className="ap-sky" aria-hidden />
-        <SiteNav route={page} go={go} onGetStarted={onGetStarted} />
-        <div className="fp-head">
-          <p className="fp-eyebrow">{def.eyebrow}</p>
-          <h1 className="fp-title">{def.title}</h1>
-          <p className="fp-lede">{def.lede}</p>
-          <div className="fp-actions">
-            <button className="ap-pill blue" onClick={onGetStarted}>Try it free</button>
-            <a className="ap-more" href="#film">Watch how it works <Icon n="chevron" size={14} /></a>
-          </div>
-        </div>
-        <div className="fp-film" id="film">
-          <Film key={page} label={def.film.label} chapters={def.film.chapters} build={def.film.build}><Mock /></Film>
-        </div>
-      </section>
-
-      <section className="fp-accordion-section ap-reveal" style={{ maxWidth: 1040, margin: '60px auto 30px', padding: '0 20px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <p className="fp-eyebrow" style={{ textTransform: 'uppercase', letterSpacing: '0.12em', color: '#9a6bff', fontSize: 13, fontWeight: 600 }}>Interactive Feature Explorer</p>
-          <h2 style={{ fontSize: '32px', margin: '6px 0', fontFamily: 'var(--display)' }}>Explore {def.eyebrow}</h2>
-          <p style={{ color: '#a79eb6', maxWidth: 540, margin: '0 auto', fontSize: 15 }}>Click through each capability to explore how {def.eyebrow.toLowerCase()} works inside Relay.</p>
-        </div>
-        <FlexibleAccordion
-          items={accordionItems}
-          cardBackground="#1c1825"
-          textColor="#ece8f3"
-          mutedTextColor="#a79eb6"
-          tabColor="rgba(236, 232, 243, 0.45)"
-          activeTabColor="#9a6bff"
-          primaryBackground="#9a6bff"
-          primaryTextColor="#ffffff"
-          secondaryColor="#c3a6ff"
-          arrowBackground="#9a6bff"
-          arrowColor="#ffffff"
-          cardRadius={22}
-          imageRadius={20}
-          onPrimaryClick={onGetStarted}
-        />
-      </section>
-
-      <section className="fp-details">
-        {def.details.map((d, i) => (
-          <article key={d.title} className={`fp-detail ap-reveal ${i % 2 ? 'flip' : ''}`}>
-            <div className="fp-detail-copy">
-              <p className="fp-eyebrow">{d.eyebrow}</p>
-              <h2>{d.title}</h2>
-              <p>{d.text}</p>
-              <ul>{d.points.map((pt) => <li key={pt}><Icon n="check" size={16} />{pt}</li>)}</ul>
-            </div>
-            <div className="fp-detail-media">
-              <Clip key={`${page}-${d.chapter}`} build={def.film.build} chapter={d.chapter} count={def.film.chapters.length}><Mock /></Clip>
-              <p className="fp-clip-caption">{def.film.chapters[d.chapter].title}</p>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <section className="fp-facts ap-reveal">
-        <h2>{page === 'overview' ? <>One plan.<br />All of it, unlocked.</> : `${def.eyebrow} at a glance`}</h2>
-        {page === 'overview' && <p className="fp-facts-sub">There is no tier to climb and nothing held back for later.</p>}
-        {page === 'overview' ? (
-          <div className="fp-bento">
-            {def.facts.map((f) => (
-              <div key={f.title} className={`fp-fact ${f.art ? `art-${f.art}` : ''}`}>
-                {f.art ? <FactArt kind={f.art} /> : <Icon n={f.icon} size={22} />}
-                <h3>{f.title}</h3>
-                <p>{f.text}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <InteractiveNodeDiagram
-            category={page}
-            title={`${def.eyebrow} at a glance`}
-            subtitle="Interactive Node Architecture"
-            nodes={def.facts}
-          />
-        )}
-      </section>
-
-      <section className="ap-final ap-reveal">
-        <div className="ap-cta">
-        <h2>Ready when your team is</h2>
-        <p>Free to start. Every feature unlocked.</p>
-        <div className="fp-final-actions">
-          <button className="ap-pill blue" onClick={onGetStarted}>Get started free</button>
-          <RouteLink to={def.next} go={go} className="ap-more">Next: {NEXT_LABEL[def.next]} <Icon n="chevron" size={14} /></RouteLink>
-        </div>
-        </div>
-      </section>
-
-      <SiteFooter go={go} />
-    </div>
+    <SiteFrame route={page} onGetStarted={onGetStarted}>
+      <Hero {...props} />
+      <Steps {...props} />
+      <Facts {...props} />
+      <SiteSection paddingBlockStart={8} gap={4}>
+        <Card padding={8} className="site-cta">
+          <HStack gap={8} vAlign="center" justify="between" wrap="wrap">
+            <VStack gap={3} hAlign="start" maxWidth={520}>
+              <Heading level={2} type="display-3" weight="semibold">Try it with your team</Heading>
+              <Text color="secondary">Free to start, every feature on. Or keep reading about the next part of Relay.</Text>
+              <HStack gap={4} wrap="wrap" vAlign="center">
+                <Button label="Get Relay free" variant="primary" size="lg" onClick={onGetStarted} />
+                <RouteLink to={def.next} go={go} className="site-next">Next: {NEXT_LABEL[def.next]} →</RouteLink>
+              </HStack>
+            </VStack>
+            <Mascot say={MASCOT_SAYS[page]} />
+          </HStack>
+        </Card>
+      </SiteSection>
+    </SiteFrame>
   );
 }
