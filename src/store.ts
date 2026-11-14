@@ -190,9 +190,21 @@ export function clearDevSession(): void {
 }
 
 // Tracks the Supabase access token; in dev mode it stays null and `ready` is true at once.
-export function useAuthToken(): { token: string | null; ready: boolean; signOut: () => Promise<void> } {
+// `recovery` is true while the user is back from a password reset link and has yet to set a new
+// password. `devSession` is the dev session saved by the latest `relay:dev-session` event (sent by
+// the sign-in helpers in auth.ts), so App can sign in without a reload; null until one arrives.
+export function useAuthToken(): { token: string | null; ready: boolean; recovery: boolean; devSession: Session | null; signOut: () => Promise<void> } {
   const [token, setToken] = useState<string | null>(null);
   const [ready, setReady] = useState(!authEnabled);
+  const [recovery, setRecovery] = useState(false);
+  const [devSession, setDevSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    if (supabase) return;
+    const onDevSession = () => setDevSession(getDevSession());
+    window.addEventListener('relay:dev-session', onDevSession);
+    return () => window.removeEventListener('relay:dev-session', onDevSession);
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
@@ -207,7 +219,10 @@ export function useAuthToken(): { token: string | null; ready: boolean; signOut:
         clearTimeout(giveUp);
         setReady(true);
       });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true);
+      // updatePassword success fires USER_UPDATED; signing out also ends the recovery.
+      else if (event === 'USER_UPDATED' || event === 'SIGNED_OUT') setRecovery(false);
       remember(session?.user?.email);
       setToken(session?.access_token ?? null);
     });
@@ -221,9 +236,11 @@ export function useAuthToken(): { token: string | null; ready: boolean; signOut:
     if (supabase) await supabase.auth.signOut();
     else clearDevSession();
     setToken(null);
+    setDevSession(null);
+    setRecovery(false);
   }, []);
 
-  return { token, ready, signOut };
+  return { token, ready, recovery, devSession, signOut };
 }
 
 export function useRelay(session: Session | null) {

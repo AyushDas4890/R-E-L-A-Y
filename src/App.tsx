@@ -71,8 +71,10 @@ const recall = (key: string) => {
 };
 
 export default function App() {
-  const { token, ready, signOut } = useAuthToken();
+  const { token, ready, signOut, devSession: signedInDev } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
+  // A dev sign-in or sign-up from auth.ts saved a new session: use it without a reload.
+  useEffect(() => { if (signedInDev) setDevSession(signedInDev); }, [signedInDev]);
   const [invite, setInvite] = useState(inviteFromUrl);
   // Show the scroll-zoom intro overlay on every page load / refresh.
   const [showIntro, setShowIntro] = useState(true);
