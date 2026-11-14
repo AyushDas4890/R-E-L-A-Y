@@ -89,7 +89,8 @@ export default function App() {
   // Two effects, so a route change while `recovery` is still true does not latch it again.
   const [resetting, setResetting] = useState(false);
   useEffect(() => { if (recovery) setResetting(true); }, [recovery]);
-  useEffect(() => { if (siteRoute === 'reset') setResetting(true); }, [siteRoute]);
+  // Leaving /reset by a nav link ends it too (the recovery effect above re-latches it only while a recovery session is live).
+  useEffect(() => { setResetting(siteRoute === 'reset' ? true : (r) => (recovery ? r : false)); }, [siteRoute]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
   // Sign-in is its own history entry, so the browser's Back button returns to the landing page
   // instead of leaving the site. (`history` below is the in-app channel history, hence window.history.)
