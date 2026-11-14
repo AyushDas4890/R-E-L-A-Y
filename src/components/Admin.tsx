@@ -292,7 +292,7 @@ function SignUpPolicyCard() {
         <input type="checkbox" checked={inviteOnly} onChange={(e) => edit(setInviteOnly)(e.target.checked)} />
         <span>
           <strong>Require an invite to join</strong>
-          <small className="muted">{inviteOnly ? 'New people need an invite link. Current members can still sign in.' : 'Off: anyone allowed by the domain list can create an account and join.'}</small>
+          <small className="muted">{inviteOnly ? 'People outside the allowed domains need an invite link. Current members can still sign in.' : 'Off: anyone allowed by the domain list can create an account and join.'}</small>
         </span>
       </label>
       <div className="row">

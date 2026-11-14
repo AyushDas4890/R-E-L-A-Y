@@ -554,6 +554,15 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
   }
 
   // Returns true when the user was added (so callers can announce it).
+  // Adds a newcomer to the configured default channels, skipping any that were deleted or made
+  // private since the setting was saved.
+  function joinDefaultChannels(userId: string): void {
+    for (const id of db.settings.defaultChannels) {
+      const ch = db.channels[id];
+      if (ch && ch.kind === 'public') ensureMember(ch, userId);
+    }
+  }
+
   function ensureMember(ch: Channel, userId: string): boolean {
     if (ch.members.includes(userId)) return false;
     ch.members.push(userId);
@@ -660,12 +669,12 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
           avatarUrl,
         };
         db.users[userId] = user;
-        for (const ch of db.settings.defaultChannels) ensureMember(db.channels[ch], userId);
+        joinDefaultChannels(userId);
       } else {
         // Coming back after leaving: the invite rules above already ran, so this is a fresh start.
         if (user.inactive) {
           user.inactive = false;
-          for (const ch of db.settings.defaultChannels) ensureMember(db.channels[ch], userId);
+          joinDefaultChannels(userId);
         }
         // Keep profile details fresh from the identity provider.
         if (authAdmin) user.name = name;
@@ -1726,7 +1735,7 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     const rt = pickWorkspace(identity.userId, ev.workspace, ev.invite);
     if (!rt) {
       send(ws, { t: 'workspaces', ...workspacesFor(identity.userId) });
-      send(ws, { t: 'error', message: 'You aren’t in a workspace yet. Create one or join with an invite.', code: 'no-workspace' });
+      send(ws, { t: 'error', message: 'You aren’t in a workspace yet. Ask an admin for an invite.', code: 'no-workspace' });
       return;
     }
     const result = rt.join(ws, identity, ev.invite);
@@ -1740,7 +1749,7 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
       return;
     }
     if (result === 'domain') {
-      send(ws, { t: 'error', message: `Sign-ups are limited to these email domains: ${rt.db.settings.allowedDomains.join(', ')}`, code: 'domain' });
+      send(ws, { t: 'error', message: "Sign-ups are limited to the organisation's email domains. Ask an admin for an invite.", code: 'domain' });
       return;
     }
     if (result === 'unverified') {
@@ -1758,6 +1767,12 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
   if (ev.t === 'createWorkspace') {
     if (!conn.identity) {
       send(ws, { t: 'error', message: 'Sign in to continue.', code: 'auth-required' });
+      return;
+    }
+    // Only active members of the organisation may start a workspace; anyone refused at the door
+    // (no invite, wrong domain, removed) cannot route around it by creating their own.
+    if (!runtimes.get(HQ)?.isMember(conn.identity.userId)) {
+      send(ws, { t: 'error', message: 'Only members of the organisation can create workspaces.' });
       return;
     }
     const name = ev.name.trim().slice(0, 40);

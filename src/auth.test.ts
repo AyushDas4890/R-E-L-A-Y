@@ -7,6 +7,7 @@ test('friendlyAuthError maps known Supabase messages', () => {
   assert.equal(friendlyAuthError('User already registered'), 'An account with this email already exists. Sign in instead.');
   assert.equal(friendlyAuthError('Email not confirmed'), 'Check your inbox and confirm your email first.');
   assert.equal(friendlyAuthError('Password should be at least 6 characters'), 'Use at least 8 characters.');
+  assert.equal(friendlyAuthError('Auth session missing!'), 'This reset link has expired. Request a new one.');
   assert.equal(friendlyAuthError('Something odd'), 'Something odd');
 });
 test('redirectWithInvite', () => {

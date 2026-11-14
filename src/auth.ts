@@ -13,6 +13,8 @@ const SUPABASE_MESSAGES: [string, string][] = [
   ['User already registered', 'An account with this email already exists. Sign in instead.'],
   ['Email not confirmed', 'Check your inbox and confirm your email first.'],
   ['Password should be at least', 'Use at least 8 characters.'],
+  // updateUser on /reset after the recovery session has expired or was already used.
+  ['Auth session missing', 'This reset link has expired. Request a new one.'],
 ];
 
 // Turns Supabase's auth error text into something people can act on; unknown messages pass through.

@@ -249,10 +249,11 @@ export function useRelay(session: Session | null) {
   const wsRef = useRef<WebSocket | null>(null);
   // Huddle signaling isn't app state, so it goes to listeners instead of the reducer.
   const listeners = useRef(new Set<(ev: ServerEvent) => void>());
-  // The workspace to open on (re)connect: the last one used, remembered across reloads, or the organisation.
-  // An invite link still wins, because the server checks the invite before this.
+  // The workspace to open on (re)connect. Every sign-in opens the organisation workspace; an invite
+  // link still wins, because the server checks the invite before this. lastWorkspace only marks the
+  // "last used" tile on the home screen.
   const lastWorkspace = useRef(readWorkspace());
-  const target = useRef<string | undefined>(lastWorkspace.current ?? 'hq');
+  const target = useRef<string | undefined>('hq');
   const sessionRef = useRef(session);
   sessionRef.current = session;
 

@@ -31,7 +31,7 @@ import { AdminModal, TermsGate } from './components/Admin.tsx';
 import { ListPanel } from './components/Lists.tsx';
 import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
 import { HomeScreen } from './components/HomeScreen.tsx';
-import { InviteModal, WorkspacePicker, WorkspaceTile } from './components/Workspaces.tsx';
+import { InviteModal, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
 import { INTERNAL } from './dnd.ts';
 import './dnd.css';
@@ -262,11 +262,6 @@ export default function App() {
     return () => { tween.kill(); };
   }, [inWorkspace, active, view]);
 
-  const createWorkspace = (name: string) => {
-    send({ t: 'createWorkspace', name });
-    setModal(null);
-  };
-
   // Supabase's reset email lands on /reset; the recovery event can also arrive on another path.
   if (resetting || siteRoute === 'reset') {
     const leaveReset = () => {
@@ -285,9 +280,11 @@ export default function App() {
   if (siteRoute === 'help') {
     return <HelpPage go={goSite} signedIn={!!session && !authError} onGetStarted={() => (session ? goSite('home') : openLogin())} />;
   }
-  // Signed in, but the server wants something first: a confirmed email, an allowed domain, or the
-  // owner's approval. These show on the sign-in page with the server's message and a Sign out button.
-  const blocked = authError && (authError.code === 'unverified' || authError.code === 'domain' || authError.code === 'owner-pending');
+  // Signed in, but the server turned the person away: an unconfirmed email, a domain outside the
+  // allowed list, the owner's approval pending, no invite, or removed from the organisation. These
+  // show on the sign-in page with the server's message, an invite-code field and a Sign out button.
+  // Nobody refused here is offered other workspaces or a way to create one.
+  const blocked = !!authError && authError.code !== 'auth-required';
   if (!session || blocked || (authError && authError.code === 'auth-required')) {
     if (!ready) return <Boot status="Starting Relay…" />;
     if (!showLogin && !authError) return (
@@ -307,20 +304,6 @@ export default function App() {
         onSignOut={leave}
         initialMode={authError?.code === 'unverified' ? 'verify' : undefined}
         email={authError?.code === 'unverified' ? recall('relay.lastEmail') ?? undefined : undefined}
-      />
-    );
-  }
-  // Signed in, but no workspace we can open: pick one, join with a code, or create one.
-  if (authError) {
-    return (
-      <WorkspacePicker
-        message={authError.message}
-        mine={workspaces.mine}
-        discover={workspaces.discover}
-        onSwitch={switchWorkspace}
-        onCreate={createWorkspace}
-        onInvite={setInvite}
-        onSignOut={leave}
       />
     );
   }
