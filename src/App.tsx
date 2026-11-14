@@ -423,6 +423,27 @@ export default function App() {
     }
   };
 
+  // Runs a command picked in the palette (ids from src/commands.ts). The palette has closed itself first.
+  const runCommand = (id: string) => {
+    const views: Record<string, View> = { 'go-home': 'channel', 'go-dms': 'dms', 'go-activity': 'activity', 'go-saved': 'saved', 'go-people': 'directory', 'go-calendar': 'calendar', 'go-pages': 'home', 'new-dm': 'dms' };
+    if (views[id]) return showView(views[id]);
+    switch (id) {
+      case 'new-channel': return setModal('new');
+      case 'set-status': return setModal('profile');
+      case 'toggle-density': {
+        // Task 3 moves this onto appearance.setDensity.
+        const root = document.documentElement;
+        root.dataset.density = root.dataset.density === 'compact' ? 'comfortable' : 'compact';
+        return;
+      }
+      case 'theme-dark': return appearance.setTheme('aurora');
+      case 'theme-light': return appearance.setTheme('daylight');
+      case 'shortcuts': return; // Task 3 adds the shortcuts modal
+      case 'admin-console': return setModal('admin');
+      case 'invite-people': return setModal('invite');
+    }
+  };
+
   // `zone` says where in the sidebar the item sits ('starred', 'channels', 'dms' or a section id), so a drop on it knows where to put the dragged channel.
   const sidebarItem = (c: (typeof channels)[number], zone?: string) => {
     const muted = levels.levelOf(c.id) === 'mute';
@@ -800,6 +821,9 @@ export default function App() {
         <SearchPalette
           onClose={() => setModal(null)}
           onOpenPage={openPage}
+          onCommand={runCommand}
+          onPerson={dmWith}
+          isAdmin={admin}
           onPick={(cid, tid) => {
             openChannel(cid);
             if (tid) setPanel({ kind: 'thread', id: tid });

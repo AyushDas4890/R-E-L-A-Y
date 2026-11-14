@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PLAN_FEATURES } from '../types.ts';
-import type { SearchHit, Workflow } from '../types.ts';
+import type { Workflow } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { channelLabel, timeLabel } from '../format.tsx';
-import { searchAnswer, WORKFLOW_TEMPLATES } from '../premium.ts';
+import { WORKFLOW_TEMPLATES } from '../premium.ts';
 import type { Appearance } from '../appearance.ts';
 import { AppearanceSettings } from './Appearance.tsx';
 import { Icon } from './Icon.tsx';
@@ -27,89 +27,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   );
 }
 
-export function SearchPalette({ onClose, onPick, onOpenPage }: { onClose: () => void; onPick: (channelId: string, threadId?: string) => void; onOpenPage?: (id: string) => void }) {
-  const { snap, send, listen } = useRelayCtx();
-  const [q, setQ] = useState('');
-  const [pages, setPages] = useState<{ q: string; hits: SearchHit[] } | null>(null);
-  // Pages and database rows are searched on the server, so only what this person may open comes back.
-  useEffect(
-    () =>
-      listen((ev) => {
-        if (ev.t === 'searchResults') setPages({ q: ev.q, hits: ev.hits });
-      }),
-    [listen],
-  );
-  useEffect(() => {
-    const needle = q.trim();
-    if (needle.length < 2 || !onOpenPage) return;
-    const t = setTimeout(() => send({ t: 'search', q: needle }), 180);
-    return () => clearTimeout(t);
-  }, [q, send, onOpenPage]);
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => inputRef.current?.focus(), []);
-
-  const results = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const channels = Object.values(snap.channels)
-      .map((c) => ({ c, label: channelLabel(c, snap.users, snap.me) }))
-      .filter((x) => !needle || x.label.toLowerCase().includes(needle))
-      .slice(0, 6);
-    const messages = needle
-      ? snap.messages
-          .filter((m) => !m.system && m.text.toLowerCase().includes(needle))
-          .slice(-8)
-          .reverse()
-      : [];
-    const answer = /\?\s*$/.test(q) ? searchAnswer(q, snap.messages) : null;
-    return { channels, messages, answer };
-  }, [q, snap]);
-
-  return (
-    <div className="scrim top" onMouseDown={onClose}>
-      <div className="palette" onMouseDown={(e) => e.stopPropagation()}>
-        <input
-          ref={inputRef}
-          value={q}
-          placeholder="Search, or ask a question ending in ?"
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-        />
-        <div className="palette-results">
-          {results.answer && (
-            <button className="answer" onClick={() => onPick(results.answer!.channelId, results.answer!.threadId ?? results.answer!.id)}>
-              <span><Icon n="sparkles" /></span>
-              <div>
-                <strong>Best answer</strong> from {snap.users[results.answer.userId]?.name} in {channelLabel(snap.channels[results.answer.channelId], snap.users, snap.me)}
-                <small>{results.answer.text.slice(0, 200)}</small>
-              </div>
-            </button>
-          )}
-          {onOpenPage && pages && pages.q === q.trim() && pages.hits.slice(0, 8).map((h) => (
-            <button key={h.id} onClick={() => { onOpenPage(h.id); onClose(); }}>
-              <span aria-hidden>{h.icon || (h.kind === 'database' ? '🗂️' : h.kind === 'row' ? '▫️' : '📄')}</span>
-              <div><strong>{h.title}</strong>{h.snippet && <small>{h.snippet.slice(0, 100)}</small>}</div>
-            </button>
-          ))}
-          {results.channels.map(({ c, label }) => (
-            <button key={c.id} onClick={() => onPick(c.id)}>
-              <span>{c.kind === 'dm' ? '●' : c.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span> {label}
-            </button>
-          ))}
-          {results.messages.map((m) => (
-            <button key={m.id} onClick={() => onPick(m.channelId, m.threadId ?? m.id)}>
-              <span><Icon n="message" /></span>
-              <div>
-                <strong>{snap.users[m.userId]?.name}</strong> in {channelLabel(snap.channels[m.channelId], snap.users, snap.me)}
-                <small>{m.text.slice(0, 100)}</small>
-              </div>
-            </button>
-          ))}
-          {q && results.channels.length + results.messages.length + (pages?.q === q.trim() ? pages.hits.length : 0) === 0 && <p className="muted pad">No matches.</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
+export { SearchPalette } from './Palette.tsx';
 
 export function NewChannelModal({ onClose }: { onClose: () => void }) {
   const { send } = useRelayCtx();
