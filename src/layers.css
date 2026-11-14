@@ -1,0 +1,4 @@
+/* Cascade layer order for the whole app. Imported first in main.tsx so it is declared before any stylesheet.
+   Astryx's reset sits lowest; the app's element defaults (styles.css, @layer app-base) beat that reset but
+   lose to Astryx component styles; everything else in the app's CSS is unlayered and wins as before. */
+@layer reset, app-base, astryx-base, astryx-theme;

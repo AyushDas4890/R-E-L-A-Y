@@ -2,6 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { AstryxRoot } from './astryxRoot.tsx';
+import './layers.css';
+import '@astryxdesign/core/reset.css';
+import '@astryxdesign/core/astryx.css';
 import './styles.css';
 import './minimal.css';
 import './notion.css';
@@ -18,7 +22,9 @@ import './preview-dark.css';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      <AstryxRoot>
+        <App />
+      </AstryxRoot>
     </ErrorBoundary>
   </StrictMode>,
 );

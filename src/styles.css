@@ -38,15 +38,18 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); font: var(--font-size)/1.5 var(--font); -webkit-font-smoothing: antialiased; }
-button, input, select, textarea { font: inherit; color: inherit; }
-button { cursor: pointer; background: none; border: 0; padding: 0; }
-button:disabled { opacity: .45; cursor: not-allowed; }
-input, select, textarea { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; outline: none; }
-input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+/* Element defaults live in the app-base layer (layers.css) so Astryx components, which sit in a later layer, keep their own styling. */
+@layer app-base {
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; background: none; border: 0; padding: 0; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  input, select, textarea { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+}
 code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: .88em; background: var(--raised); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; }
 pre { background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; overflow-x: auto; margin: 6px 0; }
 pre code { background: none; border: 0; padding: 0; }
-a { color: var(--accent-2); }
+@layer app-base { a { color: var(--accent-2); } }
 .muted { color: var(--muted); }
 .pad { padding: 16px; }
 .spacer { flex: 1; }
@@ -55,7 +58,7 @@ a { color: var(--accent-2); }
 kbd { font: 11px var(--font); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; color: var(--muted); }
 
 /* Audiowide ships a single weight; synthetic bold smears it. */
-h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; }
+@layer app-base { h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -.01em; } }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .welcome { height: 100%; display: grid; place-items: center; background: var(--side-bg); padding: 16px; }
