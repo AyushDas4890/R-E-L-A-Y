@@ -50,6 +50,7 @@ import { addItem, cleanHome, moveItem, removeItem, updateItem } from './home.ts'
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { createJwtVerifier, identityFromClaims } from './jwt.ts';
+import { createDevAuth, login, signup, verifyDevToken } from './devAuth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
 import { decideSignup, normalizeDomains, type SignupVerdict } from './signup.ts';
 import { cleanUpload, createFiles } from './files.ts';
@@ -235,6 +236,9 @@ if (!authAdmin) {
     : 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set in production: sign-in is disabled. Set them, or RELAY_ALLOW_DEV_AUTH=1.');
 }
 
+// Offline email and password accounts for local dev (server/devAuth.ts). Only without Supabase.
+const devAuth = !authAdmin && devAuthAllowed ? await createDevAuth(path.join(dataDir, 'dev-auth.json')) : null;
+
 // Local JWT verification skips the auth server round trip. SUPABASE_JWT_SECRET (HS256) wins over
 // SUPABASE_JWKS_URL. A token it rejects still goes to the auth server, so a key rotation does not
 // lock everyone out.
@@ -253,6 +257,7 @@ async function resolveIdentity(token: unknown): Promise<Identity | null> {
     return verifyToken(token, authAdmin as unknown as AuthClient);
   }
   if (!devAuthAllowed) return null;
+  if (token.startsWith('dev.')) return devAuth ? verifyDevToken(devAuth.doc, token) : null;
   const [userId, name] = token.split(':');
   if (!userId || userId === BOT_ID) return null;
   return { userId: userId.slice(0, 64), name: (name || 'Member').trim().slice(0, 40) || 'Member', email: null, emailVerified: true };
@@ -1539,11 +1544,47 @@ async function servePublished(req: http.IncomingMessage, res: http.ServerRespons
   res.end(req.method === 'HEAD' ? undefined : html ?? NOT_FOUND_HTML);
 }
 
+// POST /api/dev/signup and /api/dev/login: JSON {email, password, name?} in, {token} or {error} out.
+const MAX_DEV_BODY = 4096;
+async function serveDevAuth(req: http.IncomingMessage, res: http.ServerResponse, kind: 'signup' | 'login') {
+  const reply = (status: number, body: object) => {
+    res.writeHead(status, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+  if (!devAuth) return reply(404, { error: 'not-found' });
+  let raw = '';
+  try {
+    for await (const chunk of req) {
+      raw += chunk;
+      if (raw.length > MAX_DEV_BODY) return reply(413, { error: 'too-large' });
+    }
+  } catch { return reply(400, { error: 'invalid' }); }
+  let body: { email?: unknown; password?: unknown; name?: unknown };
+  try { body = JSON.parse(raw) ?? {}; } catch { return reply(400, { error: 'invalid' }); }
+  const email = typeof body.email === 'string' ? body.email : '';
+  const password = typeof body.password === 'string' ? body.password : '';
+  if (kind === 'login') {
+    const r = login(devAuth.doc, email, password);
+    return r.ok ? reply(200, { token: r.token }) : reply(401, { error: r.error });
+  }
+  const r = signup(devAuth.doc, email, password, typeof body.name === 'string' ? body.name : '');
+  if (!r.ok) return reply(r.error === 'exists' ? 409 : 400, { error: r.error });
+  await devAuth.save();
+  reply(200, { token: r.token });
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (url.pathname === '/healthz') {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, workspaces: runtimes.size }));
+    return;
+  }
+  if (devAuth && req.method === 'POST' && (url.pathname === '/api/dev/signup' || url.pathname === '/api/dev/login')) {
+    void serveDevAuth(req, res, url.pathname === '/api/dev/signup' ? 'signup' : 'login').catch(() => {
+      if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: 'server' }));
+    });
     return;
   }
   if (url.pathname.startsWith('/p/')) {
