@@ -82,6 +82,12 @@ export default function App() {
   const doneIntro = () => setShowIntro(false);
   // Help pages are public and also open for signed-in people, so they are decided before anything else.
   const [siteRoute, goSite] = useRoute();
+  // The reset page stays up once opened, even after a successful update fires USER_UPDATED (which
+  // clears `recovery`), so the "Password updated" screen is seen. Only finishing or leaving it ends it.
+  // Two effects, so a route change while `recovery` is still true does not latch it again.
+  const [resetting, setResetting] = useState(false);
+  useEffect(() => { if (recovery) setResetting(true); }, [recovery]);
+  useEffect(() => { if (siteRoute === 'reset') setResetting(true); }, [siteRoute]);
   const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
   // Sign-in is its own history entry, so the browser's Back button returns to the landing page
   // instead of leaving the site. (`history` below is the in-app channel history, hence window.history.)
@@ -262,12 +268,19 @@ export default function App() {
   };
 
   // Supabase's reset email lands on /reset; the recovery event can also arrive on another path.
-  if (siteRoute === 'reset' || recovery) {
-    const doneReset = () => {
+  if (resetting || siteRoute === 'reset') {
+    const leaveReset = () => {
       window.history.replaceState(null, '', '/');
+      setResetting(false);
       goSite('home');
     };
-    return <SignInStage><ResetPassword onDone={doneReset} /></SignInStage>;
+    // Back to sign in: drop the recovery session (if any) so the sign-in page shows, not the workspace.
+    const cancelReset = () => {
+      if (session) leave();
+      leaveReset();
+      openLogin();
+    };
+    return <SignInStage onBack={cancelReset}><ResetPassword onDone={leaveReset} onCancel={cancelReset} /></SignInStage>;
   }
   if (siteRoute === 'help') {
     return <HelpPage go={goSite} signedIn={!!session && !authError} onGetStarted={() => (session ? goSite('home') : openLogin())} />;

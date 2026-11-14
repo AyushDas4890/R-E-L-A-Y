@@ -5,7 +5,7 @@ import { updatePassword } from '../auth.ts';
 
 // The page Supabase's reset email links to: choose a new password, then carry on into Relay.
 // Rendered inside the sign-in stage (SignInStage in Login.tsx).
-export function ResetPassword({ onDone }: { onDone: () => void }) {
+export function ResetPassword({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +55,7 @@ export function ResetPassword({ onDone }: { onDone: () => void }) {
           {busy ? 'Saving…' : 'Update password'}
         </LightBulbButton>
       </form>
+      <p className="si-switch"><button type="button" onClick={onCancel}>Back to sign in</button></p>
     </>
   );
 }
