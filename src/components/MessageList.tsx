@@ -138,12 +138,46 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
   );
 }
 
-export function MessageList({ messages, inThread, onOlder, lastReadAtOpen }: { messages: Message[]; inThread?: boolean; onOlder?: () => void; lastReadAtOpen?: number }) {
+export function MessageList({ messages, inThread, onOlder, lastReadAtOpen, newestAtOpen }: {
+  messages: Message[];
+  inThread?: boolean;
+  onOlder?: () => void;
+  // What was unread when the channel opened; threads pass neither (no divider).
+  lastReadAtOpen?: number;
+  newestAtOpen?: number;
+}) {
   const { snap } = useRelayCtx();
-  const rows = useMemo(() => buildRows(messages, inThread ? 0 : lastReadAtOpen ?? 0, snap.me), [messages, inThread, lastReadAtOpen, snap.me]);
+  const rows = useMemo(
+    () => buildRows(messages, inThread ? 0 : lastReadAtOpen ?? 0, snap.me, newestAtOpen),
+    [messages, inThread, lastReadAtOpen, newestAtOpen, snap.me],
+  );
   // A thread is short and scrolls with its panel, so it is drawn whole.
-  if (inThread) return <div className="message-list">{rows.map((row) => <RowView key={row.key} row={row} inThread />)}</div>;
+  if (inThread) return <ThreadList rows={rows} last={messages[messages.length - 1]?.id} />;
   return <VirtualList rows={rows} messages={messages} onOlder={onOlder} />;
+}
+
+// Opens at the newest reply and brings each new reply into view, popping it in.
+function ThreadList({ rows, last }: { rows: Row[]; last?: string }) {
+  const endRef = useRef<HTMLDivElement>(null);
+  const opened = useRef(false);
+  useEffect(() => {
+    const end = endRef.current;
+    if (!end) return;
+    const arrived = opened.current;
+    opened.current = true;
+    end.scrollIntoView({ block: 'end', behavior: arrived && !reducedMotion() ? 'smooth' : 'auto' });
+    if (!arrived || reducedMotion()) return;
+    const row = end.previousElementSibling;
+    if (!row) return;
+    const tween = gsap.fromTo(row, { y: 24, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+    return () => { tween.kill(); };
+  }, [last]);
+  return (
+    <div className="message-list">
+      {rows.map((row) => <RowView key={row.key} row={row} inThread />)}
+      <div ref={endRef} />
+    </div>
+  );
 }
 
 function RowView({ row, inThread }: { row: Row; inThread?: boolean }) {

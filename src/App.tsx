@@ -227,10 +227,13 @@ export default function App() {
   }, [snap?.workspace.id, atHome]);
 
   // markRead below bumps lastRead as soon as a channel opens, so the "New messages" divider uses
-  // the value from the moment the channel was opened and keeps it for the visit.
-  const [lastReadAtOpen, setLastReadAtOpen] = useState(0);
+  // what was unread at the moment the channel was opened: lastRead then, and the newest message
+  // then, so messages arriving while the reader watches don't grow a divider.
+  const [unreadAtOpen, setUnreadAtOpen] = useState({ lastRead: 0, newest: 0 });
   useLayoutEffect(() => {
-    setLastReadAtOpen(lastRead[active] ?? 0);
+    let newest = 0;
+    for (const m of snap?.messages ?? []) if (m.channelId === active && !m.threadId && m.ts > newest) newest = m.ts;
+    setUnreadAtOpen({ lastRead: lastRead[active] ?? 0, newest });
   }, [active, view, snap?.workspace.id]);
   useEffect(() => {
     if (snap && view === 'channel' && snap.channels[active]) markRead(active);
@@ -741,7 +744,7 @@ export default function App() {
                   <p className="muted">Say hi, share a file, or try <code>/remind me stretch in 10m</code>.</p>
                 </div>
               ) : (
-                <MessageList messages={channelMessages} lastReadAtOpen={lastReadAtOpen} onOlder={snap.history[active] ? () => loadOlder(active) : undefined} />
+                <MessageList messages={channelMessages} lastReadAtOpen={unreadAtOpen.lastRead} newestAtOpen={unreadAtOpen.newest} onOlder={snap.history[active] ? () => loadOlder(active) : undefined} />
               )}
               <div className="typing">
                 {typingNow.length > 0 && (
@@ -778,7 +781,7 @@ export default function App() {
           )}
         </main>
 
-        {panel?.kind === 'thread' && <ThreadPanel parentId={panel.id} onClose={() => setPanel(null)} />}
+        {panel?.kind === 'thread' && <ThreadPanel key={panel.id} parentId={panel.id} onClose={() => setPanel(null)} />}
         {panel?.kind === 'canvas' && ch && <CanvasPanel channelId={ch.id} onClose={() => setPanel(null)} />}
         {panel?.kind === 'list' && ch && <ListPanel channelId={ch.id} onClose={() => setPanel(null)} />}
         {panel?.kind === 'details' && ch && <DetailsPanel channelId={ch.id} onClose={() => setPanel(null)} />}

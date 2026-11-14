@@ -39,3 +39,11 @@ test('the first unread message is never compact', () => {
   assert.deepEqual(rows.map((r) => r.kind), ['day', 'msg', 'unread', 'msg']);
   assert.equal((rows[3] as { compact: boolean }).compact, false);
 });
+test('a message arriving after the channel opened gets no divider', () => {
+  const rows = buildRows([m('a', 'u1', T0), m('live', 'u2', T0 + 2000)], T0 + 500, 'me', T0);
+  assert.equal(rows.some((r) => r.kind === 'unread'), false);
+});
+test('the divider stays before the first unread message present at open when more arrive', () => {
+  const rows = buildRows([m('a', 'u1', T0), m('b', 'u2', T0 + 1000), m('live', 'u3', T0 + 2000)], T0 + 500, 'me', T0 + 1000);
+  assert.deepEqual(rows.map((r) => r.kind), ['day', 'msg', 'unread', 'msg', 'msg']);
+});

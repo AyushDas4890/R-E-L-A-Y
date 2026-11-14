@@ -17,7 +17,9 @@ function dayKey(ts: number): string {
 // Turns a channel's messages into rows: a day row whenever the local calendar day changes, a
 // message folded under the one before it when the same person wrote again within five minutes,
 // and one "New messages" row before the first message from someone else newer than lastRead.
-export function buildRows(messages: Message[], lastRead: number, me: string): Row[] {
+// newestAtOpen is the newest message time when the channel was opened: messages that arrive while
+// the reader is watching never qualify, so the divider stays where it was for the visit.
+export function buildRows(messages: Message[], lastRead: number, me: string, newestAtOpen = Infinity): Row[] {
   const rows: Row[] = [];
   let unreadPlaced = !(lastRead > 0);
   let prev: Message | undefined;
@@ -27,7 +29,7 @@ export function buildRows(messages: Message[], lastRead: number, me: string): Ro
     const newDay = day !== prevDay;
     if (newDay) rows.push({ kind: 'day', key: day, ts: m.ts });
     let afterDivider = false;
-    if (!unreadPlaced && m.ts > lastRead && m.userId !== me) {
+    if (!unreadPlaced && m.ts > lastRead && m.ts <= newestAtOpen && m.userId !== me) {
       rows.push({ kind: 'unread', key: 'unread' });
       unreadPlaced = afterDivider = true;
     }
