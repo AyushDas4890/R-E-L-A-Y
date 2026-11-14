@@ -78,6 +78,35 @@ export function ProfileModal({ onClose, appearance }: { onClose: () => void; app
   );
 }
 
+// The keyboard shortcuts, opened with ? or from the command palette.
+const SHORTCUTS: [string, string][] = [
+  ['Ctrl/⌘ + K', 'Open the command palette'],
+  ['Alt + ↑ / ↓', 'Previous / next channel'],
+  ['Alt + Shift + ↑ / ↓', 'Previous / next unread channel'],
+  ['Ctrl/⌘ + Shift + K', 'Direct messages'],
+  ['Ctrl/⌘ + Shift + A', 'Activity'],
+  ['Ctrl/⌘ + \\', 'Show or hide the sidebar (Notion and Apple looks)'],
+  ['Enter', 'Send a message'],
+  ['Shift + Enter', 'New line in a message'],
+  ['Esc', 'Close the side panel or dialog'],
+  ['?', 'Show these shortcuts'],
+];
+
+export function ShortcutsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="Keyboard shortcuts" onClose={onClose} wide>
+      <dl className="shortcut-list">
+        {SHORTCUTS.map(([keys, what]) => (
+          <div key={keys} className="shortcut-row">
+            <dt><kbd>{keys}</kbd></dt>
+            <dd>{what}</dd>
+          </div>
+        ))}
+      </dl>
+    </Modal>
+  );
+}
+
 export function PlanModal({ onClose }: { onClose: () => void }) {
   const { snap } = useRelayCtx();
   return (

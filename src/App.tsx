@@ -24,6 +24,7 @@ import {
   ScheduledModal,
   SchedulePicker,
   SearchPalette,
+  ShortcutsModal,
   WorkflowsView,
 } from './components/Modals.tsx';
 import { CanvasPanel, DetailsPanel, ThreadPanel } from './components/Panels.tsx';
@@ -46,9 +47,10 @@ import { InboxView } from './components/pages/InboxView.tsx';
 import { LibraryView } from './components/pages/LibraryView.tsx';
 import { TeamspaceModal } from './components/pages/TeamspaceModal.tsx';
 import { pushRecent } from './recent.ts';
+import { nextChannel } from './shortcuts.ts';
 import { PageView } from './components/pages/PageView.tsx';
 
-type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'admin' | 'invite' | { schedule: string };
+type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'admin' | 'invite' | 'shortcuts' | { schedule: string };
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
 type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page' | 'home' | 'calendar' | 'library' | 'workflows';
 type Menu = null | 'workspace' | 'more' | 'create' | 'dnd' | 'bell' | 'addTab' | 'addChannel';
@@ -135,7 +137,7 @@ export default function App() {
   const [menu, setMenu] = useState<Menu>(null);
   const appearance = useAppearance();
   // The Notion look keeps its sidebar open or closed (Ctrl+\) and lets people drag its edge.
-  const notion = /^(notion|apple)/.test(appearance.theme);
+  const notion = /^(notion|apple)/.test(appearance.resolvedTheme);
   const [sideCollapsed, setSideCollapsed] = useState(() => recall('relay.sideCollapsed') === '1');
   const [sideW, setSideW] = useState(() => clampSide(Number(recall('relay.sideW'))));
   const [resizing, setResizing] = useState(false);
@@ -182,8 +184,14 @@ export default function App() {
     setPanel(threadId ? { kind: 'thread', id: threadId } : null);
   }, levels.levelOf);
 
+  // The workspace shortcuts need the current sidebar, unread counts and panel, so the render below
+  // installs them here each time and the single keydown listener calls through.
+  const shortcutKey = useRef<(e: KeyboardEvent) => void>(() => {});
+  // Off until a workspace has rendered (and again whenever none is showing).
+  shortcutKey.current = () => {};
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') return shortcutKey.current(e);
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setModal('search');
@@ -193,6 +201,7 @@ export default function App() {
         setSideCollapsed((c) => !c);
       }
       if (e.key === 'Escape') setMenu(null);
+      shortcutKey.current(e);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -430,15 +439,10 @@ export default function App() {
     switch (id) {
       case 'new-channel': return setModal('new');
       case 'set-status': return setModal('profile');
-      case 'toggle-density': {
-        // Task 3 moves this onto appearance.setDensity.
-        const root = document.documentElement;
-        root.dataset.density = root.dataset.density === 'compact' ? 'comfortable' : 'compact';
-        return;
-      }
+      case 'toggle-density': return appearance.setDensity(appearance.density === 'compact' ? 'comfortable' : 'compact');
       case 'theme-dark': return appearance.setTheme('aurora');
       case 'theme-light': return appearance.setTheme('daylight');
-      case 'shortcuts': return; // Task 3 adds the shortcuts modal
+      case 'shortcuts': return setModal('shortcuts');
       case 'admin-console': return setModal('admin');
       case 'invite-people': return setModal('invite');
     }
@@ -478,6 +482,30 @@ export default function App() {
       {v === 'huddles' && snap.huddles.length > 0 && <span className="count live">{snap.huddles.length}</span>}
     </button>
   );
+  // Channels in the order the sidebar shows them: starred, then sections, then Channels, then DMs.
+  const sidebarOrder = [
+    ...starred.map((c) => c.id),
+    ...snap.sections.flatMap((sec) => sec.channelIds.filter((id) => snap.channels[id]?.members.includes(snap.me) && !starredIds.has(id))),
+    ...joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map((c) => c.id),
+    ...dms.filter((c) => !starredIds.has(c.id)).map((c) => c.id),
+  ];
+  const unreadCounts: Record<string, number> = {};
+  for (const [cid, u] of Object.entries(unread)) if (levels.levelOf(cid) !== 'mute') unreadCounts[cid] = u.count;
+  shortcutKey.current = (e: KeyboardEvent) => {
+    const mod = e.metaKey || e.ctrlKey;
+    const target = e.target as HTMLElement | null;
+    const typingInField = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+    if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      const to = nextChannel(sidebarOrder, view === 'channel' ? active : '', e.key === 'ArrowDown' ? 1 : -1, e.shiftKey, unreadCounts);
+      e.preventDefault();
+      if (to) openChannel(to);
+      return;
+    }
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); return showView('dms'); }
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'a') { e.preventDefault(); return showView('activity'); }
+    if (e.key === 'Escape' && panel && !modal && !menu && !typingInField && !e.defaultPrevented) return setPanel(null);
+    if (e.key === '?' && !mod && !e.altKey && !typingInField && !modal) { e.preventDefault(); setModal('shortcuts'); }
+  };
   const channelEmpty = channelMessages.filter((m) => !m.system && m.userId !== 'relaybot').length === 0;
 
   return (
@@ -834,6 +862,7 @@ export default function App() {
       {modal === 'spaces' && <TeamspaceModal onClose={() => setModal(null)} />}
       {modal === 'new' && <NewChannelModal onClose={() => setModal(null)} />}
       {modal === 'profile' && <ProfileModal onClose={() => setModal(null)} appearance={appearance} />}
+      {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
       {modal === 'plan' && <PlanModal onClose={() => setModal(null)} />}
       {modal === 'scheduled' && <ScheduledModal onClose={() => setModal(null)} />}
       {modal === 'admin' && admin && <AdminModal onClose={() => setModal(null)} />}

@@ -51,6 +51,15 @@ export function AppearanceSettings({ a }: { a: Appearance }) {
         <input type="range" min={5} max={95} value={100 - a.dim} onChange={(e) => a.setDim(100 - Number(e.target.value))} aria-label="Background strength" />
       </label>
 
+      <div className="appearance-label">Density</div>
+      <div className="segmented" role="radiogroup" aria-label="Density">
+        {(['comfortable', 'compact'] as const).map((d) => (
+          <button key={d} role="radio" aria-checked={a.density === d} className={a.density === d ? 'on' : ''} onClick={() => a.setDensity(d)}>
+            {d === 'comfortable' ? 'Comfortable' : 'Compact'}
+          </button>
+        ))}
+      </div>
+
       <label>
         <span className="appearance-label">Colour theme</span>
         <select value={a.theme} onChange={(e) => a.setTheme(e.target.value)}>

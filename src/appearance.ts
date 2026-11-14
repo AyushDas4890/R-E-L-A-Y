@@ -23,6 +23,7 @@ export const BACKGROUNDS: Background[] = [
 ];
 
 export const THEMES = [
+  { id: 'system', label: 'System (Aurora / Daylight)' },
   { id: 'apple', label: 'Apple' },
   { id: 'apple-dark', label: 'Apple dark' },
   { id: 'notion', label: 'Notion' },
@@ -71,15 +72,24 @@ const write = (key: string, value: string | null) => {
   }
 };
 
-// The Apple dark look is the default for a browser that has never picked one: no photo background and the
-// theme's own accent (an old purple accent would repaint its blue). A browser that already adopted
-// Minimal, or chose anything else, is left alone, so nobody is moved twice. The system light/dark
-// setting does not decide it.
+// The System theme is the default for a browser that has never picked one: no photo background and the
+// theme's own accent. It follows the system light/dark setting live (see resolveTheme). A browser that
+// already adopted a look, or chose anything else, is left alone, so nobody is moved twice.
 export function firstLook(adopted: boolean, prefersDark: boolean): { theme: string; bg: string; accent: string } | null {
-  // Apple dark is the default look; the system setting no longer decides it.
+  // The choice is stored as 'system'; the light/dark setting is applied when it is resolved.
   void prefersDark;
-  return adopted ? null : { theme: 'apple-dark', bg: 'none', accent: '' };
+  return adopted ? null : { theme: 'system', bg: 'none', accent: '' };
 }
+
+// The theme id that is actually painted: 'system' becomes Aurora in dark mode and Daylight in light mode.
+export function resolveTheme(stored: string, prefersDark: boolean): string {
+  if (stored !== 'system') return stored;
+  return prefersDark ? 'aurora' : 'daylight';
+}
+
+export type Density = 'comfortable' | 'compact';
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+const systemDark = () => typeof matchMedia === 'function' && matchMedia(DARK_QUERY).matches;
 
 // The Notion look lets people drag the sidebar edge. Anything unusable falls back to the default width.
 export const SIDE_MIN = 200;
@@ -89,8 +99,7 @@ export const clampSide = (n: number): number => (Number.isFinite(n) && n > 0 ? M
 
 export function useAppearance() {
   const [theme, setThemeState] = useState(() => {
-    const prefersDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
-    const look = firstLook(!!read('relay.look', ''), prefersDark);
+    const look = firstLook(!!read('relay.look', ''), systemDark());
     if (look) {
       write('relay.theme', look.theme);
       write('relay.bg', look.bg);
@@ -98,12 +107,24 @@ export function useAppearance() {
       write('relay.look', 'notion');
     }
     // Browsers that were put on the dark look by the system setting move to white once.
-    if (read('relay.look', '') === 'notion' && read('relay.theme', 'notion') === 'notion-dark') {
+    if (read('relay.look', '') === 'notion' && read('relay.theme', 'system') === 'notion-dark') {
       write('relay.theme', 'notion');
       write('relay.look', 'notion-white');
     }
-    return read('relay.theme', 'notion');
+    return read('relay.theme', 'system');
   });
+  // Whether the system is in dark mode right now, so a 'system' theme can follow it as it changes.
+  const [prefersDark, setPrefersDark] = useState(systemDark);
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return;
+    const mq = matchMedia(DARK_QUERY);
+    const onChange = () => setPrefersDark(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const resolved = resolveTheme(theme, prefersDark);
+  const [density, setDensityState] = useState<Density>(() => (read('relay.density', 'comfortable') === 'compact' ? 'compact' : 'comfortable'));
   const [bgId, setBgId] = useState(() => read('relay.bg', 'none'));
   const [accent, setAccentState] = useState(() => read('relay.accent', ''));
   // How much the theme colour covers the background, so text stays readable (0–95%).
@@ -111,10 +132,18 @@ export function useAppearance() {
   const [custom, setCustom] = useState(() => read('relay.bgCustom', ''));
   const [match, setMatchState] = useState(() => read('relay.bgMatch', '1') === '1');
 
+  // The page always gets the concrete theme; storage keeps the choice ('system' included).
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = resolved;
+  }, [resolved]);
+  useEffect(() => {
     write('relay.theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.density = density;
+    write('relay.density', density);
+  }, [density]);
 
   // An accent overrides the theme's: buttons, links, focus rings and the selected sidebar row.
   useEffect(() => {
@@ -159,7 +188,10 @@ export function useAppearance() {
 
   return {
     theme,
+    resolvedTheme: resolved,
     setTheme: setThemeState,
+    density,
+    setDensity: setDensityState,
     background,
     chooseBackground,
     uploadBackground,
