@@ -24,7 +24,11 @@ export async function verifyToken(token: string, client: AuthClient): Promise<Id
   if (!token) return null;
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
-  const u = data.user;
+  return identityFromUser(data.user);
+}
+
+// Maps a Supabase user record to Relay identity fields (display name, avatar, verification).
+export function identityFromUser(u: SupabaseUser): Identity {
   const meta = u.user_metadata ?? {};
   const name =
     meta.full_name?.trim() ||

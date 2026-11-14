@@ -49,6 +49,7 @@ import { createMessageSync } from './messageSync.ts';
 import { addItem, cleanHome, moveItem, removeItem, updateItem } from './home.ts';
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
+import { createJwtVerifier, identityFromClaims } from './jwt.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
 import { decideSignup, normalizeDomains, type SignupVerdict } from './signup.ts';
 import { cleanUpload, createFiles } from './files.ts';
@@ -234,9 +235,23 @@ if (!authAdmin) {
     : 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set in production: sign-in is disabled. Set them, or RELAY_ALLOW_DEV_AUTH=1.');
 }
 
+// Local JWT verification skips the auth server round trip. SUPABASE_JWT_SECRET (HS256) wins over
+// SUPABASE_JWKS_URL. A token it rejects still goes to the auth server, so a key rotation does not
+// lock everyone out.
+const jwtVerify = createJwtVerifier({ secret: process.env.SUPABASE_JWT_SECRET, jwksUrl: process.env.SUPABASE_JWKS_URL });
+if (authAdmin) {
+  console.log(jwtVerify
+    ? `Auth: verifying JWTs locally (${process.env.SUPABASE_JWT_SECRET?.trim() ? 'HS256 secret' : 'JWKS'}), falling back to the Supabase auth server.`
+    : 'Auth: verifying tokens with the Supabase auth server.');
+}
+
 async function resolveIdentity(token: unknown): Promise<Identity | null> {
   if (typeof token !== 'string' || !token || token.length > 8192) return null;
-  if (authAdmin) return verifyToken(token, authAdmin as unknown as AuthClient);
+  if (authAdmin) {
+    const claims = jwtVerify ? await jwtVerify(token) : null;
+    if (claims) return identityFromClaims(claims);
+    return verifyToken(token, authAdmin as unknown as AuthClient);
+  }
   if (!devAuthAllowed) return null;
   const [userId, name] = token.split(':');
   if (!userId || userId === BOT_ID) return null;
