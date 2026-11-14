@@ -7,9 +7,10 @@ import BouncyNavPill from './framer/BouncyNavPill.tsx';
 // (Vercel rewrites every path to index.html, and Vite's dev server does the same).
 export type FeatureRoute = 'overview' | 'huddles' | 'workflows' | 'search';
 // The help center has its own pages under /help/<article>; it is one route here.
-export type Route = 'home' | FeatureRoute | 'help';
+// 'reset' is the password reset page that Supabase's reset email links to; it is not in the nav.
+export type Route = 'home' | FeatureRoute | 'help' | 'reset';
 
-export const PAGES: { route: Exclude<Route, 'home'>; label: string; path: string }[] = [
+export const PAGES: { route: Exclude<Route, 'home' | 'reset'>; label: string; path: string }[] = [
   { route: 'overview', label: 'Overview', path: '/overview' },
   { route: 'huddles', label: 'Huddles', path: '/huddles' },
   { route: 'workflows', label: 'Workflows', path: '/workflows' },
@@ -17,8 +18,14 @@ export const PAGES: { route: Exclude<Route, 'home'>; label: string; path: string
   { route: 'help', label: 'Help', path: '/help' },
 ];
 
-const routeFrom = (path: string): Route => (/^\/help(\/|$)/.test(path) ? 'help' : PAGES.find((p) => p.path === path.replace(/\/+$/, ''))?.route ?? 'home');
-export const pathOf = (r: Route) => PAGES.find((p) => p.route === r)?.path ?? '/';
+const RESET_PATH = '/reset';
+const routeFrom = (path: string): Route => {
+  if (/^\/help(\/|$)/.test(path)) return 'help';
+  const clean = path.replace(/\/+$/, '');
+  if (clean === RESET_PATH) return 'reset';
+  return PAGES.find((p) => p.path === clean)?.route ?? 'home';
+};
+export const pathOf = (r: Route) => (r === 'reset' ? RESET_PATH : PAGES.find((p) => p.route === r)?.path ?? '/');
 
 export function useRoute(): [Route, (r: Route) => void] {
   const [route, setRoute] = useState<Route>(() => routeFrom(location.pathname));

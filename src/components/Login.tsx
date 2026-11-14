@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
 import { Aurora } from './Aurora.tsx';
@@ -8,7 +8,7 @@ import '../apple.css';
 import '../signin.css';
 import { supabase, authEnabled } from '../supabase.ts';
 import { saveDevSession } from '../store.ts';
-import { DEV_SESSION_EVENT, requestPasswordReset, signInWithPassword, signInWithProvider, signUpWithPassword } from '../auth.ts';
+import { DEV_SESSION_EVENT, requestPasswordReset, resendConfirmation, signInWithPassword, signInWithProvider, signUpWithPassword } from '../auth.ts';
 
 interface Props {
   invite: string;
@@ -18,9 +18,13 @@ interface Props {
   signedIn?: boolean;
   onSignOut: () => void;
   onBack?: () => void;
+  // Opens on a given screen, e.g. 'verify' when the server says the email is unconfirmed.
+  initialMode?: Mode;
+  // Prefills the email field; falls back to the last email used on this device.
+  email?: string;
 }
 
-type Mode = 'signin' | 'signup' | 'forgot' | 'sent' | 'verify';
+export type Mode ='signin' | 'signup' | 'forgot' | 'sent' | 'verify';
 type Provider = 'google' | 'github' | 'azure';
 type Busy = Provider | 'form' | null;
 
@@ -70,11 +74,12 @@ const TITLES: Record<Mode, string> = {
   verify: 'Confirm your email',
 };
 
-export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: Props) {
-  const [mode, setMode] = useState<Mode>('signin');
+export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, initialMode, email: initialEmail }: Props) {
+  const [mode, setMode] = useState<Mode>(initialMode ?? 'signin');
   const [code, setCode] = useState(invite);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState(() => { try { return localStorage.getItem('relay.lastEmail') ?? ''; } catch { return ''; } });
+  const [email, setEmail] = useState(() => { if (initialEmail) return initialEmail; try { return localStorage.getItem('relay.lastEmail') ?? ''; } catch { return ''; } });
+  const [resent, setResent] = useState(false);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [devName, setDevName] = useState('');
@@ -105,6 +110,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: 
   function switchMode(next: Mode) {
     setMode(next);
     setFormError(null);
+    setResent(false);
     setPassword('');
     setConfirm('');
   }
@@ -142,6 +148,16 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: 
     if (result.ok) switchMode('sent'); else setFormError(result.message);
   }
 
+  async function resend() {
+    setFormError(null);
+    setResent(false);
+    if (!email) { setFormError('Enter your email.'); return; }
+    setBusy('form');
+    const result = await resendConfirmation(supabase, email);
+    setBusy(null);
+    if (result.ok) setResent(true); else setFormError(result.message);
+  }
+
   async function provider(id: Provider) {
     setFormError(null);
     setBusy(id);
@@ -157,37 +173,6 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: 
     saveDevSession(`${crypto.randomUUID()}:${n}`, code);
     window.dispatchEvent(new CustomEvent(DEV_SESSION_EVENT));
   }
-
-  // Pointer tracking: the backdrop drifts, the visual tilts and a spotlight follows the cursor.
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = root.current;
-    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let raf = 0, tx = 0, ty = 0, cx = 0, cy = 0, px = 0, py = 0;
-    const onMove = (e: PointerEvent) => {
-      tx = (e.clientX / window.innerWidth - 0.5) * 2;
-      ty = (e.clientY / window.innerHeight - 0.5) * 2;
-      px = e.clientX; py = e.clientY;
-    };
-    const tick = () => {
-      cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08;
-      el.style.setProperty('--mx', cx.toFixed(4));
-      el.style.setProperty('--my', cy.toFixed(4));
-      el.style.setProperty('--sx', `${px}px`);
-      el.style.setProperty('--sy', `${py}px`);
-      raf = requestAnimationFrame(tick);
-    };
-    window.addEventListener('pointermove', onMove);
-    raf = requestAnimationFrame(tick);
-    return () => { window.removeEventListener('pointermove', onMove); cancelAnimationFrame(raf); };
-  }, []);
-
-  // Little messages drifting over the visual: a taste of the workspace before signing in.
-  const chips = [
-    { who: 'M', text: 'deploy is green', when: 'now', style: { top: '9%', left: '8%', '--d': 18, '--t': '0s' } },
-    { who: 'A', text: 'standup moved to 10:30', when: '2m', style: { top: '24%', right: '6%', '--d': -24, '--t': '-2s' } },
-    { who: 'J', text: 'huddle? 🎧', when: '5m', style: { top: '46%', left: '12%', '--d': 30, '--t': '-4s' } },
-  ] as const;
 
   const inviteField = (
     <label className="ap-si-field">
@@ -283,40 +268,30 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: 
       case 'verify':
         return (
           <>
-            <p className="ap-si-sub" role="status">Check your inbox. We sent a confirmation link to {email}. Open it, then sign in.</p>
-            <p className="si-switch"><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></p>
+            <p className="ap-si-sub" role="status">Check your inbox. We sent a confirmation link to {email || 'your email'}. Open it, then sign in.</p>
+            {resent && <p className="ap-si-ok" role="status">Confirmation email sent.</p>}
+            <button type="button" className="ap-pill quiet full" disabled={!!busy || !email} onClick={() => void resend()}>
+              {busy === 'form' ? 'Sending…' : 'Resend confirmation'}
+            </button>
+            {signedIn
+              ? <button type="button" className="ap-pill quiet full" onClick={onSignOut}>Sign out</button>
+              : <p className="si-switch"><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></p>}
           </>
         );
     }
   }
 
+  // A signed-in person the server turned away. The verify screen keeps its own layout (with a
+  // Sign out button); every other case offers an invite code.
+  const joinView = signedIn && mode !== 'verify';
+
   return (
-    <div className="ap-si si-v2" ref={root}>
-      <div className="si-bg" aria-hidden><Aurora /></div>
-      <div className="si-spot" aria-hidden />
-      <header className="ap-si-nav">
-        <button className="ap-brand" onClick={onBack} disabled={!onBack}><LogoMark size={22} />Relay</button>
-        {onBack && <button className="ap-link-btn" onClick={onBack}><Icon n="back" size={14} /> Home</button>}
-      </header>
-      <main className="ap-si-main">
-        <div className="si-visual" aria-hidden>
-          <img src="/hf/relay-hero.jpg" alt="" />
-          <div className="si-shine" />
-          {chips.map((c) => (
-            <span key={c.text} className="si-chip" style={c.style as React.CSSProperties}><i>{c.who}</i>{c.text}<small>{c.when}</small></span>
-          ))}
-          <div className="si-caption">
-            <h2>Where the team actually talks.</h2>
-            <p>Channels, pages, huddles and databases in one place.</p>
-          </div>
-        </div>
-        <div className="ap-si-card">
-          <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
-          <h1>{signedIn ? 'Join a workspace' : TITLES[mode]}</h1>
-          <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : SUBTITLES[mode]}</p>
+    <SignInStage onBack={onBack}>
+          <h1>{joinView ? 'Join a workspace' : TITLES[mode]}</h1>
+          <p className="ap-si-sub">{joinView ? 'Paste the invite code your team sent you.' : SUBTITLES[mode]}</p>
           {shownError && <p className="ap-si-error" role="alert">{shownError}</p>}
 
-          {signedIn ? (
+          {joinView ? (
             <>
               <label className="ap-si-field">
                 Invite code
@@ -333,7 +308,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: 
               >
                 Join with invite
               </LightBulbButton>
-              <button className="ap-pill quiet full" onClick={onSignOut}>Use a different account</button>
+              <button className="ap-pill quiet full" onClick={onSignOut}>Sign out</button>
             </>
           ) : forms()}
 
@@ -349,6 +324,67 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: 
             )
           )}
 
+    </SignInStage>
+  );
+}
+
+// Little messages drifting over the visual: a taste of the workspace before signing in.
+const CHIPS = [
+  { who: 'M', text: 'deploy is green', when: 'now', style: { top: '9%', left: '8%', '--d': 18, '--t': '0s' } },
+  { who: 'A', text: 'standup moved to 10:30', when: '2m', style: { top: '24%', right: '6%', '--d': -24, '--t': '-2s' } },
+  { who: 'J', text: 'huddle? 🎧', when: '5m', style: { top: '46%', left: '12%', '--d': 30, '--t': '-4s' } },
+] as const;
+
+// The sign-in page's backdrop, nav, visual and card. Login and the password reset page render
+// their content inside the card.
+export function SignInStage({ onBack, children }: { onBack?: () => void; children: ReactNode }) {
+  // Pointer tracking: the backdrop drifts, the visual tilts and a spotlight follows the cursor.
+  const root = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = root.current;
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0, tx = 0, ty = 0, cx = 0, cy = 0, px = 0, py = 0;
+    const onMove = (e: PointerEvent) => {
+      tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      px = e.clientX; py = e.clientY;
+    };
+    const tick = () => {
+      cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08;
+      el.style.setProperty('--mx', cx.toFixed(4));
+      el.style.setProperty('--my', cy.toFixed(4));
+      el.style.setProperty('--sx', `${px}px`);
+      el.style.setProperty('--sy', `${py}px`);
+      raf = requestAnimationFrame(tick);
+    };
+    window.addEventListener('pointermove', onMove);
+    raf = requestAnimationFrame(tick);
+    return () => { window.removeEventListener('pointermove', onMove); cancelAnimationFrame(raf); };
+  }, []);
+
+  return (
+    <div className="ap-si si-v2" ref={root}>
+      <div className="si-bg" aria-hidden><Aurora /></div>
+      <div className="si-spot" aria-hidden />
+      <header className="ap-si-nav">
+        <button className="ap-brand" onClick={onBack} disabled={!onBack}><LogoMark size={22} />Relay</button>
+        {onBack && <button className="ap-link-btn" onClick={onBack}><Icon n="back" size={14} /> Home</button>}
+      </header>
+      <main className="ap-si-main">
+        <div className="si-visual" aria-hidden>
+          <img src="/hf/relay-hero.jpg" alt="" />
+          <div className="si-shine" />
+          {CHIPS.map((c) => (
+            <span key={c.text} className="si-chip" style={c.style as React.CSSProperties}><i>{c.who}</i>{c.text}<small>{c.when}</small></span>
+          ))}
+          <div className="si-caption">
+            <h2>Where the team actually talks.</h2>
+            <p>Channels, pages, huddles and databases in one place.</p>
+          </div>
+        </div>
+        <div className="ap-si-card">
+          <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
+          {children}
           <p className="ap-si-foot">Powered by Flo Studios</p>
         </div>
       </main>

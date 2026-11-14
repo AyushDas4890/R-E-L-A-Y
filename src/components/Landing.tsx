@@ -48,7 +48,7 @@ export function Landing({ onGetStarted }: Props) {
   const [route, go] = useRoute();
   // Keyed by route so each page mounts fresh and plays its entrance (site.css: ap-page).
   if (route === 'help') return <HelpPage key="help" go={go} onGetStarted={onGetStarted} signedIn={false} />;
-  if (route !== 'home') return <FeaturePage key={route} page={route} go={go} onGetStarted={onGetStarted} />;
+  if (route !== 'home' && route !== 'reset') return <FeaturePage key={route} page={route} go={go} onGetStarted={onGetStarted} />;
   return <Home key="home" go={go} onGetStarted={onGetStarted} />;
 }
 

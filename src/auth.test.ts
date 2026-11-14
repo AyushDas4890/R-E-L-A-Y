@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { devAuthError, friendlyAuthError, redirectWithInvite } from './auth.ts';
+import { devAuthError, friendlyAuthError, redirectWithInvite, resendConfirmation } from './auth.ts';
 
 test('friendlyAuthError maps known Supabase messages', () => {
   assert.equal(friendlyAuthError('Invalid login credentials'), 'Wrong email or password.');
@@ -21,4 +21,7 @@ test('devAuthError maps dev server codes', () => {
   assert.equal(devAuthError('bad-credentials'), 'Wrong email or password.');
   assert.equal(devAuthError('server'), 'Sign-in failed. Try again.');
   assert.equal(devAuthError(undefined), 'Sign-in failed. Try again.');
+});
+test('resendConfirmation explains itself without Supabase', async () => {
+  assert.deepEqual(await resendConfirmation(null, 'a@b.co'), { ok: false, message: 'Email confirmation needs Supabase.' });
 });

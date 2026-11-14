@@ -90,6 +90,12 @@ export async function updatePassword(supabase: SupabaseClient | null, password: 
   return error ? { ok: false, message: friendlyAuthError(error.message) } : { ok: true };
 }
 
+// Sends the sign-up confirmation email again.
+export async function resendConfirmation(supabase: SupabaseClient | null, email: string): Promise<AuthResult> {
+  if (!supabase) return { ok: false, message: 'Email confirmation needs Supabase.' };
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
+  return error ? { ok: false, message: friendlyAuthError(error.message) } : { ok: true };
+}
 export async function signInWithProvider(supabase: SupabaseClient | null, provider: 'google' | 'github' | 'azure', invite: string): Promise<AuthResult> {
   if (!supabase) return { ok: false, message: 'Provider sign-in needs Supabase.' };
   const { error } = await supabase.auth.signInWithOAuth({

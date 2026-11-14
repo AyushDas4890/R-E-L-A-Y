@@ -3,7 +3,8 @@ import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
 import { getDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
 import { authEnabled } from './supabase.ts';
-import { Login } from './components/Login.tsx';
+import { Login, SignInStage } from './components/Login.tsx';
+import { ResetPassword } from './components/ResetPassword.tsx';
 import { Boot } from './components/Boot.tsx';
 import { Landing } from './components/Landing.tsx';
 import { PageIntro } from './components/PageIntro.tsx';
@@ -71,7 +72,7 @@ const recall = (key: string) => {
 };
 
 export default function App() {
-  const { token, ready, signOut, devSession: signedInDev } = useAuthToken();
+  const { token, ready, signOut, recovery, devSession: signedInDev } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
   // A dev sign-in or sign-up from auth.ts saved a new session: use it without a reload.
   useEffect(() => { if (signedInDev) setDevSession(signedInDev); }, [signedInDev]);
@@ -260,10 +261,21 @@ export default function App() {
     setModal(null);
   };
 
+  // Supabase's reset email lands on /reset; the recovery event can also arrive on another path.
+  if (siteRoute === 'reset' || recovery) {
+    const doneReset = () => {
+      window.history.replaceState(null, '', '/');
+      goSite('home');
+    };
+    return <SignInStage><ResetPassword onDone={doneReset} /></SignInStage>;
+  }
   if (siteRoute === 'help') {
     return <HelpPage go={goSite} signedIn={!!session && !authError} onGetStarted={() => (session ? goSite('home') : openLogin())} />;
   }
-  if (!session || (authError && authError.code === 'auth-required')) {
+  // Signed in, but the server wants something first: a confirmed email, an allowed domain, or the
+  // owner's approval. These show on the sign-in page with the server's message and a Sign out button.
+  const blocked = authError && (authError.code === 'unverified' || authError.code === 'domain' || authError.code === 'owner-pending');
+  if (!session || blocked || (authError && authError.code === 'auth-required')) {
     if (!ready) return <Boot status="Starting Relay…" />;
     if (!showLogin && !authError) return (
       <>
@@ -273,12 +285,15 @@ export default function App() {
     );
     return (
       <Login
+        key={authError?.code ?? 'signin'}
         onBack={authError ? undefined : closeLogin}
         invite={invite}
         onInvite={setInvite}
         error={authError?.message}
-        signedIn={false}
+        signedIn={!!blocked}
         onSignOut={leave}
+        initialMode={authError?.code === 'unverified' ? 'verify' : undefined}
+        email={authError?.code === 'unverified' ? recall('relay.lastEmail') ?? undefined : undefined}
       />
     );
   }
