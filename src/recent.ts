@@ -1,10 +1,12 @@
 // What this person opened lately (pages, channels, people, commands), kept in this browser only: it is a
 // convenience, not data. Entries are `Recent` records whose ids carry their kind: `p:`, `ch:`, `u:`, `cmd:`.
 // Older builds stored bare page ids as strings; those still read back as pages.
-import { pushRecent as push, type Recent } from './commands.ts';
+import { pushRecent as push, trimRecent, type Recent } from './commands.ts';
 
 const KEY = 'relay.recent';
-const MAX = 20;
+// Each kind keeps its own 12 newest entries, so palette picks never push pages out of the pages home.
+const PER_KIND = 12;
+const MAX = 48;
 
 export function readRecentEntries(): Recent[] {
   try {
@@ -15,7 +17,7 @@ export function readRecentEntries(): Recent[] {
       if (typeof x === 'string') out.push({ id: `p:${x}`, ts: 0 });
       else if (x && typeof x === 'object' && typeof (x as Recent).id === 'string') out.push({ id: (x as Recent).id, ts: Number((x as Recent).ts) || 0 });
     }
-    return out.slice(0, MAX);
+    return trimRecent(out, PER_KIND, MAX);
   } catch {
     return [];
   }
@@ -23,11 +25,11 @@ export function readRecentEntries(): Recent[] {
 
 export function recordRecent(id: string): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(push(readRecentEntries(), id, Date.now(), MAX)));
+    localStorage.setItem(KEY, JSON.stringify(trimRecent(push(readRecentEntries(), id, Date.now(), Infinity), PER_KIND, MAX)));
   } catch { /* not saved */ }
 }
 
-// Page ids only, newest first, for the pages home.
+// Page ids only, newest first (up to 12), for the pages home.
 export function readRecent(): string[] {
   return readRecentEntries().filter((r) => r.id.startsWith('p:')).map((r) => r.id.slice(2));
 }

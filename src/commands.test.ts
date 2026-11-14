@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COMMANDS, rankCommands, pushRecent } from './commands.ts';
+import { COMMANDS, rankCommands, pushRecent, trimRecent } from './commands.ts';
 
 const GROUPS = ['Navigate', 'Create', 'Preferences', 'Admin'];
 
@@ -64,4 +64,29 @@ test('pushRecent honours a custom cap and does not mutate its input', () => {
   const out = pushRecent(start, 'b', 2, 1);
   assert.deepEqual(out, [{ id: 'b', ts: 2 }]);
   assert.deepEqual(start, [{ id: 'a', ts: 1 }]);
+});
+
+test('pushing 15 channel entries leaves 8 earlier page entries intact', () => {
+  let list: { id: string; ts: number }[] = [];
+  for (let i = 0; i < 8; i++) list = trimRecent(pushRecent(list, `p:page${i}`, i, Infinity));
+  for (let i = 0; i < 15; i++) list = trimRecent(pushRecent(list, `ch:c${i}`, 100 + i, Infinity));
+  const pages = list.filter((r) => r.id.startsWith('p:')).map((r) => r.id);
+  assert.deepEqual(pages, ['p:page7', 'p:page6', 'p:page5', 'p:page4', 'p:page3', 'p:page2', 'p:page1', 'p:page0']);
+});
+
+test('per-kind trimming drops the oldest of that kind only', () => {
+  let list: { id: string; ts: number }[] = [];
+  for (let i = 0; i < 15; i++) list = trimRecent(pushRecent(list, `ch:c${i}`, i, Infinity));
+  const ch = list.filter((r) => r.id.startsWith('ch:')).map((r) => r.id);
+  assert.equal(ch.length, 12);
+  assert.equal(ch[0], 'ch:c14');
+  assert.equal(ch[11], 'ch:c3');
+  assert.equal(ch.includes('ch:c2'), false);
+});
+
+test('trimRecent caps the whole list', () => {
+  const kinds = ['p', 'ch', 'u', 'cmd', 'x'];
+  const list = kinds.flatMap((k) => Array.from({ length: 12 }, (_, i) => ({ id: `${k}:${i}`, ts: i })));
+  assert.equal(trimRecent(list).length, 48);
+  assert.equal(trimRecent(list, 12, 10).length, 10);
 });

@@ -52,3 +52,22 @@ export interface Recent {
 export function pushRecent(list: Recent[], id: string, now: number, max = 8): Recent[] {
   return [{ id, ts: now }, ...list.filter((r) => r.id !== id)].slice(0, max);
 }
+
+// The kind of a recent entry is the part of its id before the first `:` (`p`, `ch`, `u`, `cmd`).
+export const recentKind = (id: string): string => (id.includes(':') ? id.slice(0, id.indexOf(':')) : '');
+
+// Keeps at most `perKind` entries of each kind and `max` overall, dropping the oldest (the list is newest first),
+// so a burst of one kind never evicts another.
+export function trimRecent(list: Recent[], perKind = 12, max = 48): Recent[] {
+  const seen = new Map<string, number>();
+  const out: Recent[] = [];
+  for (const r of list) {
+    const k = recentKind(r.id);
+    const n = seen.get(k) ?? 0;
+    if (n >= perKind) continue;
+    seen.set(k, n + 1);
+    out.push(r);
+    if (out.length >= max) break;
+  }
+  return out;
+}

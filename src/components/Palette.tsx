@@ -96,6 +96,7 @@ export function SearchPalette({ onClose, onPick, onOpenPage, onCommand, onPerson
       for (const r of recent) {
         if (out.length >= 8) break;
         const sep = r.id.indexOf(':');
+        if (sep < 0) continue; // Malformed entry with no kind.
         const kind = r.id.slice(0, sep);
         const id = r.id.slice(sep + 1);
         const key = `recent-${r.id}`;
