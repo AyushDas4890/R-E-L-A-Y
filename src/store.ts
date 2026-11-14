@@ -244,16 +244,15 @@ export function useAuthToken(): { token: string | null; ready: boolean; recovery
 }
 
 export function useRelay(session: Session | null) {
-  // Opening the app lands on Home, unless an invite link says which workspace to join.
-  const startHome = !session?.invite;
-  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null, workspaces: { mine: [], discover: [] }, atHome: startHome, home: { items: [], name: '' } });
+  const [state, dispatch] = useReducer(reduce, { snap: null, typing: {}, error: null, authError: null, analytics: null, workspaces: { mine: [], discover: [] }, atHome: false, home: { items: [], name: '' } });
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   // Huddle signaling isn't app state, so it goes to listeners instead of the reducer.
   const listeners = useRef(new Set<(ev: ServerEvent) => void>());
-  // The workspace to open on (re)connect; remembered across reloads.
-  const target = useRef<string | undefined>(startHome ? 'home' : undefined);
+  // The workspace to open on (re)connect: the last one used, remembered across reloads, or the organisation.
+  // An invite link still wins, because the server checks the invite before this.
   const lastWorkspace = useRef(readWorkspace());
+  const target = useRef<string | undefined>(lastWorkspace.current ?? 'hq');
   const sessionRef = useRef(session);
   sessionRef.current = session;
 

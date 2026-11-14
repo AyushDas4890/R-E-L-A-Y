@@ -31,7 +31,7 @@ import { AdminModal, TermsGate } from './components/Admin.tsx';
 import { ListPanel } from './components/Lists.tsx';
 import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
 import { HomeScreen } from './components/HomeScreen.tsx';
-import { CreateWorkspaceModal, FindWorkspacesModal, InviteModal, WorkspacePicker, WorkspaceSwitcher, WorkspaceTile } from './components/Workspaces.tsx';
+import { InviteModal, WorkspacePicker, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
 import { INTERNAL } from './dnd.ts';
 import './dnd.css';
@@ -48,7 +48,7 @@ import { TeamspaceModal } from './components/pages/TeamspaceModal.tsx';
 import { pushRecent } from './recent.ts';
 import { PageView } from './components/pages/PageView.tsx';
 
-type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
+type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'admin' | 'invite' | { schedule: string };
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
 type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page' | 'home' | 'calendar' | 'library' | 'workflows';
 type Menu = null | 'workspace' | 'more' | 'create' | 'dnd' | 'bell' | 'addTab' | 'addChannel';
@@ -218,11 +218,11 @@ export default function App() {
     setTimeout(() => go({ view: 'page', page: id }), 0);
   }, [snap?.workspace.id]);
 
-  // A new workspace opens on its Home page (channel stays #general for when you go to Messages), with a clean history.
-  // Coming back from the main Home into the same workspace also starts at its Home.
+  // A workspace opens on #general with a clean history; its Home page is one click away in the sidebar.
+  // Coming back from the main Home into the same workspace also starts there.
   useEffect(() => {
     if (!snap || atHome) return;
-    setHistory({ stack: [{ view: 'home', channel: 'general' }], at: 0 });
+    setHistory({ stack: [{ view: 'channel', channel: 'general' }], at: 0 });
     setPanel(null);
   }, [snap?.workspace.id, atHome]);
 
@@ -330,9 +330,7 @@ export default function App() {
     return (
       <>
         {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
-        <HomeScreen name={home.name} items={home.items} mine={workspaces.mine} lastWorkspace={lastWorkspace} send={send} onEnter={switchWorkspace} onCreate={() => setModal('createWs')} onFind={() => setModal('findWs')} onSignOut={leave} />
-        {modal === 'createWs' && <CreateWorkspaceModal onClose={() => setModal(null)} onCreate={createWorkspace} />}
-        {modal === 'findWs' && <FindWorkspacesModal discover={workspaces.discover} onClose={() => setModal(null)} onJoin={(id) => { switchWorkspace(id); setModal(null); }} />}
+        <HomeScreen name={home.name} items={home.items} mine={workspaces.mine} lastWorkspace={lastWorkspace} send={send} onEnter={switchWorkspace} onSignOut={leave} />
       </>
     );
   }
@@ -520,8 +518,6 @@ export default function App() {
 
       <div className="app">
         <nav className="rail" onClick={(e) => e.stopPropagation()}>
-          <WorkspaceSwitcher current={snap.workspace} mine={workspaces.mine} onSwitch={switchWorkspace} onHome={goHome} onCreate={() => setModal('createWs')} onFind={() => setModal('findWs')} />
-          <span className="rail-divider" />
           <button className={`rail-btn ${view === 'channel' ? 'active' : ''}`} title="Home" onClick={() => showView('channel')}><Icon n="home" size={20} /><span>Home</span></button>
           <button className={`rail-btn ${view === 'dms' ? 'active' : ''}`} title="Direct messages" onClick={() => showView('dms')}><Icon n="message" size={20} /><span>DMs</span></button>
           <button className={`rail-btn ${view === 'activity' ? 'active' : ''}`} title="Activity" onClick={() => showView('activity')}><Icon n="bell" size={20} /><span>Activity</span>{totalUnread > 0 && <b className="rail-badge">{totalUnread}</b>}</button>
@@ -551,7 +547,6 @@ export default function App() {
                 <button role="menuitem" onClick={() => { setModal('new'); setMenu(null); }}># New channel</button>
                 <button role="menuitem" onClick={() => showView('directory')}><Icon n="message" /> New message</button>
                 <button role="menuitem" onClick={() => { setModal('invite'); setMenu(null); }}><Icon n="plus" /> Invite people</button>
-                <button role="menuitem" onClick={() => { setModal('createWs'); setMenu(null); }}><Icon n="building" /> New workspace</button>
               </div>
             )}
           </div>
@@ -581,7 +576,6 @@ export default function App() {
                   {workspaces.mine.filter((w) => w.id !== snap.workspace.id).map((w) => (
                     <button key={w.id} role="menuitem" className="ws-item" onClick={() => { switchWorkspace(w.id); setMenu(null); }}><WorkspaceTile ws={w} size={22} /> {w.name}</button>
                   ))}
-                  <button role="menuitem" onClick={() => { setModal('createWs'); setMenu(null); }}>Create a new workspace</button>
                   <button role="menuitem" className="danger" onClick={() => { if (confirm(`Leave ${snap.workspace.name}? You can rejoin later if it is open or you have an invite.`)) send({ t: 'leaveWorkspace' }); setMenu(null); }}>Leave workspace</button>
                   <button role="menuitem" className="danger" onClick={() => { if (confirm(`Delete your account in ${snap.workspace.name}? Your messages stay but show "Deleted user", and your saved items, reminders and settings here are erased. This cannot be undone.`)) send({ t: 'deleteMyAccount' }); setMenu(null); }}>Delete my account</button>
                   <button role="menuitem" className="danger" onClick={leave}>Sign out</button>
@@ -828,8 +822,6 @@ export default function App() {
       {modal === 'scheduled' && <ScheduledModal onClose={() => setModal(null)} />}
       {modal === 'admin' && admin && <AdminModal onClose={() => setModal(null)} />}
       {modal === 'invite' && <InviteModal snap={snap} send={send} onClose={() => setModal(null)} />}
-      {modal === 'createWs' && <CreateWorkspaceModal onClose={() => setModal(null)} onCreate={createWorkspace} />}
-      {modal === 'findWs' && <FindWorkspacesModal discover={workspaces.discover} onClose={() => setModal(null)} onJoin={(id) => { switchWorkspace(id); setModal(null); }} />}
       <TermsGate />
       {typeof modal === 'object' && modal && 'schedule' in modal && ch && (
         <SchedulePicker text={modal.schedule} channelId={ch.id} onClose={() => setModal(null)} />

@@ -17,8 +17,6 @@ interface Props {
   lastWorkspace?: string;
   send: (ev: ClientEvent) => void;
   onEnter: (id: string) => void;
-  onCreate: () => void;
-  onFind: () => void;
   onSignOut: () => void;
 }
 
@@ -95,7 +93,7 @@ function Card({ item, send, order }: { item: HomeItem; send: Props['send']; orde
   );
 }
 
-export function HomeScreen({ name, items, mine, lastWorkspace, send, onEnter, onCreate, onFind, onSignOut }: Props) {
+export function HomeScreen({ name, items, mine, lastWorkspace, send, onEnter, onSignOut }: Props) {
   const now = new Date();
   const add = (kind: HomeKind) => send({ t: 'homeAdd', kind });
 
@@ -169,8 +167,6 @@ export function HomeScreen({ name, items, mine, lastWorkspace, send, onEnter, on
           ))}
         </ul>
         {mine.length === 0 && <p className="hs-empty">You aren’t in a workspace yet.</p>}
-        <button className="hs-nav" onClick={onCreate}>+ New workspace</button>
-        <button className="hs-nav" onClick={onFind}>Find workspaces to join</button>
         <button className="hs-nav out" onClick={onSignOut}>Sign out</button>
       </nav>
       <div

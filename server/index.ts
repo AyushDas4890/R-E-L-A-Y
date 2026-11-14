@@ -1699,8 +1699,8 @@ function pickWorkspace(userId: string, wanted?: string, invite?: string): Runtim
   if (invite) for (const rt of runtimes.values()) if (rt.hasInvite(invite)) return rt;
   if (wanted && runtimes.has(wanted)) return runtimes.get(wanted);
   for (const rt of runtimes.values()) if (rt.isMember(userId)) return rt;
-  const hq = runtimes.get(HQ);
-  return hq && !hq.db.settings.inviteOnly ? hq : undefined;
+  // Everyone else lands in the organisation; its join policy decides whether they get in.
+  return runtimes.get(HQ);
 }
 
 async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
