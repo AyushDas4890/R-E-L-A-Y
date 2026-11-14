@@ -3,7 +3,8 @@
 export interface SupabaseUser {
   id: string;
   email: string | null;
-  user_metadata: { full_name?: string; name?: string; user_name?: string; avatar_url?: string; picture?: string };
+  email_confirmed_at?: string | null;
+  user_metadata: { full_name?: string; name?: string; user_name?: string; avatar_url?: string; picture?: string; email_verified?: boolean };
 }
 
 export interface AuthClient {
@@ -15,6 +16,8 @@ export interface Identity {
   name: string;
   email: string | null;
   avatarUrl?: string;
+  // Whether the provider vouches for the email address. Sign-up policy refuses unverified emails.
+  emailVerified: boolean;
 }
 
 export async function verifyToken(token: string, client: AuthClient): Promise<Identity | null> {
@@ -35,5 +38,7 @@ export async function verifyToken(token: string, client: AuthClient): Promise<Id
     email: u.email,
     // GitHub sends avatar_url; Google sends picture (Supabase usually copies it to avatar_url too).
     avatarUrl: meta.avatar_url ?? meta.picture,
+    // Supabase sets email_confirmed_at once the address is confirmed; OAuth providers may report it in metadata instead.
+    emailVerified: !!u.email_confirmed_at || meta.email_verified === true,
   };
 }

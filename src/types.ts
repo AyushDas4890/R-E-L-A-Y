@@ -131,6 +131,13 @@ export interface Settings {
   barriers: [string, string][];
   // Off by default: anyone who signs in joins. On: new people need an invite code.
   inviteOnly?: boolean;
+  // Sign-ups from these email domains join without an invite (organisation workspace only).
+  allowedDomains: string[];
+  // The role new people get when they join.
+  defaultRole: 'member' | 'guest';
+  // Public channels new people are added to.
+  defaultChannels: string[];
+  orgName: string;
 }
 
 export interface AdminData {
@@ -773,7 +780,7 @@ export type ServerEvent =
   | { t: 'inbox'; items: InboxItem[] }
   | { t: 'searchResults'; q: string; hits: SearchHit[] }
   | { t: 'calendarFeed'; items: CalendarItem[]; dbs: CalendarDb[] }
-  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' | 'left' };
+  | { t: 'error'; message: string; code?: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' | 'left' | 'domain' | 'unverified' | 'owner-pending' };
 
 export interface Analytics {
   totalMessages: number;

@@ -12,7 +12,7 @@ test('verifyToken maps a valid user with metadata', async () => {
     error: null,
   });
   const id = await verifyToken('tok', client);
-  assert.deepEqual(id, { userId: 'u1', name: 'Ada', email: 'a@b.com', avatarUrl: 'http://x/a.png' });
+  assert.deepEqual(id, { userId: 'u1', name: 'Ada', email: 'a@b.com', avatarUrl: 'http://x/a.png', emailVerified: false });
 });
 
 test('verifyToken falls back to email prefix when name metadata is missing', async () => {
@@ -22,6 +22,22 @@ test('verifyToken falls back to email prefix when name metadata is missing', asy
   });
   const id = await verifyToken('tok', client);
   assert.equal(id?.name, 'bob');
+});
+
+test('verifyToken marks the email verified when Supabase confirmed it', async () => {
+  const client = clientReturning({
+    data: { user: { id: 'u3', email: 'c@b.com', email_confirmed_at: '2026-01-01T00:00:00Z', user_metadata: {} } },
+    error: null,
+  });
+  assert.equal((await verifyToken('tok', client))?.emailVerified, true);
+});
+
+test('verifyToken trusts the provider email_verified flag in metadata', async () => {
+  const client = clientReturning({
+    data: { user: { id: 'u4', email: 'd@b.com', email_confirmed_at: null, user_metadata: { email_verified: true } } },
+    error: null,
+  });
+  assert.equal((await verifyToken('tok', client))?.emailVerified, true);
 });
 
 test('verifyToken returns null on error', async () => {

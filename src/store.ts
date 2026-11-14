@@ -8,7 +8,7 @@ interface State {
   snap: Snapshot | null;
   typing: Record<string, Record<string, number>>;
   error: string | null;
-  authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' | 'left' } | null;
+  authError: { message: string; code: 'auth-required' | 'invite-required' | 'no-workspace' | 'removed' | 'left' | 'domain' | 'unverified' | 'owner-pending' } | null;
   analytics: Analytics | null;
   workspaces: { mine: WorkspaceSummary[]; discover: WorkspaceSummary[] };
   // On the person's own Home, outside every workspace. Home items arrive from the server and follow them everywhere.

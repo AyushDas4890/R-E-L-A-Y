@@ -50,6 +50,7 @@ import { addItem, cleanHome, moveItem, removeItem, updateItem } from './home.ts'
 import { createClient } from '@supabase/supabase-js';
 import { verifyToken, type AuthClient, type Identity } from './auth.ts';
 import { generateCode, validateInvite, decideRole } from './invites.ts';
+import { decideSignup, normalizeDomains, type SignupVerdict } from './signup.ts';
 import { cleanUpload, createFiles } from './files.ts';
 import { firstUrl, unfurl } from './unfurl.ts';
 import { isCursor, olderMessages, recentMessages } from './history.ts';
@@ -97,7 +98,7 @@ interface DB {
   meta: { name: string; color: string; createdAt: number; createdBy?: string };
 }
 
-const DEFAULT_SETTINGS: Settings = { retentionDays: 0, terms: '', termsVersion: 0, barriers: [] };
+const DEFAULT_SETTINGS: Settings = { retentionDays: 0, terms: '', termsVersion: 0, barriers: [], allowedDomains: [], defaultRole: 'member', defaultChannels: ['general', 'random'], orgName: '' };
 const MAX_AUDIT = 1000;
 
 const WORKSPACE_COLORS = ['#f5a400', '#7c5cff', '#18b6a0', '#e0577d', '#3b9cff', '#5fb760', '#c06cf0', '#ff7a45'];
@@ -239,7 +240,7 @@ async function resolveIdentity(token: unknown): Promise<Identity | null> {
   if (!devAuthAllowed) return null;
   const [userId, name] = token.split(':');
   if (!userId || userId === BOT_ID) return null;
-  return { userId: userId.slice(0, 64), name: (name || 'Member').trim().slice(0, 40) || 'Member', email: null };
+  return { userId: userId.slice(0, 64), name: (name || 'Member').trim().slice(0, 40) || 'Member', email: null, emailVerified: true };
 }
 
 // Everything below lives once per workspace: its data, its connected sockets and its timers.
@@ -595,16 +596,36 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
   }
 
     // Admit (or refuse) one signed-in connection into this workspace.
-    function join(ws: WebSocket, identity: Identity, invite?: string): 'ok' | 'invite-required' | 'removed' {
+    function join(ws: WebSocket, identity: Identity, invite?: string): 'ok' | Extract<SignupVerdict, { ok: false }>['reason'] {
       const { userId, name, email, avatarUrl } = identity;
       if (db.removed.includes(userId)) return 'removed';
       let user = db.users[userId];
       const isMember = !!user && !user.inactive;
       const hasOwner = Object.values(db.users).some((u) => u.role === 'owner' && !u.inactive);
-      const reservedForOther = !!db.meta.createdBy && db.meta.createdBy !== userId;
-      const role = decideRole({ hasOwner, isMember, validInvite: validateInvite(invite, db.invites), inviteOnly: db.settings.inviteOnly, reservedForOther });
-
-      if (role === 'reject') return 'invite-required';
+      const validInvite = validateInvite(invite, db.invites);
+      let role: 'owner' | 'member' | 'guest';
+      if (id === HQ) {
+        // The organisation workspace follows the sign-up policy: verified email, owner email, allowed domains.
+        const verdict = decideSignup({
+          email,
+          emailVerified: identity.emailVerified,
+          isMember,
+          removed: false, // already refused above
+          hasOwner,
+          ownerEmail: process.env.RELAY_OWNER_EMAIL,
+          allowedDomains: db.settings.allowedDomains,
+          inviteOnly: !!db.settings.inviteOnly,
+          validInvite,
+          defaultRole: db.settings.defaultRole,
+        });
+        if (!verdict.ok) return verdict.reason;
+        role = verdict.role;
+      } else {
+        const reservedForOther = !!db.meta.createdBy && db.meta.createdBy !== userId;
+        const decided = decideRole({ hasOwner, isMember, validInvite, inviteOnly: db.settings.inviteOnly, reservedForOther });
+        if (decided === 'reject') return 'invite-required';
+        role = decided;
+      }
 
       if (!user) {
         user = {
@@ -613,17 +634,17 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
           color: COLORS[Object.keys(db.users).length % COLORS.length],
           title: '',
           status: { emoji: '', text: '' },
-          role: role === 'owner' ? 'owner' : 'member',
+          role,
           email: email ?? undefined,
           avatarUrl,
         };
         db.users[userId] = user;
-        for (const id of ['general', 'random']) ensureMember(db.channels[id], userId);
+        for (const ch of db.settings.defaultChannels) ensureMember(db.channels[ch], userId);
       } else {
         // Coming back after leaving: the invite rules above already ran, so this is a fresh start.
         if (user.inactive) {
           user.inactive = false;
-          for (const id of ['general', 'random']) ensureMember(db.channels[id], userId);
+          for (const ch of db.settings.defaultChannels) ensureMember(db.channels[ch], userId);
         }
         // Keep profile details fresh from the identity provider.
         if (authAdmin) user.name = name;
@@ -1126,9 +1147,13 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
           terms,
           termsVersion: terms !== db.settings.terms ? db.settings.termsVersion + 1 : db.settings.termsVersion,
           barriers: (Array.isArray(next.barriers) ? next.barriers : []).filter((p) => Array.isArray(p) && p.length === 2).slice(0, 200).filter(([a, b]) => a !== b && db.groups.some((g) => g.id === a) && db.groups.some((g) => g.id === b)),
+          allowedDomains: normalizeDomains(next.allowedDomains),
+          defaultRole: next.defaultRole === 'guest' ? 'guest' : 'member',
+          defaultChannels: [...new Set((Array.isArray(next.defaultChannels) ? next.defaultChannels : []).filter((c): c is string => typeof c === 'string' && db.channels[c]?.kind === 'public'))].slice(0, 20),
+          orgName: (typeof next.orgName === 'string' ? next.orgName : '').trim().slice(0, 60),
         };
         broadcast({ t: 'settings', settings: db.settings });
-        audit(userId, 'settings.update', `${db.settings.inviteOnly ? 'invite-only' : 'open sign-up'}, retention ${db.settings.retentionDays || '∞'}d, ${db.settings.barriers.length} barriers, terms v${db.settings.termsVersion}`);
+        audit(userId, 'settings.update', `${db.settings.inviteOnly ? 'invite-only' : 'open sign-up'}, retention ${db.settings.retentionDays || '∞'}d, ${db.settings.barriers.length} barriers, terms v${db.settings.termsVersion}, ${db.settings.allowedDomains.length} domains`);
         applyRetention();
         persist();
         return;
@@ -1655,6 +1680,18 @@ async function route(ws: WebSocket, ev: ClientEvent): Promise<void> {
     }
     if (result === 'invite-required') {
       send(ws, { t: 'error', message: `You need an invite to join ${rt.db.meta.name}.`, code: 'invite-required' });
+      return;
+    }
+    if (result === 'domain') {
+      send(ws, { t: 'error', message: `Sign-ups are limited to these email domains: ${rt.db.settings.allowedDomains.join(', ')}`, code: 'domain' });
+      return;
+    }
+    if (result === 'unverified') {
+      send(ws, { t: 'error', message: 'Verify your email address first, then sign in again.', code: 'unverified' });
+      return;
+    }
+    if (result === 'owner-pending') {
+      send(ws, { t: 'error', message: 'This organisation is not open yet. Ask the owner for an invite.', code: 'owner-pending' });
       return;
     }
     conn.rt = rt;
