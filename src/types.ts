@@ -148,6 +148,8 @@ export interface AdminData {
   invites: Invite[];
   // People an admin removed. They can't rejoin, even by invite, until restored.
   removed: string[];
+  // False when RELAY_OWNER_EMAIL is unset, so the first person to sign in became owner.
+  ownerEmailSet: boolean;
 }
 
 export interface Scheduled {

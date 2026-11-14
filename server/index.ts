@@ -359,6 +359,7 @@ function createRuntime(id: string, db: DB, save: (db: DB) => Promise<void>, onEv
       preservedCount: db.preserved.length,
       invites: db.invites,
       removed: db.removed,
+      ownerEmailSet: !!process.env.RELAY_OWNER_EMAIL,
     };
   }
 
