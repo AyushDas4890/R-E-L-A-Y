@@ -9,6 +9,8 @@ the steps below.
 
 ## 1. Create a project
 
+Menu names, limits and values for Supabase, Resend and Azure change over time, so treat the ones below as a starting point and check each provider's current docs.
+
 1. Create a project at https://supabase.com.
 2. Project Settings → API: copy the **Project URL**, the **anon public key**, and the **service_role key**.
 
@@ -110,6 +112,5 @@ The owner or an admin opens Admin console → Invites → **Sign-up policy** to 
 - Default channels new people join
 - Invite-only toggle
 
-A new person is admitted when their email domain is allowed, or they carry a
-valid invite, or the organisation is open (not invite-only). Existing members
+A new person is admitted when their email domain is in the allowed list, or they carry a valid invite, or, when no domains are listed and the organisation is not invite-only, anyone. A non-empty domain list therefore keeps out everyone else, even with invite-only off. Existing members
 always sign in. People who were removed stay out.
