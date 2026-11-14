@@ -1,7 +1,9 @@
 import { gsap } from 'gsap';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type UIEvent } from 'react';
 import type { Message } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
+import { buildRows, type Row } from '../messageRows.ts';
 import { dayLabel, EMOJI, RichText, safeUrl, timeLabel } from '../format.tsx';
 import { isAdmin } from '../premium.ts';
 import { Avatar } from './Avatar.tsx';
@@ -16,6 +18,7 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
   const mine = m.userId === snap.me;
   const canModerate = isAdmin(snap.users[snap.me]);
   const replies = inThread ? [] : snap.messages.filter((x) => x.threadId === m.id);
+  const repliers = [...new Set(replies.map((x) => x.userId))].slice(0, 3);
   const saved = snap.saved.includes(m.id);
 
   if (m.system) {
@@ -97,7 +100,10 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
         )}
         {replies.length > 0 && (
           <button className="thread-link" onClick={() => openThread(m.id)}>
-            <Icon n="message" size={14} /> {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+            <span className="thread-avatars" aria-hidden>
+              {repliers.map((id) => <Avatar key={id} user={snap.users[id]} size={18} />)}
+            </span>
+            {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
             <span> · last {timeLabel(replies[replies.length - 1].ts)}</span>
           </button>
         )}
@@ -132,55 +138,125 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
   );
 }
 
-export function MessageList({ messages, inThread, onOlder }: { messages: Message[]; inThread?: boolean; onOlder?: () => void }) {
+export function MessageList({ messages, inThread, onOlder, lastReadAtOpen }: { messages: Message[]; inThread?: boolean; onOlder?: () => void; lastReadAtOpen?: number }) {
+  const { snap } = useRelayCtx();
+  const rows = useMemo(() => buildRows(messages, inThread ? 0 : lastReadAtOpen ?? 0, snap.me), [messages, inThread, lastReadAtOpen, snap.me]);
+  // A thread is short and scrolls with its panel, so it is drawn whole.
+  if (inThread) return <div className="message-list">{rows.map((row) => <RowView key={row.key} row={row} inThread />)}</div>;
+  return <VirtualList rows={rows} messages={messages} onOlder={onOlder} />;
+}
+
+function RowView({ row, inThread }: { row: Row; inThread?: boolean }) {
+  if (row.kind === 'day') return <div className="day-divider"><span>{dayLabel(row.ts)}</span></div>;
+  if (row.kind === 'unread') return <div className="unread-divider" role="separator"><span>New messages</span></div>;
+  return <MessageRow m={row.m} compact={row.compact} inThread={inThread} />;
+}
+
+const NEAR_BOTTOM = 120;
+const JUMP_AFTER = 400;
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function VirtualList({ rows, messages, onOlder }: { rows: Row[]; messages: Message[]; onOlder?: () => void }) {
+  const { snap } = useRelayCtx();
   const listRef = useRef<HTMLDivElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
-  const seen = useRef(messages.length);
   // Our own scroll-to-end passes through the top of the list; only the reader's scrolling should load more.
   const autoScrollUntil = useRef(0);
-  const prev = useRef({ first: messages[0]?.id, last: messages[messages.length - 1]?.id, height: 0 });
-  // Older messages were added above: keep what the reader was looking at where it was.
+  const nearBottom = useRef(true);
+  const [jump, setJump] = useState(false);
+  // Keyed by message id, so measured heights survive older pages arriving above. A stable function,
+  // since the virtualiser recomputes every row's position whenever it changes.
+  const getItemKey = useCallback((i: number) => rows[i].key, [rows]);
+  const v = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 56,
+    overscan: 12,
+    paddingStart: 8,
+    paddingEnd: 12,
+    getItemKey,
+  });
+  const toEnd = () => {
+    if (!rows.length) return;
+    autoScrollUntil.current = Date.now() + 1000;
+    v.scrollToEnd();
+  };
+
+  const first = messages[0]?.id;
+  const last = messages[messages.length - 1]?.id;
+  const prev = useRef<{ first?: string; last?: string; height: number } | null>(null);
+  const popIn = useRef(false);
+  // A remount (React's strict-mode double mount in development) lets the virtualiser restore its own
+  // scroll offset, so the next pass treats it as a first render and goes back to the latest message.
+  useLayoutEffect(() => () => { prev.current = null; }, []);
   useLayoutEffect(() => {
     const el = listRef.current;
-    const first = messages[0]?.id;
-    const last = messages[messages.length - 1]?.id;
-    if (el && prev.current.first && first !== prev.current.first && last === prev.current.last) el.scrollTop += el.scrollHeight - prev.current.height;
+    const was = prev.current;
     prev.current = { first, last, height: el?.scrollHeight ?? 0 };
+    if (!el) return;
+    if (!was || (first !== was.first && last !== was.last)) {
+      // First render or another channel: start at the latest message.
+      nearBottom.current = true;
+      setJump(false);
+      toEnd();
+    } else if (last !== was.last) {
+      // A new message: follow it when the reader is at the bottom (or wrote it), else offer the pill.
+      const lastMsg = messages[messages.length - 1];
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      if (nearBottom.current || lastMsg?.userId === snap.me) {
+        toEnd();
+        popIn.current = true;
+      } else if (distance > JUMP_AFTER) setJump(true);
+    } else if (was.first && first !== was.first) {
+      // Older messages were added above: keep what the reader was looking at where it was.
+      el.scrollTop += el.scrollHeight - was.height;
+    } else if (nearBottom.current && el.scrollHeight > was.height) {
+      // A row near the end grew (a reply count, a link preview): stay at the bottom.
+      el.scrollTop = el.scrollHeight;
+    }
     // A page that doesn't fill the pane can't be scrolled, so ask for the next one right away.
     // Skipped while the pane is collapsed (mid-animation, hidden), or it would pull in everything.
-    if (el && onOlder && el.clientHeight > 100 && el.scrollHeight <= el.clientHeight) onOlder();
+    if (onOlder && el.clientHeight > 100 && el.scrollHeight <= el.clientHeight) onOlder();
   });
+
+  // A message that just arrived pops in; the initial render is handled by the channel-switch stagger.
   useEffect(() => {
-    autoScrollUntil.current = Date.now() + 1000;
-    endRef.current?.scrollIntoView({ block: 'end', behavior: seen.current ? 'smooth' : 'auto' });
-    // A message that just arrived pops in; the initial render is handled by the channel-switch stagger.
-    if (messages.length > seen.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      const last = endRef.current?.previousElementSibling;
-      if (last) gsap.fromTo(last, { y: 24, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
-    }
-    seen.current = messages.length;
-  }, [messages[messages.length - 1]?.id]);
+    if (!popIn.current) return;
+    popIn.current = false;
+    if (reducedMotion()) return;
+    const row = listRef.current?.querySelector(`[data-index="${rows.length - 1}"] > *`);
+    if (row) gsap.fromTo(row, { y: 24, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.6)', clearProps: 'transform,opacity' });
+  }, [last]);
+
+  const onScroll = (e: UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    nearBottom.current = distance < NEAR_BOTTOM;
+    if (nearBottom.current && jump) setJump(false);
+    if (onOlder && el.scrollTop < 120 && Date.now() > autoScrollUntil.current) onOlder();
+  };
 
   return (
-    <div
-      className="message-list"
-      ref={listRef}
-      // The browser's own scroll anchoring would double the compensation done above.
-      style={{ overflowAnchor: 'none' }}
-      onScroll={onOlder ? (e) => e.currentTarget.scrollTop < 120 && Date.now() > autoScrollUntil.current && onOlder() : undefined}
-    >
-      {messages.map((m, i) => {
-        const prev = messages[i - 1];
-        const newDay = !prev || new Date(prev.ts).toDateString() !== new Date(m.ts).toDateString();
-        const compact = !newDay && !!prev && !prev.system && prev.userId === m.userId && m.ts - prev.ts < 5 * 60_000;
-        return (
-          <div key={m.id}>
-            {newDay && <div className="day-divider"><span>{dayLabel(m.ts)}</span></div>}
-            <MessageRow m={m} compact={compact && !m.system} inThread={inThread} />
-          </div>
-        );
-      })}
-      <div ref={endRef} />
+    <div className="message-wrap">
+      <div
+        className="message-list virtual"
+        ref={listRef}
+        // The browser's own scroll anchoring would double the compensation done above.
+        style={{ overflowAnchor: 'none' }}
+        onScroll={onScroll}
+      >
+        <div className="vlist" style={{ height: v.getTotalSize() }}>
+          {v.getVirtualItems().map((item) => (
+            <div key={item.key} className="vrow" data-index={item.index} ref={v.measureElement} style={{ transform: `translateY(${item.start}px)` }}>
+              <RowView row={rows[item.index]} />
+            </div>
+          ))}
+        </div>
+      </div>
+      {jump && (
+        <button className="jump-latest" onClick={() => { setJump(false); toEnd(); }}>
+          Jump to latest <span aria-hidden>↓</span>
+        </button>
+      )}
     </div>
   );
 }

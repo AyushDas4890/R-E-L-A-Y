@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
 import { getDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
@@ -226,6 +226,12 @@ export default function App() {
     setPanel(null);
   }, [snap?.workspace.id, atHome]);
 
+  // markRead below bumps lastRead as soon as a channel opens, so the "New messages" divider uses
+  // the value from the moment the channel was opened and keeps it for the visit.
+  const [lastReadAtOpen, setLastReadAtOpen] = useState(0);
+  useLayoutEffect(() => {
+    setLastReadAtOpen(lastRead[active] ?? 0);
+  }, [active, view, snap?.workspace.id]);
   useEffect(() => {
     if (snap && view === 'channel' && snap.channels[active]) markRead(active);
   }, [active, view, snap?.messages.length, snap?.workspace.id]);
@@ -256,7 +262,7 @@ export default function App() {
   }, [inWorkspace, snap?.workspace.id]);
   useEffect(() => {
     if (!inWorkspace || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const rows = gsap.utils.toArray<HTMLElement>('.main .message-list > *').slice(-30);
+    const rows = gsap.utils.toArray<HTMLElement>('.main .message-list .vrow > *').slice(-30);
     const tween = gsap.fromTo(rows, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.025, ease: 'power3.out', clearProps: 'transform,opacity' });
     gsap.fromTo('.channel-head', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out', clearProps: 'transform,opacity' });
     return () => { tween.kill(); };
@@ -735,7 +741,7 @@ export default function App() {
                   <p className="muted">Say hi, share a file, or try <code>/remind me stretch in 10m</code>.</p>
                 </div>
               ) : (
-                <MessageList messages={channelMessages} onOlder={snap.history[active] ? () => loadOlder(active) : undefined} />
+                <MessageList messages={channelMessages} lastReadAtOpen={lastReadAtOpen} onOlder={snap.history[active] ? () => loadOlder(active) : undefined} />
               )}
               <div className="typing">
                 {typingNow.length > 0 && (
