@@ -16,7 +16,7 @@
 
 <a href="https://slack-reverse.vercel.app"><img alt="Open Relay" src="https://img.shields.io/badge/%E2%96%B6%20%20Open%20Relay-slack--reverse.vercel.app-f0b07a?style=for-the-badge&labelColor=120806"></a>
 
-<sub>Sign in with Google or GitHub. The server sleeps when idle, so the first visit can take up to a minute to connect.</sub>
+<sub>Sign in with email and password, Google, GitHub or Microsoft. The server sleeps when idle, so the first visit can take up to a minute to connect.</sub>
 
 [Tour](#-take-the-tour) · [Inside the app](#-inside-the-app) · [Themes](#-make-it-yours) · [Features](#-everything-thats-unlocked) · [Architecture](#-how-it-works) · [Run it](#-run-it-locally) · [Deploy](#-deploy)
 
@@ -43,9 +43,9 @@ A motion-graphic landing page with a robot that follows your cursor, a live demo
 
 ### The sign-in page
 
-A 3D stage where the scene and the card tilt toward your cursor. Sign in with Google or GitHub, with an optional invite code.
+A 3D stage where the scene and the card tilt toward your cursor. Sign in with email and password, Google, GitHub or Microsoft, with an optional invite code.
 
-<a href="https://slack-reverse.vercel.app"><img src="docs/readme/signin.jpg" alt="Relay sign-in page with a 3D robot and a glass card offering Google and GitHub sign-in"></a>
+<a href="https://slack-reverse.vercel.app"><img src="docs/readme/signin.jpg" alt="Relay sign-in page with a 3D robot and a glass card offering email, Google, GitHub and Microsoft sign-in"></a>
 
 </td>
 </tr>
@@ -230,11 +230,11 @@ In the console, `await relayHuddle.stats()` shows the bytes and frames sent and 
 <summary><b>Security</b></summary>
 <br>
 
-- Sign-in is verified on every socket with Supabase. The state table has row-level security on and is only reachable with the server's service key.
+- Sign-in is verified on every socket with Supabase, and only confirmed email addresses are accepted. The state table has row-level security on and is only reachable with the server's service key.
 - Every event is checked against channel visibility, posting policy, roles and information barriers on the server.
 - Attachments are accepted only as inline uploads; link previews refuse private, loopback and link-local addresses, including on redirects and DNS answers.
 - Each socket is rate limited, dead sockets are dropped by a heartbeat, and pending writes are flushed when the host restarts the server.
-- Without Supabase, identity is a name stored in localStorage, so run that mode only behind a trusted network. With `NODE_ENV=production` the server refuses name-only sign-in unless `RELAY_ALLOW_DEV_AUTH=1` is set.
+- Without Supabase, identity is a local account (or just a name) stored on the server, so run that mode only behind a trusted network. With `NODE_ENV=production` the server refuses name-only sign-in unless `RELAY_ALLOW_DEV_AUTH=1` is set.
 </details>
 
 ---
@@ -255,7 +255,7 @@ npm run lint                 # tsc --noEmit
 npm test                     # node --test
 ```
 
-Without Supabase settings, state persists to `data/db.json` and sign-in is name-only. The first person to join a workspace becomes its owner.
+Without Supabase settings, state persists to `data/db.json` and sign-in uses local accounts in `data/dev-auth.json` (create an account, sign in, or try it with just a name). Password reset and the Google, GitHub and Microsoft buttons need Supabase. The first person to join a workspace becomes its owner.
 </details>
 
 ## 🚀 Deploy
@@ -266,7 +266,22 @@ Relay needs a long-running server for WebSockets, so the server runs on a WebSoc
 
 1. **Server:** on Render, create a Blueprint from this repo (`render.yaml`). It builds, starts `npm start`, health-checks `/healthz` and runs with `NODE_ENV=production`. Any Node host works: build with `npm run build`, run `npm start`, and set `PORT` (and `DATA_DIR` if you store state on disk).
 2. **UI:** in Vercel, import the repo (framework Vite, `vercel.json` is included) and set `VITE_WS_URL=wss://<your-server-host>/ws`. Redeploy after changing it, since it is baked in at build time.
-3. **Auth + persistence:** follow [docs/supabase-setup.md](docs/supabase-setup.md) to create the Supabase project, state table and OAuth providers, then set `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` on the server and `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` on the UI.
+3. **Auth + persistence:** follow [docs/supabase-setup.md](docs/supabase-setup.md) to create the Supabase project, state table, email and password sign-in (with "Confirm email" on, plus custom SMTP) and the Google, GitHub and Microsoft providers. Then set the server and UI variables below.
+
+Server environment variables:
+
+| Name | Meaning |
+|---|---|
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase project URL and service_role key. Required for sign-in in production. |
+| `SUPABASE_JWT_SECRET` | Project Settings → API → JWT Settings → JWT Secret. Lets the server verify tokens locally. |
+| `SUPABASE_JWKS_URL` | `https://<ref>.supabase.co/auth/v1/.well-known/jwks.json`, for projects on asymmetric signing keys. Use it instead of the secret. With neither set, the server checks each token with a call to Supabase. |
+| `RELAY_OWNER_EMAIL` | The person with this email becomes owner on first sign-in. Without it, the first person to sign in becomes owner. |
+| `RELAY_ALLOW_DEV_AUTH` | Set to `1` to allow offline dev sign-in in production. Not recommended. |
+| `RELAY_APP_URL` | The UI's public address, used in notification emails. |
+| `RELAY_EMAIL_PROVIDER`, `RESEND_API_KEY`, `RELAY_EMAIL_FROM` | Notification email, see [docs/email-notifications.md](docs/email-notifications.md). |
+| `PORT`, `DATA_DIR` | Listen port (default 8787) and where file state is stored. |
+
+UI variables: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_WS_URL`. Who may join (allowed email domains, default role and channels, invite-only) is set in the Admin console under Invites → Sign-up policy.
 
 The server also serves the built UI itself, so you can skip Vercel and use the server URL directly.
 
