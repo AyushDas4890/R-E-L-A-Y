@@ -30,7 +30,7 @@ import {
 import { CanvasPanel, DetailsPanel, ThreadPanel } from './components/Panels.tsx';
 import { AdminModal, TermsGate } from './components/Admin.tsx';
 import { ListPanel } from './components/Lists.tsx';
-import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
+import { DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
 import { HomeScreen } from './components/HomeScreen.tsx';
 import { InviteModal, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
@@ -136,8 +136,7 @@ export default function App() {
   const [modal, setModal] = useState<Modal>(null);
   const [menu, setMenu] = useState<Menu>(null);
   const appearance = useAppearance();
-  // The Notion look keeps its sidebar open or closed (Ctrl+\) and lets people drag its edge.
-  const notion = /^(notion|apple)/.test(appearance.resolvedTheme);
+  // The sidebar stays open or closed (Ctrl+\) and people can drag its edge.
   const [sideCollapsed, setSideCollapsed] = useState(() => recall('relay.sideCollapsed') === '1');
   const [sideW, setSideW] = useState(() => clampSide(Number(recall('relay.sideW'))));
   const [resizing, setResizing] = useState(false);
@@ -196,7 +195,7 @@ export default function App() {
         e.preventDefault();
         setModal('search');
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\' && /^(notion|apple)/.test(document.documentElement.dataset.theme ?? '')) {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
         e.preventDefault();
         setSideCollapsed((c) => !c);
       }
@@ -440,8 +439,8 @@ export default function App() {
       case 'new-channel': return setModal('new');
       case 'set-status': return setModal('profile');
       case 'toggle-density': return appearance.setDensity(appearance.density === 'compact' ? 'comfortable' : 'compact');
-      case 'theme-dark': return appearance.setTheme('aurora');
-      case 'theme-light': return appearance.setTheme('daylight');
+      case 'theme-dark': return appearance.setTheme('apple-dark');
+      case 'theme-light': return appearance.setTheme('apple');
       case 'shortcuts': return setModal('shortcuts');
       case 'admin-console': return setModal('admin');
       case 'invite-people': return setModal('invite');
@@ -516,18 +515,18 @@ export default function App() {
     <Ctx.Provider value={ctx}>
       <ScreenOverlay />
       <div
-        className={`shell ${navOpen ? 'nav-open' : ''} ${panel ? 'has-panel' : ''} ${notion && sideCollapsed ? 'side-collapsed' : ''}`}
-        style={notion ? ({ '--side': `${sideW}px` } as CSSProperties) : undefined}
+        className={`shell ${navOpen ? 'nav-open' : ''} ${panel ? 'has-panel' : ''} ${sideCollapsed ? 'side-collapsed' : ''}`}
+        style={{ '--side': `${sideW}px` } as CSSProperties}
         onClick={() => menu && setMenu(null)}
       >
         <header className="topbar">
           <button className="icon-btn nav-toggle" aria-label="Show channels" onClick={() => setNavOpen(!navOpen)}><Icon n="menu" /></button>
-          <button className="icon-btn side-toggle-top notion-only" aria-label="Open sidebar" title="Open sidebar (Ctrl+\)" onClick={() => setSideCollapsed(false)}><Icon n="panelLeft" /></button>
+          <button className="icon-btn side-toggle-top apple-only" aria-label="Open sidebar" title="Open sidebar (Ctrl+\)" onClick={() => setSideCollapsed(false)}><Icon n="panelLeft" /></button>
           <div className="history-nav">
             <button className="icon-btn" aria-label="Back" disabled={history.at === 0} onClick={() => setHistory((h) => ({ ...h, at: Math.max(0, h.at - 1) }))}>←</button>
             <button className="icon-btn" aria-label="Forward" disabled={history.at >= history.stack.length - 1} onClick={() => setHistory((h) => ({ ...h, at: Math.min(h.stack.length - 1, h.at + 1) }))}>→</button>
           </div>
-          <nav className="crumbs notion-only" aria-label="Where you are">
+          <nav className="crumbs apple-only" aria-label="Where you are">
             <span>{snap.workspace.name}</span><i aria-hidden>/</i>
             <span>{view === 'page' ? (() => { const pn = snap.pages.find((x) => x.id === place.page); return pn ? `${pn.icon || '📄'} ${pn.title || 'Untitled'}` : 'Page'; })() : view === 'channel' ? (ch ? `${ch.kind === 'dm' ? '' : '# '}${channelLabel(ch, snap.users, snap.me)}` : '') : VIEW_LABEL[view]}</span>
           </nav>
@@ -628,11 +627,11 @@ export default function App() {
               )}
             </div>
             <span className="spacer" />
-            <button className="icon-btn side-head-btn notion-only" aria-label="Close sidebar" title="Close sidebar (Ctrl+\)" onClick={() => setSideCollapsed(true)}><Icon n="panelLeft" /></button>
+            <button className="icon-btn side-head-btn apple-only" aria-label="Close sidebar" title="Close sidebar (Ctrl+\)" onClick={() => setSideCollapsed(true)}><Icon n="panelLeft" /></button>
             <button className="icon-btn side-head-btn" title="New sidebar section" onClick={addSection}><Icon n="grid" /></button>
             <button className="icon-btn side-head-btn compose-btn" title="New channel" onClick={() => setModal('new')}><Icon n="pencil" /></button>
           </header>
-          <div className="side-top notion-only">
+          <div className="side-top apple-only">
             <button className="side-item" onClick={() => setModal('search')}><span className="hash"><Icon n="search" /></span><span className="label">Search</span></button>
             <button className={`side-item ${view === 'home' ? 'active' : ''}`} onClick={() => showView('home')}><span className="hash"><Icon n="home" /></span><span className="label">Home</span></button>
             <button className={`side-item ${view === 'activity' ? 'active' : ''}`} onClick={() => showView('activity')}>
@@ -644,12 +643,11 @@ export default function App() {
           <div className="side-scroll">
             {navItem('huddles', <Icon n="headphones" />, 'Huddles')}
             {navItem('directory', <Icon n="users" />, 'People')}
-            {!notion && navItem('activity', '@', 'Mentions & reactions')}
             {navItem('saved', <Icon n="bookmark" />, 'Later')}
 
             <PageTree nodes={snap.pages} favorites={snap.pageFavorites} teamspaces={snap.teamspaces} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} onLibrary={() => showView('library')} onManageSpaces={() => setModal('spaces')} />
 
-            {section('starred', notion ? 'Favorites' : 'Starred')}
+            {section('starred', 'Favorites')}
             {!collapsed.starred && starred.map((c) => sidebarItem(c, 'starred'))}
             {!collapsed.starred && starred.length === 0 && <p className="muted small side-hint">Star a channel from its header, or drag one here, to pin it.</p>}
 
@@ -692,14 +690,14 @@ export default function App() {
               </button>
             )}
           </div>
-          <div className="side-bottom notion-only">
+          <div className="side-bottom apple-only">
             <button className="side-item" onClick={() => showView('workflows')}><span className="hash"><Icon n="zap" /></span><span className="label">Workflows</span></button>
             <button className="side-item" onClick={() => setModal('scheduled')}><span className="hash"><Icon n="clock" /></span><span className="label">Scheduled messages</span>{snap.scheduled.length > 0 && <span className="count">{snap.scheduled.length}</span>}</button>
             {admin && <button className="side-item" onClick={() => setModal('admin')}><span className="hash"><Icon n="settings" /></span><span className="label">Admin console</span>{(snap.admin?.flags.length ?? 0) > 0 && <span className="count">{snap.admin?.flags.length}</span>}</button>}
             <button className="side-item" onClick={() => setModal('plan')}><span className="hash"><Icon n="gem" /></span><span className="label">Plan</span></button>
             <button className="side-item" onClick={() => setModal('profile')}><span className="hash"><Icon n="user" /></span><span className="label">Preferences</span></button>
           </div>
-          <div className={`side-resize notion-only ${resizing ? 'drag' : ''}`} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" onPointerDown={startResize} onDoubleClick={() => setSideW(SIDE_DEFAULT)} />
+          <div className={`side-resize apple-only ${resizing ? 'drag' : ''}`} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" onPointerDown={startResize} onDoubleClick={() => setSideW(SIDE_DEFAULT)} />
         </aside>
         <button className="nav-scrim" aria-label="Close channels" tabIndex={-1} onClick={() => setNavOpen(false)} />
 
@@ -712,7 +710,7 @@ export default function App() {
             : view === 'calendar' ? <CalendarApp onOpen={openPage} />
             : view === 'library' ? <LibraryView onOpen={openPage} />
             : view === 'workflows' ? <WorkflowsView />
-            : view === 'activity' ? (notion ? <InboxView onOpen={openPage} /> : <ActivityView />)
+            : view === 'activity' ? <InboxView onOpen={openPage} />
             : view === 'saved' ? <SavedView />
             : view === 'dms' ? <DmsView onNew={() => showView('directory')} />
             : view === 'directory' ? <DirectoryView onMessage={dmWith} />

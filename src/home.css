@@ -14,6 +14,3 @@
 /* Workspace rows can be dragged into a new order. */
 .hs-ws[draggable="true"] { cursor: grab; }
 .hs-ws.dnd-over { outline-offset: -2px; }
-/* Astryx draws the field box on its control wrapper; the app's own input defaults (styles.css, apple-app.css)
-   would paint a second box on the native input inside it, so they are cleared here. */
-.hs .astryx-field :is(input, textarea):not([type="checkbox"]):not([type="radio"]) { background: transparent; border-radius: 0; box-shadow: none; }

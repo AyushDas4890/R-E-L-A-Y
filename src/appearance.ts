@@ -1,46 +1,36 @@
 import { useCallback, useEffect, useState } from 'react';
 
-// Workspace backgrounds. To add one, put a looping .mp4 (1080p, no audio) and a .jpg poster
-// in public/bg/ and add an entry here; `theme` is the colour theme that suits it.
+// Workspace backgrounds: Plain, or an image the person uploads (kept in this browser, see uploadBackground).
 export interface Background {
   id: string;
   label: string;
-  kind: 'none' | 'video' | 'image' | 'custom';
+  kind: 'none' | 'custom';
   src?: string;
-  poster?: string;
-  theme?: string;
-  credit?: string;
 }
 
 export const BACKGROUNDS: Background[] = [
-  { id: 'purple-desert', label: 'Purple Desert', kind: 'video', src: '/bg/purple-desert.mp4', poster: '/bg/purple-desert.jpg', theme: 'plum', credit: 'GetLayers' },
-  { id: 'moon-walk', label: 'Moon Walk', kind: 'video', src: '/bg/moon-walk.mp4', poster: '/bg/moon-walk.jpg', theme: 'moonlight', credit: 'GetLayers' },
-  { id: 'metal-human', label: 'Metal Human', kind: 'video', src: '/bg/metal-human.mp4', poster: '/bg/metal-human.jpg', theme: 'chrome', credit: 'GetLayers' },
-  { id: 'far-planet', label: 'Far Planet', kind: 'video', src: '/bg/far-planet.mp4', poster: '/bg/far-planet.jpg', theme: 'overcast' },
-  { id: 'material-hills', label: 'Material Hills', kind: 'video', src: '/bg/material-hills.mp4', poster: '/bg/material-hills.jpg', theme: 'meadow', credit: 'GetLayers' },
-  { id: 'silver-waves', label: 'Silver Waves', kind: 'video', src: '/bg/silver-line-waves.mp4', poster: '/bg/silver-line-waves.jpg', theme: 'midnight' },
   { id: 'none', label: 'Plain', kind: 'none' },
 ];
 
+// The Apple look is the product's look: light, dark, or following the system setting.
 export const THEMES = [
-  { id: 'system', label: 'System (Aurora / Daylight)' },
+  { id: 'system', label: 'System (Apple light / dark)' },
   { id: 'apple', label: 'Apple' },
   { id: 'apple-dark', label: 'Apple dark' },
-  { id: 'notion', label: 'Notion' },
-  { id: 'notion-dark', label: 'Notion dark' },
-  { id: 'minimal', label: 'Minimal' },
-  { id: 'minimal-dark', label: 'Minimal dark' },
-  { id: 'plum', label: 'Plum' },
-  { id: 'moonlight', label: 'Moonlight' },
-  { id: 'chrome', label: 'Chrome' },
-  { id: 'overcast', label: 'Overcast' },
-  { id: 'meadow', label: 'Meadow' },
-  { id: 'midnight', label: 'Midnight' },
-  { id: 'switchboard', label: 'Switchboard' },
-  { id: 'daylight', label: 'Daylight' },
-  { id: 'aurora', label: 'Aurora' },
-  { id: 'sunset', label: 'Sunset' },
 ];
+
+// Themes that no longer exist, by whether they were dark. A stored one is moved to the matching Apple theme
+// once (useAppearance), and index.html applies the same mapping before first paint, so keep the two in step.
+const RETIRED_DARK = ['notion-dark', 'minimal-dark', 'plum', 'moonlight', 'chrome', 'midnight', 'aurora', 'sunset'];
+const RETIRED_LIGHT = ['notion', 'minimal', 'overcast', 'meadow', 'switchboard', 'daylight'];
+
+// The stored theme choice as one of THEMES: retired themes become Apple or Apple dark, anything unknown becomes System.
+export function migrateTheme(stored: string): string {
+  if (THEMES.some((t) => t.id === stored)) return stored;
+  if (RETIRED_DARK.includes(stored)) return 'apple-dark';
+  if (RETIRED_LIGHT.includes(stored)) return 'apple';
+  return 'system';
+}
 
 // '' keeps the theme's own accent. Purple is the house colour.
 export const ACCENTS = [
@@ -72,19 +62,18 @@ const write = (key: string, value: string | null) => {
   }
 };
 
-// The System theme is the default for a browser that has never picked one: no photo background and the
-// theme's own accent. It follows the system light/dark setting live (see resolveTheme). A browser that
-// already adopted a look, or chose anything else, is left alone, so nobody is moved twice.
-export function firstLook(adopted: boolean, prefersDark: boolean): { theme: string; bg: string; accent: string } | null {
-  // The choice is stored as 'system'; the light/dark setting is applied when it is resolved.
-  void prefersDark;
-  return adopted ? null : { theme: 'system', bg: 'none', accent: '' };
+// The System theme is the default for a browser that has never picked a theme: no background image and the
+// theme's own accent. It follows the system light/dark setting live (see resolveTheme). A browser that already
+// has a stored theme is left alone.
+export function firstLook(hasTheme: boolean): { theme: string; bg: string; accent: string } | null {
+  return hasTheme ? null : { theme: 'system', bg: 'none', accent: '' };
 }
 
-// The theme id that is actually painted: 'system' becomes Aurora in dark mode and Daylight in light mode.
+// The theme id that is actually painted: 'system' becomes Apple dark in dark mode and Apple in light mode.
 export function resolveTheme(stored: string, prefersDark: boolean): string {
-  if (stored !== 'system') return stored;
-  return prefersDark ? 'aurora' : 'daylight';
+  const theme = migrateTheme(stored);
+  if (theme !== 'system') return theme;
+  return prefersDark ? 'apple-dark' : 'apple';
 }
 
 export type Density = 'comfortable' | 'compact';
@@ -94,7 +83,7 @@ export const readDensity = (raw: string | null): Density => (raw === 'compact' ?
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 const systemDark = () => typeof matchMedia === 'function' && matchMedia(DARK_QUERY).matches;
 
-// The Notion look lets people drag the sidebar edge. Anything unusable falls back to the default width.
+// The Apple look lets people drag the sidebar edge. Anything unusable falls back to the default width.
 export const SIDE_MIN = 200;
 export const SIDE_MAX = 400;
 export const SIDE_DEFAULT = 248;
@@ -102,19 +91,21 @@ export const clampSide = (n: number): number => (Number.isFinite(n) && n > 0 ? M
 
 export function useAppearance() {
   const [theme, setThemeState] = useState(() => {
-    const look = firstLook(!!read('relay.look', ''), systemDark());
+    const stored = read('relay.theme', '');
+    const look = firstLook(!!stored);
     if (look) {
       write('relay.theme', look.theme);
       write('relay.bg', look.bg);
       write('relay.accent', look.accent);
-      write('relay.look', 'notion');
+    } else if (migrateTheme(stored) !== stored) {
+      write('relay.theme', migrateTheme(stored));
     }
-    // Browsers that were put on the dark look by the system setting move to white once.
-    if (read('relay.look', '') === 'notion' && read('relay.theme', 'system') === 'notion-dark') {
-      write('relay.theme', 'notion');
-      write('relay.look', 'notion-white');
-    }
-    return read('relay.theme', 'system');
+    // The bundled video backgrounds are gone; a browser that had one goes back to Plain. The keys that only
+    // served the retired looks and the "match colours to the background" toggle are cleared.
+    if (!['none', 'custom'].includes(read('relay.bg', 'none'))) write('relay.bg', 'none');
+    write('relay.look', null);
+    write('relay.bgMatch', null);
+    return migrateTheme(read('relay.theme', 'system'));
   });
   // Whether the system is in dark mode right now, so a 'system' theme can follow it as it changes.
   const [prefersDark, setPrefersDark] = useState(systemDark);
@@ -133,7 +124,6 @@ export function useAppearance() {
   // How much the theme colour covers the background, so text stays readable (0–95%).
   const [dim, setDimState] = useState(() => Number(read('relay.bgDim', '78')));
   const [custom, setCustom] = useState(() => read('relay.bgCustom', ''));
-  const [match, setMatchState] = useState(() => read('relay.bgMatch', '1') === '1');
 
   // The page always gets the concrete theme; storage keeps the choice ('system' included).
   useEffect(() => {
@@ -168,9 +158,7 @@ export function useAppearance() {
   const chooseBackground = useCallback((id: string) => {
     setBgId(id);
     write('relay.bg', id);
-    const theme = BACKGROUNDS.find((b) => b.id === id)?.theme;
-    if (match && theme) setThemeState(theme);
-  }, [match]);
+  }, []);
 
   // Stores an uploaded image in this browser only. Returns an error message, or null when saved.
   const uploadBackground = useCallback(async (file: File): Promise<string | null> => {
@@ -203,8 +191,6 @@ export function useAppearance() {
     setAccent: setAccentState,
     dim,
     setDim: (n: number) => { setDimState(n); write('relay.bgDim', String(n)); },
-    match,
-    setMatch: (on: boolean) => { setMatchState(on); write('relay.bgMatch', on ? '1' : '0'); },
   };
 }
 

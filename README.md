@@ -146,20 +146,7 @@ A 3D stage where the scene and the card tilt toward your cursor. Sign in with em
 
 ## 🎨 Make it yours
 
-<div align="center">
-<img src="docs/readme/themes.gif" alt="The same channel cycling through the Plum, Moonlight, Meadow, Chrome, Midnight and Overcast looks" width="760">
-<p><sub>Plum · Moonlight · Meadow · Chrome · Midnight · Overcast. Each moving background comes with a theme matched to it.</sub></p>
-</div>
-
-**Preferences → Appearance** picks a workspace background, a colour theme and an accent colour. Each bundled background has a theme matched to it (switch off "Match colours to the background" to mix freely), and a strength slider sets how much of it shows through. You can also upload your own image (kept in your browser, up to 3 MB).
-
-<details>
-<summary>Add your own background</summary>
-
-Put a looping 1080p H.264 `.mp4` (no audio) and a `.jpg` poster in `public/bg/`, then add an entry to `BACKGROUNDS` in `src/appearance.ts`.
-
-Moon Walk, Material Hills, Purple Desert and Metal Human backgrounds © GetLayers (getlayers.ai), re-encoded to 1080p for the web.
-</details>
+**Preferences → Appearance** picks a colour theme (Apple, Apple dark, or System, which follows your device's light or dark setting), an accent colour, the density, and a workspace background: Plain, or an image you upload (kept in your browser, up to 3 MB).
 
 ---
 

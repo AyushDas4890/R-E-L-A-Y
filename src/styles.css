@@ -12,28 +12,6 @@
   /* Sidebar text defaults to the main text; light themes override for the ink sidebar. */
   --side-text: var(--text); --side-muted: var(--muted); --side-hover: var(--hover); --side-active: var(--hover);
 }
-/* Switchboard: paper workspace, ink-navy switchboard sidebar, amber lamps for anything that needs you. */
-[data-theme='switchboard'] {
-  --bg: #f5f7fa; --rail-bg: #0a1830; --side-bg: #10233f; --panel: #ffffff; --raised: #eef2f7;
-  --text: #14202e; --muted: #5b6878; --line: #dce2ea; --accent: #1f5bd8; --accent-2: #1f5bd8; --hover: #e8edf4; --on-accent: #fff;
-  --side-text: #eef3fa; --side-muted: #93a4bd; --side-hover: #1a3254; --side-active: #22406a;
-}
-[data-theme='midnight'] {
-  --bg: #0e1622; --rail-bg: #070d17; --side-bg: #0b1320; --panel: #131d2b; --raised: #1a2638;
-  --text: #e6ecf4; --muted: #8796ab; --line: #233146; --accent: #5b8cff; --accent-2: #8fb0ff; --hover: #18243a; --on-accent: #fff;
-}
-[data-theme='daylight'] {
-  --bg: #fbfbfd; --rail-bg: #2b2144; --side-bg: #f1effa; --panel: #ffffff; --raised: #f4f2fb;
-  --text: #1b1a2b; --muted: #6d6a85; --line: #e4e1f2; --accent: #6a46f0; --accent-2: #6a46f0; --hover: #e8e4f8; --on-accent: #fff;
-}
-[data-theme='aurora'] {
-  --bg: #07130f; --rail-bg: #040b09; --side-bg: #0b1c16; --panel: #0e231b; --raised: #14302a;
-  --text: #e4f6ee; --muted: #7fa597; --line: #1b3a30; --accent: #18c9a0; --accent-2: #6ff0cd; --hover: #123026; --on-accent: #04130d;
-}
-[data-theme='sunset'] {
-  --bg: #1a0f14; --rail-bg: #120a0e; --side-bg: #221218; --panel: #2a1720; --raised: #35202a;
-  --text: #fbe9e4; --muted: #b58d8f; --line: #43262f; --accent: #ff7a59; --accent-2: #ffb199; --hover: #321b24; --on-accent: #2a0d06;
-}
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -513,12 +491,10 @@ input[type='checkbox'].fit { width: auto; }
   .menu, .channel-head, .msg .actions { backdrop-filter: none; background: var(--panel); }
 }
 
-/* Workspace backdrop: silver line waves video behind the message pane, tinted toward the theme so text stays readable. */
+/* Workspace backdrop: an uploaded image behind the message pane, tinted toward the theme so text stays readable. */
 .main { isolation: isolate; background: transparent; }
-.main-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: var(--bg) url('/bg/silver-line-waves.jpg') center / cover; }
-.main-bg video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.main-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; background: var(--bg) center / cover; }
 .main-bg::after { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 72%, transparent); }
-@media (prefers-reduced-motion: reduce) { .main-bg video { display: none; } }
 
 /* Profile photos from GitHub/Google fill the avatar tile. */
 .avatar.has-photo { overflow: visible; }
@@ -526,15 +502,6 @@ input[type='checkbox'].fit { width: auto; }
 .invite-mode { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 10px; background: var(--raised); cursor: pointer; }
 .invite-mode input { width: auto; margin-top: 3px; }
 .invite-mode span { display: grid; gap: 2px; }
-
-/* ===== Plum: default theme. Violet chrome around a dark workspace; amber still marks
-   what needs you, mint marks what's live. ===== */
-[data-theme='plum'] {
-  --bg: #1a1720; --rail-bg: #1c0c29; --side-bg: #2a1240; --panel: #201c27; --raised: #2a2533;
-  --text: #ece8f3; --muted: #a79eb6; --line: #332c3f; --accent: #9a6bff; --accent-2: #c3a6ff; --hover: #2a2434; --on-accent: #fff;
-  --side-text: #f3ecfa; --side-muted: #c6b6da; --side-hover: rgba(255,255,255,.07); --side-active: #6a3aa8;
-  --chrome: linear-gradient(180deg, #2a0f3d 0%, #1c0c29 60%, #170a22 100%);
-}
 
 /* ===== Shell frame: rail sits on the chrome; sidebar and content form one rounded panel. ===== */
 .shell { background: var(--chrome, var(--rail-bg)); }
@@ -684,32 +651,8 @@ input[type='checkbox'].fit { width: auto; }
   .alert-banner { bottom: 8px; flex-wrap: wrap; }
 }
 
-/* Plum keeps the waves video but quiet, so messages stay the focus. */
 /* The permission banner sits under the composer instead of over it. */
 .alert-banner { position: relative; left: auto; right: auto; bottom: auto; margin: 0 16px 12px; flex: none; }
-
-/* ===== Themes matched to the bundled backgrounds ===== */
-/* Moon Walk: navy and steel-blue swirls around a silver-white light. */
-[data-theme='moonlight'] {
-  --bg: #0f1724; --rail-bg: #0a1220; --side-bg: #15253c; --panel: #152033; --raised: #1c2a40;
-  --text: #e6edf7; --muted: #93a3ba; --line: #24344d; --accent: #6f9be0; --accent-2: #a9c4ef; --hover: #1b2840; --on-accent: #fff;
-  --side-text: #eef3fb; --side-muted: #a8b8cf; --side-hover: rgba(255,255,255,.07); --side-active: #2f5a94;
-  --chrome: linear-gradient(180deg, #13223a 0%, #0a1220 70%);
-}
-/* Metal Human: near-black with chrome silver and a violet sheen. */
-[data-theme='chrome'] {
-  --bg: #0b0b0f; --rail-bg: #050507; --side-bg: #15151c; --panel: #141419; --raised: #1c1c24;
-  --text: #ececf3; --muted: #9d9dad; --line: #26262f; --accent: #a5b4fc; --accent-2: #c7d0ff; --hover: #1d1d26; --on-accent: #0b0b14;
-  --side-text: #f0f0f6; --side-muted: #a9a9ba; --side-hover: rgba(255,255,255,.06); --side-active: #3b3e63;
-  --chrome: linear-gradient(180deg, #17171f 0%, #050507 70%);
-}
-/* Material Hills: soft white folds over fresh green. A light theme with a deep green sidebar. */
-[data-theme='meadow'] {
-  --bg: #f5f8f0; --rail-bg: #14280c; --side-bg: #1f3a14; --panel: #ffffff; --raised: #eef3e7;
-  --text: #1c2914; --muted: #5d6b53; --line: #dbe4d0; --accent: #4f9a1c; --accent-2: #3d7d12; --hover: #e9f0e0; --on-accent: #fff;
-  --side-text: #f2f8ec; --side-muted: #bfd2ae; --side-hover: rgba(255,255,255,.08); --side-active: #3f7a1b;
-  --chrome: linear-gradient(180deg, #23441a 0%, #14280c 70%);
-}
 
 /* The veil over the background takes the theme's own colour; the strength slider sets how much. */
 .main-bg { background-color: var(--bg); background-position: center; background-size: cover; }
@@ -736,14 +679,6 @@ input[type='checkbox'].fit { width: auto; }
 
 .alert-banner { background: var(--side-bg); color: var(--side-text); }
 .alert-banner .link-btn { color: var(--accent-2); }
-[data-theme='meadow'] .alert-banner .link-btn { color: #b9f08a; }
-/* Far Planet: dusky teal sky over a sea of clouds and dark grass. */
-[data-theme='overcast'] {
-  --bg: #111a20; --rail-bg: #0c1419; --side-bg: #1a2a34; --panel: #16222a; --raised: #1d2c35;
-  --text: #e8eff2; --muted: #98aab3; --line: #263842; --accent: #6fb3c9; --accent-2: #a8d4e2; --hover: #1b2a33; --on-accent: #0b1a20;
-  --side-text: #eef5f7; --side-muted: #a9bec7; --side-hover: rgba(255,255,255,.07); --side-active: #2c5566;
-  --chrome: linear-gradient(180deg, #1d3340 0%, #0c1419 70%);
-}
 
 /* Line icons sit on the text baseline and take the surrounding text color. */
 .icon { flex: none; vertical-align: -3px; }

@@ -219,7 +219,8 @@
 [data-theme^='apple'] .menu button, [data-theme^='apple'] .menu a, [data-theme^='apple'] .popover button { border-radius: 8px; }
 [data-theme^='apple'] .link-card, [data-theme^='apple'] .alert-banner { border-radius: 14px; }
 [data-theme^='apple'] .omnibar { border-radius: 10px; background: var(--t2); box-shadow: none; }
-[data-theme^='apple'] input:not([type='checkbox']):not([type='radio']), [data-theme^='apple'] select, [data-theme^='apple'] textarea { border-radius: 10px; transition: box-shadow .2s ease, border-color .2s ease; }
+/* Element rules in app-base (layers.css) so Astryx's own field styles win inside an Astryx field. */
+@layer app-base { [data-theme^='apple'] input:not([type='checkbox']):not([type='radio']), [data-theme^='apple'] select, [data-theme^='apple'] textarea { border-radius: 10px; transition: box-shadow .2s ease, border-color .2s ease; } }
 [data-theme^='apple'] .banner { border-radius: 0; }
 
 @keyframes ap-pop { from { opacity: 0; transform: scale(.94) translateY(-4px); filter: blur(4px); } }

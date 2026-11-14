@@ -1,5 +1,5 @@
 /* Apple touch for the public pages (landing, features, help, sign-in, workspace picker).
-   Loaded after notion-site.css: brings back the sky, the floating glass nav, pill buttons and the
+   Brings the sky, the floating glass nav, pill buttons and the
    generous radii, and adds the small things that make it feel native: press feedback, springy hovers,
    soft focus halos. Always light, like apple.com. */
 .ap, .ap-si, .ws-picker {

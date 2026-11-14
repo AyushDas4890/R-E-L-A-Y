@@ -1,13 +1,9 @@
 import { useRef, useState } from 'react';
 import { ACCENTS, BACKGROUNDS, THEMES, type Appearance, type Background } from '../appearance.ts';
 
-// The workspace background: a looping video, an image, or nothing, under a theme-coloured veil.
+// The workspace background: an uploaded image, or nothing, under a theme-coloured veil.
 export function Backdrop({ bg, dim }: { bg: Background; dim: number }) {
-  return (
-    <div className="main-bg" aria-hidden style={{ ['--bg-dim' as string]: `${dim}%`, backgroundImage: bg.poster || bg.kind === 'custom' ? `url("${bg.poster ?? bg.src}")` : 'none' }}>
-      {bg.kind === 'video' && <video key={bg.id} src={bg.src} poster={bg.poster} autoPlay muted loop playsInline preload="metadata" />}
-    </div>
-  );
+  return <div className="main-bg" aria-hidden style={{ ['--bg-dim' as string]: `${dim}%`, backgroundImage: bg.kind === 'custom' ? `url("${bg.src}")` : 'none' }} />;
 }
 
 export function AppearanceSettings({ a }: { a: Appearance }) {
@@ -21,7 +17,7 @@ export function AppearanceSettings({ a }: { a: Appearance }) {
       <div className="bg-grid" role="radiogroup" aria-label="Background">
         {BACKGROUNDS.map((b) => (
           <button key={b.id} role="radio" aria-checked={a.background.id === b.id} className={`bg-tile ${a.background.id === b.id ? 'on' : ''}`} onClick={() => a.chooseBackground(b.id)}>
-            <span className="bg-thumb" style={b.poster ? { backgroundImage: `url("${b.poster}")` } : undefined}>{b.kind === 'none' && 'Aa'}</span>
+            <span className="bg-thumb">{b.kind === 'none' && 'Aa'}</span>
             <span>{b.label}</span>
           </button>
         ))}
@@ -43,8 +39,6 @@ export function AppearanceSettings({ a }: { a: Appearance }) {
       </div>
       {a.hasCustom && <button className="link-btn small" onClick={() => fileRef.current?.click()}>Replace your image</button>}
       {uploadError && <p className="field-error">{uploadError}</p>}
-
-      <label className="check"><input type="checkbox" checked={a.match} onChange={(e) => a.setMatch(e.target.checked)} /> Match colours to the background</label>
 
       <label>
         <span className="appearance-label">Background strength</span>

@@ -4,6 +4,19 @@
    cards (the shelf covers, the film window, the live demo, the tour stage) stay light on purpose:
    they are screens. */
 
+/* Public pages: base rules that apple-public.css and the dark edition below
+   do not replace. The sign-in page stays light; the scrollbar is hidden on the public pages. */
+.ap, .ap-si, .ws-picker { color-scheme: light; background: var(--ap-bg); }
+.ap-pill.quiet { color: var(--ap-ink); }
+.ap-pill.quiet:hover:not(:disabled) { background: var(--ap-card-2); }
+.ap-window-bar i { background: var(--ap-line); }
+.ap-tile { border-radius: 12px; background: var(--ap-card); box-shadow: 0 0 0 1px var(--ap-line); }
+.hp-side a.on { color: var(--ap-blue-ink); }
+.ap, .ap-si, .ws-picker, .hp-hero, .ld-stage, .db-body { scrollbar-width: none; -ms-overflow-style: none; }
+.ap::-webkit-scrollbar, .ap-si::-webkit-scrollbar, .ws-picker::-webkit-scrollbar, .ld-stage::-webkit-scrollbar { display: none; width: 0; height: 0; }
+html:has(.ap), html:has(.ap-si), html:has(.ws-picker), html:has(.hp-hero) { scrollbar-width: none; }
+html:has(.ap)::-webkit-scrollbar, html:has(.ap-si)::-webkit-scrollbar, html:has(.ws-picker)::-webkit-scrollbar, html:has(.hp-hero)::-webkit-scrollbar { display: none; }
+
 .ap, .ws-picker {
   --ap-ink: #f5f3ff; --ap-ink-2: rgba(245,243,255,.72); --ap-ink-3: rgba(245,243,255,.46);
   --ap-bg: #0b0618; --ap-line: rgba(255,255,255,.1);
