@@ -226,23 +226,6 @@
 @keyframes ap-sheet { from { opacity: 0; transform: scale(.95) translateY(10px); filter: blur(6px); } }
 @keyframes ap-fade { from { opacity: 0; } }
 
-/* ---------- Home (the page before any workspace) ---------- */
-@media (min-width: 761px) {
-  [data-theme^='apple'] .hs { background: var(--wall); padding: var(--gap); gap: var(--gap); }
-  [data-theme^='apple'] .hs-side { height: calc(100vh - 2 * var(--gap)); top: var(--gap); border-radius: var(--card-r); background: var(--side-bg); backdrop-filter: var(--ap-blur); -webkit-backdrop-filter: var(--ap-blur); border-right: 0; box-shadow: 0 0 0 .5px var(--hair-c), 0 20px 50px -28px var(--shadow); }
-  /* The rounded panel is the stage, so the drop overlay stays inside its rounded corners. */
-  [data-theme^='apple'] .hs-stage { background: var(--surface); border-radius: var(--card-r); box-shadow: 0 0 0 .5px var(--hair-c), 0 24px 60px -30px var(--shadow); min-height: calc(100vh - 2 * var(--gap)); }
-  [data-theme^='apple'] .hs-main { max-width: none; background: transparent; min-height: calc(100vh - 2 * var(--gap)); }
-}
-[data-theme^='apple'] .hs-main h1 { letter-spacing: -.035em; font-weight: 700; }
-[data-theme^='apple'] .hs-nav { border-radius: 9px; transition: background-color .15s ease, transform .12s var(--ap-spring); }
-[data-theme^='apple'] .hs-nav:active { transform: scale(.975); }
-[data-theme^='apple'] .hs-nav.on { background: var(--accent); color: #fff; }
-[data-theme^='apple'] .hs-add button { border: 0; border-radius: 999px; background: var(--raised); box-shadow: var(--hair); transition: transform .12s var(--ap-spring), box-shadow .2s ease; }
-[data-theme^='apple'] .hs-add button:hover, [data-theme^='apple'] .hs-add button:focus-visible { box-shadow: 0 0 0 1px var(--accent); }
-[data-theme^='apple'] .hs-add button:active { transform: scale(.95); }
-[data-theme^='apple'] .hs-card { border: 0; border-radius: 20px; background: var(--raised); box-shadow: var(--hair); transition: transform .4s var(--ap-spring), box-shadow .4s var(--ap-spring); }
-[data-theme^='apple'] .hs-card:hover { transform: translateY(-2px); box-shadow: var(--lift); }
 
 /* ---------- Phone: full-bleed page, frosted toolbar and sheet, 44px touch targets ---------- */
 @media (max-width: 768px) {
@@ -261,7 +244,6 @@
   [data-theme^='apple'] .channel-head { padding: 12px 14px 0; }
   [data-theme^='apple'] .msg { margin: 0 4px; padding: var(--msg-pad-y) 10px; }
   [data-theme^='apple'] .composer { padding: 0 10px max(10px, env(safe-area-inset-bottom)); }
-  [data-theme^='apple'] .hs-side { border-radius: 0; background: var(--side-bg); }
   /* Bottom tab bar: frosted, accent for the current tab, like iOS */
   [data-theme^='apple'] .shell .tabbar {
     background: color-mix(in srgb, var(--surface) 78%, transparent); border-top: 0; box-shadow: 0 -.5px 0 var(--hair-c);
@@ -280,10 +262,10 @@
   [data-theme^='apple'] * { transition-duration: .01ms !important; }
   [data-theme^='apple'] .menu, [data-theme^='apple'] .popover, [data-theme^='apple'] .modal, [data-theme^='apple'] .palette,
   [data-theme^='apple'] .scrim, [data-theme^='apple'] .modal-scrim { animation: ap-fade .15s ease both; }
-  [data-theme^='apple'] .starter-card:hover, [data-theme^='apple'] .hs-card:hover { transform: none; }
+  [data-theme^='apple'] .starter-card:hover { transform: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  [data-theme^='apple'] .sidebar, [data-theme^='apple'] .topbar, [data-theme^='apple'] .menu, [data-theme^='apple'] .popover, [data-theme^='apple'] .hs-side,
+  [data-theme^='apple'] .sidebar, [data-theme^='apple'] .topbar, [data-theme^='apple'] .menu, [data-theme^='apple'] .popover,
   [data-theme^='apple'] .modal, [data-theme^='apple'] .palette, [data-theme^='apple'] .msg .actions { backdrop-filter: none; -webkit-backdrop-filter: none; }
   [data-theme='apple'] { --side-bg: #f2f2f5; --menu-bg: #fff; }
   [data-theme='apple-dark'] { --side-bg: #232326; --menu-bg: #2c2c2e; }

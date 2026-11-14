@@ -1,6 +1,17 @@
 // Home: where you were, what changed, what is coming up, and quick ways to start something.
+// Built on Astryx: a centred, scrolling Layout of VStack sections; page tiles are ClickableCards in a
+// reflowing Grid, and Upcoming is a List of rows because it is dense, dated data.
 import { Icon } from '../Icon.tsx';
 import { useEffect, useMemo, useState } from 'react';
+import { Layout, LayoutContent } from '@astryxdesign/core/Layout';
+import { VStack } from '@astryxdesign/core/VStack';
+import { HStack } from '@astryxdesign/core/HStack';
+import { Grid } from '@astryxdesign/core/Grid';
+import { Heading } from '@astryxdesign/core/Heading';
+import { Text } from '@astryxdesign/core/Text';
+import { Button } from '@astryxdesign/core/Button';
+import { ClickableCard } from '@astryxdesign/core/ClickableCard';
+import { List, ListItem } from '@astryxdesign/core/List';
 import { useRelayCtx } from '../../ctx.ts';
 import { readRecent } from '../../recent.ts';
 import type { CalendarItem, PageNode } from '../../types.ts';
@@ -22,6 +33,9 @@ interface Props {
   onCalendar: () => void;
 }
 
+// Page tiles reflow: up to four across on a wide screen, one full-width column on a phone.
+const TILE_COLUMNS = { minWidth: 168, max: 4 } as const;
+
 export function HomeView({ onOpen, onNew, onLibrary, onCalendar }: Props) {
   const { snap, send, listen } = useRelayCtx();
   const [feed, setFeed] = useState<CalendarItem[] | null>(null);
@@ -41,42 +55,73 @@ export function HomeView({ onOpen, onNew, onLibrary, onCalendar }: Props) {
   const soon = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   const upcoming = (feed ?? []).filter((i) => i.start.slice(0, 10) >= today && i.start.slice(0, 10) <= soon).sort((a, b) => a.start.localeCompare(b.start)).slice(0, 6);
 
-  const card = (n: PageNode) => (
-    <button key={n.id} className="home-card" onClick={() => onOpen(n.id)}>
-      <span className="home-icon" aria-hidden>{iconOf(n)}</span>
-      <b>{n.title || 'Untitled'}</b>
-      <small>{n.kind === 'database' ? 'Database · ' : ''}{ago(n.editedAt)}{n.editedAt && snap.users[n.createdBy] ? ` · ${snap.users[n.createdBy].name}` : ''}</small>
-    </button>
-  );
+  const tile = (n: PageNode) => {
+    const title = n.title || 'Untitled';
+    const meta = `${n.kind === 'database' ? 'Database · ' : ''}${ago(n.editedAt)}${n.editedAt && snap.users[n.createdBy] ? ` · ${snap.users[n.createdBy].name}` : ''}`;
+    return (
+      <ClickableCard key={n.id} label={`Open ${title}`} padding={3} onClick={() => onOpen(n.id)}>
+        <VStack gap={1}>
+          <Text type="large" aria-hidden>{iconOf(n)}</Text>
+          <Heading level={3} maxLines={1}>{title}</Heading>
+          <Text type="supporting" maxLines={2}>{meta}</Text>
+        </VStack>
+      </ClickableCard>
+    );
+  };
+  const tiles = (nodes: PageNode[]) => <Grid columns={TILE_COLUMNS} gap={3}>{nodes.map(tile)}</Grid>;
+  const empty = (text: string) => <Text type="supporting" as="p">{text}</Text>;
 
   return (
-    <div className="home-view">
-      <h1>Home</h1>
-      <div className="home-quick">
-        <button className="ghost-btn" onClick={() => onNew(false)}><Icon n="file" /> New page</button>
-        <button className="ghost-btn" onClick={() => onNew(true)}><Icon n="database" /> New database</button>
-        <button className="ghost-btn" onClick={onLibrary}><Icon n="layout" /> Templates</button>
-        <button className="ghost-btn" onClick={onCalendar}><Icon n="calendar" /> Calendar</button>
-      </div>
-      {favs.length > 0 && (<section><h2>Favorites</h2><div className="home-row">{favs.slice(0, 8).map(card)}</div></section>)}
-      <section>
-        <h2>Recently visited</h2>
-        {visited.length ? <div className="home-row">{visited.map(card)}</div> : <p className="muted">Pages you open show up here.</p>}
-      </section>
-      <section>
-        <h2>Upcoming</h2>
-        {feed === null ? <p className="muted">Loading…</p> : upcoming.length ? (
-          <ul className="home-list">
-            {upcoming.map((i) => (
-              <li key={`${i.dbId}.${i.rowId}.${i.prop}`}><button onClick={() => onOpen(`${i.dbId}.${i.rowId}`)}><b>{i.title}</b><small>{new Date(i.start.slice(0, 10)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })} · {i.dbTitle}</small></button></li>
-            ))}
-          </ul>
-        ) : <p className="muted">Nothing dated in the next 7 days. Rows with a date in any database you can open appear here.</p>}
-      </section>
-      <section>
-        <h2>Recently edited</h2>
-        {edited.length ? <div className="home-row">{edited.map(card)}</div> : <p className="muted">No pages yet. Create one from the sidebar or pick a template.</p>}
-      </section>
-    </div>
+    <Layout
+      contentWidth={960}
+      content={
+        <LayoutContent label="Home">
+          <VStack gap={8} paddingBlock={6}>
+            <VStack gap={4}>
+              <Heading level={1}>Home</Heading>
+              <HStack gap={2} wrap="wrap" role="group" aria-label="Start something">
+                <Button label="New page" icon={<Icon n="file" />} onClick={() => onNew(false)} />
+                <Button label="New database" icon={<Icon n="database" />} onClick={() => onNew(true)} />
+                <Button label="Templates" icon={<Icon n="layout" />} onClick={onLibrary} />
+                <Button label="Calendar" icon={<Icon n="calendar" />} onClick={onCalendar} />
+              </HStack>
+            </VStack>
+
+            {favs.length > 0 && (
+              <VStack as="section" gap={3}>
+                <Heading level={2}>Favorites</Heading>
+                {tiles(favs.slice(0, 8))}
+              </VStack>
+            )}
+
+            <VStack as="section" gap={3}>
+              <Heading level={2}>Recently visited</Heading>
+              {visited.length ? tiles(visited) : empty('Pages you open show up here.')}
+            </VStack>
+
+            <VStack as="section" gap={3}>
+              <Heading level={2}>Upcoming</Heading>
+              {feed === null ? empty('Loading…') : upcoming.length ? (
+                <List hasDividers edge="flush">
+                  {upcoming.map((i) => (
+                    <ListItem
+                      key={`${i.dbId}.${i.rowId}.${i.prop}`}
+                      label={i.title}
+                      description={`${new Date(i.start.slice(0, 10)).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })} · ${i.dbTitle}`}
+                      onClick={() => onOpen(`${i.dbId}.${i.rowId}`)}
+                    />
+                  ))}
+                </List>
+              ) : empty('Nothing dated in the next 7 days. Rows with a date in any database you can open appear here.')}
+            </VStack>
+
+            <VStack as="section" gap={3}>
+              <Heading level={2}>Recently edited</Heading>
+              {edited.length ? tiles(edited) : empty('No pages yet. Create one from the sidebar or pick a template.')}
+            </VStack>
+          </VStack>
+        </LayoutContent>
+      }
+    />
   );
 }

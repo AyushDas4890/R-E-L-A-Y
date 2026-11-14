@@ -1,9 +1,10 @@
+// Cascade layer order first, before any module (App, AstryxRoot) pulls in Astryx CSS that would declare its own order.
+import './layers.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { AstryxRoot } from './astryxRoot.tsx';
-import './layers.css';
 import '@astryxdesign/core/reset.css';
 import '@astryxdesign/core/astryx.css';
 import './styles.css';

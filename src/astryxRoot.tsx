@@ -28,10 +28,25 @@ function paintedMode(): AstryxMode {
   return colorIsDark(bg) ? 'dark' : 'light';
 }
 
+// The root Astryx <Theme> writes data-theme="light" | "dark" onto <html> whenever its mode changes, which
+// would wipe out the Relay theme that the app's CSS keys off the same attribute. Relay themes are never
+// named plain "light" or "dark", so when one of those appears the last Relay theme is put back.
+let relayTheme = typeof document === 'undefined' ? '' : document.documentElement.dataset.theme ?? '';
+const isAstryxMode = (t: string | undefined) => t === 'light' || t === 'dark';
+
 export function useAstryxMode(): AstryxMode {
   const [mode, setMode] = useState<AstryxMode>(paintedMode);
   useEffect(() => {
-    const update = () => setMode(paintedMode());
+    const update = () => {
+      const html = document.documentElement;
+      const t = html.dataset.theme;
+      if (isAstryxMode(t)) {
+        if (relayTheme) html.dataset.theme = relayTheme;
+        return;
+      }
+      if (t) relayTheme = t;
+      setMode(paintedMode());
+    };
     update();
     const mo = new MutationObserver(update);
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-look'] });
