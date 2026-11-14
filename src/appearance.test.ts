@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampSide, firstLook, resolveTheme, SIDE_DEFAULT, SIDE_MAX, SIDE_MIN, THEMES } from './appearance.ts';
+import { clampSide, firstLook, readDensity, resolveTheme, SIDE_DEFAULT, SIDE_MAX, SIDE_MIN, THEMES } from './appearance.ts';
 
 test('the sidebar width is clamped, and junk falls back to the default', () => {
   assert.equal(clampSide(300), 300);
@@ -41,4 +41,13 @@ test('the Apple and Notion themes are selectable and every older theme id stays 
     assert.ok(ids.includes(id), id);
   }
   assert.equal(new Set(ids).size, ids.length);
+});
+
+test('a stored density reads back, and anything missing or unknown falls back to comfortable', () => {
+  assert.equal(readDensity('compact'), 'compact');
+  assert.equal(readDensity('comfortable'), 'comfortable');
+  assert.equal(readDensity(null), 'comfortable');
+  assert.equal(readDensity(''), 'comfortable');
+  assert.equal(readDensity('cozy'), 'comfortable');
+  assert.equal(readDensity('COMPACT'), 'comfortable');
 });

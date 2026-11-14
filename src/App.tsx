@@ -495,15 +495,18 @@ export default function App() {
     const mod = e.metaKey || e.ctrlKey;
     const target = e.target as HTMLElement | null;
     const typingInField = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
-    if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    // Alt+arrows belong to the field (word/line movement) while typing; only claimed when there is a channel to go to.
+    if (e.altKey && !mod && !typingInField && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
       const to = nextChannel(sidebarOrder, view === 'channel' ? active : '', e.key === 'ArrowDown' ? 1 : -1, e.shiftKey, unreadCounts);
-      e.preventDefault();
-      if (to) openChannel(to);
+      if (to) { e.preventDefault(); openChannel(to); }
       return;
     }
-    if (mod && e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); return showView('dms'); }
-    if (mod && e.shiftKey && e.key.toLowerCase() === 'a') { e.preventDefault(); return showView('activity'); }
-    if (e.key === 'Escape' && panel && !modal && !menu && !typingInField && !e.defaultPrevented) return setPanel(null);
+    // Not while a dialog or the palette (the 'search' modal) is open.
+    if (mod && e.shiftKey && !modal && e.key.toLowerCase() === 'k') { e.preventDefault(); return showView('dms'); }
+    if (mod && e.shiftKey && !modal && e.key.toLowerCase() === 'a') { e.preventDefault(); return showView('activity'); }
+    // Esc from a field inside the right panel (the thread reply composer, say) closes the panel too.
+    const fieldOutsidePanel = typingInField && !target?.closest('.panel');
+    if (e.key === 'Escape' && panel && !modal && !menu && !fieldOutsidePanel && !e.defaultPrevented) return setPanel(null);
     if (e.key === '?' && !mod && !e.altKey && !typingInField && !modal) { e.preventDefault(); setModal('shortcuts'); }
   };
   const channelEmpty = channelMessages.filter((m) => !m.system && m.userId !== 'relaybot').length === 0;

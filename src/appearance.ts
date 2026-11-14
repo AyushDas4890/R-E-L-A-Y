@@ -88,6 +88,9 @@ export function resolveTheme(stored: string, prefersDark: boolean): string {
 }
 
 export type Density = 'comfortable' | 'compact';
+// The stored density, with anything missing or unknown read as comfortable. index.html applies the same
+// rule (and the theme rule above) inline before first paint, so keep the two in step.
+export const readDensity = (raw: string | null): Density => (raw === 'compact' ? 'compact' : 'comfortable');
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 const systemDark = () => typeof matchMedia === 'function' && matchMedia(DARK_QUERY).matches;
 
@@ -124,7 +127,7 @@ export function useAppearance() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
   const resolved = resolveTheme(theme, prefersDark);
-  const [density, setDensityState] = useState<Density>(() => (read('relay.density', 'comfortable') === 'compact' ? 'compact' : 'comfortable'));
+  const [density, setDensityState] = useState<Density>(() => readDensity(read('relay.density', 'comfortable')));
   const [bgId, setBgId] = useState(() => read('relay.bg', 'none'));
   const [accent, setAccentState] = useState(() => read('relay.accent', ''));
   // How much the theme colour covers the background, so text stays readable (0–95%).

@@ -87,7 +87,7 @@
 :is([data-theme^='notion'], [data-theme^='apple']) .side-scroll { padding: 2px 6px 12px; }
 :is([data-theme^='notion'], [data-theme^='apple']) .side-top { display: grid; gap: 1px; padding: 0 6px 8px; }
 :is([data-theme^='notion'], [data-theme^='apple']) .side-bottom { display: grid; gap: 1px; padding: 6px 6px 8px; border-top: 1px solid var(--hair-c); }
-:is([data-theme^='notion'], [data-theme^='apple']) .side-item { padding: 3px 8px; min-height: 28px; border-radius: 6px; font-size: 14px; color: var(--side-muted); font-weight: 500; }
+:is([data-theme^='notion'], [data-theme^='apple']) .side-item { padding: 3px 8px; min-height: var(--side-row); border-radius: 6px; font-size: 14px; color: var(--side-muted); font-weight: 500; }
 :is([data-theme^='notion'], [data-theme^='apple']) .side-item .hash { width: 20px; opacity: 1; display: grid; place-items: center; }
 :is([data-theme^='notion'], [data-theme^='apple']) .side-item:hover { background: var(--side-hover); color: var(--text); }
 :is([data-theme^='notion'], [data-theme^='apple']) .side-item.active { background: var(--side-active) !important; color: var(--text); font-weight: 600; box-shadow: none; }

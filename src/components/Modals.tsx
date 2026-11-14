@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PLAN_FEATURES } from '../types.ts';
 import type { Workflow } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
@@ -14,9 +14,20 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+  // Focus moves into the dialog on open (unless a field inside already took it with autoFocus) and goes
+  // back to whatever had it before when the dialog closes.
+  const dialog = useRef<HTMLDivElement>(null);
+  const [opener] = useState(() => (typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null)));
+  useEffect(() => {
+    const el = dialog.current;
+    if (el && !el.contains(document.activeElement)) el.focus();
+    return () => {
+      if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus();
+    };
+  }, [opener]);
   return (
     <div className="scrim" onMouseDown={onClose}>
-      <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
+      <div ref={dialog} tabIndex={-1} className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
         <header>
           <h2>{title}</h2>
           <button className="icon-btn" aria-label="Close" onClick={onClose}>×</button>
