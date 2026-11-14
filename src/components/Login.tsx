@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
 import { Aurora } from './Aurora.tsx';
+import { MicrosoftIcon } from './MicrosoftIcon.tsx';
 import LightBulbButton from './framer/LightBulbButton.tsx';
 import '../apple.css';
 import '../signin.css';
 import { supabase, authEnabled } from '../supabase.ts';
+import { saveDevSession } from '../store.ts';
+import { DEV_SESSION_EVENT, requestPasswordReset, signInWithPassword, signInWithProvider, signUpWithPassword } from '../auth.ts';
 
 interface Props {
   invite: string;
@@ -13,12 +16,13 @@ interface Props {
   // Set when the server rejected a signed-in user (e.g. no valid invite).
   error?: string | null;
   signedIn?: boolean;
-  onDevEnter: (token: string, invite: string) => void;
   onSignOut: () => void;
   onBack?: () => void;
 }
 
-type Provider = 'github' | 'google' | 'email';
+type Mode = 'signin' | 'signup' | 'forgot' | 'sent' | 'verify';
+type Provider = 'google' | 'github' | 'azure';
+type Busy = Provider | 'form' | null;
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
@@ -35,17 +39,51 @@ const GithubIcon = () => (
   </svg>
 );
 
-export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut, onBack }: Props) {
+// Supabase's settings endpoint names Microsoft "azure".
+const PROVIDERS: { id: Provider; label: string; icon: React.ReactNode }[] = [
+  { id: 'google', label: 'Google', icon: <GoogleIcon /> },
+  { id: 'github', label: 'GitHub', icon: <GithubIcon /> },
+  { id: 'azure', label: 'Microsoft', icon: <MicrosoftIcon /> },
+];
+
+// A rough hint while choosing a password; length matters far more than character classes.
+function strength(password: string): string | null {
+  if (!password) return null;
+  if (password.length < 10) return 'Weak';
+  if (password.length < 14) return 'Good';
+  return 'Strong';
+}
+
+const SUBTITLES: Record<Mode, string> = {
+  signin: 'Welcome back. Sign in with your email and password.',
+  signup: 'Create an account to join your team.',
+  forgot: "Enter your email and we'll send you a reset link.",
+  sent: 'Check your inbox.',
+  verify: 'One more step.',
+};
+
+const TITLES: Record<Mode, string> = {
+  signin: 'Sign in to Relay',
+  signup: 'Create your account',
+  forgot: 'Reset your password',
+  sent: 'Reset link sent',
+  verify: 'Confirm your email',
+};
+
+export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack }: Props) {
+  const [mode, setMode] = useState<Mode>('signin');
   const [code, setCode] = useState(invite);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState(() => { try { return localStorage.getItem('relay.lastEmail') ?? ''; } catch { return ''; } });
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [devName, setDevName] = useState('');
-  const [oauthError, setOauthError] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [known, setKnown] = useState(() => { try { return localStorage.getItem('relay.lastEmail') ?? ''; } catch { return ''; } });
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState<Provider | null>(null);
+  const [showDevName, setShowDevName] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<Busy>(null);
   // Which OAuth providers the Supabase project has switched on (null until known).
   const [enabled, setEnabled] = useState<Record<string, boolean> | null>(null);
-  const shownError = error || oauthError;
+  const shownError = formError || error;
 
   useEffect(() => {
     if (!authEnabled) return;
@@ -57,41 +95,67 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
   }, []);
 
   // Back from the provider's page can restore this page from the back/forward cache with the
-  // buttons still disabled on "Opening GitHub…"; re-enable them whenever the page is shown again.
+  // buttons still disabled; re-enable them whenever the page is shown again.
   useEffect(() => {
     const onShow = (e: PageTransitionEvent) => { if (e.persisted) setBusy(null); };
     window.addEventListener('pageshow', onShow);
     return () => window.removeEventListener('pageshow', onShow);
   }, []);
 
-  // Email sign-in: Supabase mails a one-time link; opening it signs the person in on this site.
-  async function emailLink(to = email) {
-    setOauthError(null);
-    if (!supabase) { setOauthError('Email sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, or continue with a name below.'); return; }
-    setBusy('email');
-    const emailRedirectTo = `${window.location.origin}${code ? `?invite=${encodeURIComponent(code)}` : ''}`;
-    const { error } = await supabase.auth.signInWithOtp({ email: to, options: { emailRedirectTo } });
-    setBusy(null);
-    if (error) setOauthError(error.message); else setSent(true);
+  function switchMode(next: Mode) {
+    setMode(next);
+    setFormError(null);
+    setPassword('');
+    setConfirm('');
   }
 
-  async function oauth(provider: 'github' | 'google') {
-    if (!supabase) return;
-    setOauthError(null);
-    if (enabled && !enabled[provider]) {
-      setOauthError(`${provider === 'google' ? 'Google' : 'GitHub'} sign-in isn't switched on for this workspace yet.`);
-      return;
-    }
-    setBusy(provider);
-    // Preserve the invite code across the OAuth redirect round-trip.
-    const redirectTo = `${window.location.origin}${code ? `?invite=${encodeURIComponent(code)}` : ''}`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      // Always show the provider's account chooser instead of silently reusing the browser's
-      // session, so people can pick an account or sign in to a different one with a password.
-      options: { redirectTo, queryParams: { prompt: 'select_account' } },
-    });
-    if (error) { setOauthError(error.message); setBusy(null); }
+  async function signIn() {
+    setFormError(null);
+    if (!email || !password) { setFormError('Enter your email and password.'); return; }
+    setBusy('form');
+    const result = await signInWithPassword(supabase, email, password, code);
+    setBusy(null);
+    if (!result.ok) { setFormError(result.message); return; }
+    if (code) onInvite(code);
+  }
+
+  async function signUp() {
+    setFormError(null);
+    if (!name.trim()) { setFormError('Enter your name.'); return; }
+    if (!email) { setFormError('Enter your email.'); return; }
+    if (password.length < 8) { setFormError('Use at least 8 characters.'); return; }
+    if (password !== confirm) { setFormError("Passwords don't match."); return; }
+    setBusy('form');
+    const result = await signUpWithPassword(supabase, email, password, name.trim(), code);
+    setBusy(null);
+    if (!result.ok) { setFormError(result.message); return; }
+    if (code) onInvite(code);
+    if (result.needsVerification) switchMode('verify');
+  }
+
+  async function sendReset() {
+    setFormError(null);
+    if (!email) { setFormError('Enter your email.'); return; }
+    setBusy('form');
+    const result = await requestPasswordReset(supabase, email);
+    setBusy(null);
+    if (result.ok) switchMode('sent'); else setFormError(result.message);
+  }
+
+  async function provider(id: Provider) {
+    setFormError(null);
+    setBusy(id);
+    const result = await signInWithProvider(supabase, id, code);
+    // On success the browser is already leaving for the provider, so the buttons stay disabled.
+    if (!result.ok) { setFormError(result.message); setBusy(null); }
+  }
+
+  // Dev mode only: enter with just a name, using the legacy `uuid:name` token.
+  function enterWithName() {
+    const n = devName.trim();
+    if (!n) return;
+    saveDevSession(`${crypto.randomUUID()}:${n}`, code);
+    window.dispatchEvent(new CustomEvent(DEV_SESSION_EVENT));
   }
 
   // Pointer tracking: the backdrop drifts, the visual tilts and a spotlight follows the cursor.
@@ -125,6 +189,107 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
     { who: 'J', text: 'huddle? 🎧', when: '5m', style: { top: '46%', left: '12%', '--d': 30, '--t': '-4s' } },
   ] as const;
 
+  const inviteField = (
+    <label className="ap-si-field">
+      Invite code
+      <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Optional" maxLength={32} />
+    </label>
+  );
+  const emailField = (
+    <label className="ap-si-field">
+      Email
+      <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value.trim())} placeholder="you@company.com" maxLength={120} required />
+    </label>
+  );
+  const submit = (label: string, busyLabel: string) => (
+    <LightBulbButton type="submit" disabled={!!busy} lightColor="#9a6bff" buttonColor="#241838" substrateColor="#0e0717" width="100%" height={46}>
+      {busy === 'form' ? busyLabel : label}
+    </LightBulbButton>
+  );
+  const hint = strength(password);
+  // Hide a provider only when Supabase says it is off; in dev mode all three show and explain themselves.
+  const providers = PROVIDERS.filter((p) => !enabled || enabled[p.id] !== false);
+
+  function forms() {
+    switch (mode) {
+      case 'signin':
+        return (
+          <>
+            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void signIn(); }}>
+              {emailField}
+              <label className="ap-si-field">
+                Password
+                <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" maxLength={128} required />
+              </label>
+              <button type="button" className="si-forgot" onClick={() => switchMode('forgot')}>Forgot password?</button>
+              {submit('Sign in', 'Signing in…')}
+            </form>
+            {providers.length > 0 && <div className="ap-si-divider">or continue with</div>}
+            {providers.length > 0 && (
+              <div className="si-providers">
+                {providers.map((p) => (
+                  <button key={p.id} type="button" className="si-provider" disabled={!!busy} onClick={() => void provider(p.id)}>
+                    {p.icon}<span>{busy === p.id ? 'Opening…' : p.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="ap-si-divider">Have an invite?</div>
+            {inviteField}
+            <p className="si-switch">New here? <button type="button" onClick={() => switchMode('signup')}>Create an account</button></p>
+          </>
+        );
+      case 'signup':
+        return (
+          <>
+            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void signUp(); }}>
+              <label className="ap-si-field">
+                Name
+                <input autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" maxLength={40} required />
+              </label>
+              {emailField}
+              <label className="ap-si-field">
+                Password
+                <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" minLength={8} maxLength={128} required aria-describedby="si-strength" />
+              </label>
+              <p id="si-strength" className="si-strength" data-level={hint?.toLowerCase()} aria-live="polite">{hint ?? ''}</p>
+              <label className="ap-si-field">
+                Confirm password
+                <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="Type it again" maxLength={128} required />
+              </label>
+              {inviteField}
+              {submit('Create account', 'Creating account…')}
+            </form>
+            <p className="si-switch">Already have an account? <button type="button" onClick={() => switchMode('signin')}>Sign in</button></p>
+          </>
+        );
+      case 'forgot':
+        return (
+          <>
+            <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void sendReset(); }}>
+              {emailField}
+              {submit('Send reset link', 'Sending…')}
+            </form>
+            <p className="si-switch"><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></p>
+          </>
+        );
+      case 'sent':
+        return (
+          <>
+            <p className="ap-si-sub" role="status">We sent a reset link to {email}.</p>
+            <p className="si-switch"><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></p>
+          </>
+        );
+      case 'verify':
+        return (
+          <>
+            <p className="ap-si-sub" role="status">Check your inbox. We sent a confirmation link to {email}. Open it, then sign in.</p>
+            <p className="si-switch"><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></p>
+          </>
+        );
+    }
+  }
+
   return (
     <div className="ap-si si-v2" ref={root}>
       <div className="si-bg" aria-hidden><Aurora /></div>
@@ -147,61 +312,9 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
         </div>
         <div className="ap-si-card">
           <span className="ap-si-mark" aria-hidden><LogoMark size={28} /></span>
-          <h1>{signedIn ? 'Join a workspace' : 'Sign in to Relay'}</h1>
-          <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : 'Use GitHub, or get a sign-in link by email.'}</p>
-
-          {!signedIn && (
-            <LightBulbButton
-              onClick={() => (authEnabled ? oauth('github') : setOauthError('GitHub sign-in needs Supabase. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, or continue with a name below.'))}
-              disabled={!!busy}
-              lightColor="#b3ff00"
-              buttonColor="#16151f"
-              substrateColor="#09080d"
-              icon={<GithubIcon />}
-              width="100%"
-              height={46}
-            >
-              {busy === 'github' ? 'Opening GitHub…' : 'Continue with GitHub'}
-            </LightBulbButton>
-          )}
-          {!signedIn && (
-            sent ? (
-              <p className="ap-si-sub" role="status">Check {email || known} for your sign-in link. You can close this tab.</p>
-            ) : known ? (
-              <>
-                <LightBulbButton
-                  disabled={!!busy}
-                  onClick={() => { setEmail(known); void emailLink(known); }}
-                  lightColor="#3ccf7c"
-                  buttonColor="#1c1a26"
-                  substrateColor="#0c0b12"
-                  width="100%"
-                  height={44}
-                >
-                  {busy === 'email' ? 'Sending link…' : `Continue as ${known}`}
-                </LightBulbButton>
-                <button className="ap-link-btn" onClick={() => setKnown('')}>Use a different email</button>
-              </>
-            ) : (
-              <form className="ap-si-form" onSubmit={(e) => { e.preventDefault(); void emailLink(); }}>
-                <label className="ap-si-field">
-                  Email
-                  <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value.trim())} placeholder="you@gmail.com" maxLength={120} />
-                </label>
-                <LightBulbButton
-                  type="submit"
-                  disabled={!email || !!busy}
-                  lightColor="#f5a400"
-                  buttonColor="#1c1a26"
-                  substrateColor="#0c0b12"
-                  width="100%"
-                  height={44}
-                >
-                  {busy === 'email' ? 'Sending link…' : 'Continue with email'}
-                </LightBulbButton>
-              </form>
-            )
-          )}
+          <h1>{signedIn ? 'Join a workspace' : TITLES[mode]}</h1>
+          <p className="ap-si-sub">{signedIn ? 'Paste the invite code your team sent you.' : SUBTITLES[mode]}</p>
+          {shownError && <p className="ap-si-error" role="alert">{shownError}</p>}
 
           {signedIn ? (
             <>
@@ -222,47 +335,20 @@ export function Login({ invite, onInvite, error, signedIn, onDevEnter, onSignOut
               </LightBulbButton>
               <button className="ap-pill quiet full" onClick={onSignOut}>Use a different account</button>
             </>
-          ) : authEnabled ? (
-            <>
-              <div className="ap-si-divider">Have an invite?</div>
-              <label className="ap-si-field">
-                Invite code
-                <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Optional" maxLength={32} />
-              </label>
-            </>
-          ) : (
-            // Dev mode: no Supabase keys, so a plain name stands in for an account.
-            <>
-              <div className="ap-si-divider">or continue in dev mode</div>
-              <form className="ap-si-form" onSubmit={(e) => {
-                e.preventDefault();
-                const name = devName.trim();
-                if (name) onDevEnter(`${crypto.randomUUID()}:${name}`, code);
-              }}>
-                <label className="ap-si-field">
-                  Your name
-                  <input value={devName} onChange={(e) => setDevName(e.target.value)} placeholder="Name" maxLength={40} autoFocus />
-                </label>
-                <label className="ap-si-field">
-                  Invite code
-                  <input value={code} onChange={(e) => setCode(e.target.value.trim())} placeholder="Optional" maxLength={32} />
-                </label>
-                <LightBulbButton
-                  type="submit"
-                  disabled={!devName.trim()}
-                  lightColor="#3ccf7c"
-                  buttonColor="#18231c"
-                  substrateColor="#08100a"
-                  width="100%"
-                  height={46}
-                >
-                  Continue
-                </LightBulbButton>
+          ) : forms()}
+
+          {!signedIn && !authEnabled && (mode === 'signin' || mode === 'signup') && (
+            // Dev mode: a plain name still works as a throwaway account.
+            showDevName ? (
+              <form className="si-dev-name" onSubmit={(e) => { e.preventDefault(); enterWithName(); }}>
+                <input value={devName} onChange={(e) => setDevName(e.target.value)} placeholder="Your name" maxLength={40} aria-label="Your name" autoFocus />
+                <button type="submit" disabled={!devName.trim()}>Go</button>
               </form>
-            </>
+            ) : (
+              <p className="si-switch"><button type="button" onClick={() => setShowDevName(true)}>Just try it with a name</button></p>
+            )
           )}
 
-          {shownError && <p className="ap-si-error" role="alert">{shownError}</p>}
           <p className="ap-si-foot">Powered by Flo Studios</p>
         </div>
       </main>

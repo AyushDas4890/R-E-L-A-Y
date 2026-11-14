@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
-import { getDevSession, saveDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
+import { getDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
 import { authEnabled } from './supabase.ts';
 import { Login } from './components/Login.tsx';
 import { Boot } from './components/Boot.tsx';
@@ -278,7 +278,6 @@ export default function App() {
         onInvite={setInvite}
         error={authError?.message}
         signedIn={false}
-        onDevEnter={(tok, inv) => pageTransition(() => { setInvite(inv); setDevSession(saveDevSession(tok, inv)); })}
         onSignOut={leave}
       />
     );
