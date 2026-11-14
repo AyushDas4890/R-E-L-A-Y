@@ -38,7 +38,8 @@ export async function verifyToken(token: string, client: AuthClient): Promise<Id
     email: u.email,
     // GitHub sends avatar_url; Google sends picture (Supabase usually copies it to avatar_url too).
     avatarUrl: meta.avatar_url ?? meta.picture,
-    // Supabase sets email_confirmed_at once the address is confirmed; OAuth providers may report it in metadata instead.
-    emailVerified: !!u.email_confirmed_at || meta.email_verified === true,
+    // Only email_confirmed_at counts: Supabase sets it server-side. user_metadata is writable by the
+    // signed-in user (auth.updateUser), so an email_verified flag there could be spoofed.
+    emailVerified: !!u.email_confirmed_at,
   };
 }

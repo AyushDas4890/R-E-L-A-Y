@@ -32,12 +32,12 @@ test('verifyToken marks the email verified when Supabase confirmed it', async ()
   assert.equal((await verifyToken('tok', client))?.emailVerified, true);
 });
 
-test('verifyToken trusts the provider email_verified flag in metadata', async () => {
+test('verifyToken ignores a user-writable email_verified flag in metadata', async () => {
   const client = clientReturning({
     data: { user: { id: 'u4', email: 'd@b.com', email_confirmed_at: null, user_metadata: { email_verified: true } } },
     error: null,
   });
-  assert.equal((await verifyToken('tok', client))?.emailVerified, true);
+  assert.equal((await verifyToken('tok', client))?.emailVerified, false);
 });
 
 test('verifyToken returns null on error', async () => {
