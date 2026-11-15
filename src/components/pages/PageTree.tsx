@@ -33,15 +33,15 @@ interface Props {
 type Drop = { id: string; where: 'before' | 'inside' | 'after' } | null;
 export const iconOf = (n: PageNode): ReactNode => {
   if (n.icon) {
-    if (n.icon === '📄') return <i className="fa-solid fa-file-lines" aria-hidden="true" />;
-    if (n.icon === '📁') return <i className="fa-solid fa-folder" style={{ color: '#f59e0b' }} aria-hidden="true" />;
-    if (n.icon === '🗂️') return <i className="fa-solid fa-database" style={{ color: '#38bdf8' }} aria-hidden="true" />;
-    if (n.icon === '🏠') return <i className="fa-solid fa-house" style={{ color: '#a855f7' }} aria-hidden="true" />;
-    return n.icon;
+    if (n.icon === '📄') return <Icon n="file" size={15} />;
+    if (n.icon === '📁') return <Icon n="folder" size={15} />;
+    if (n.icon === '🗂️' || n.kind === 'database') return <span style={{ color: '#38bdf8', display: 'inline-flex' }}><Icon n="database" size={15} /></span>;
+    if (n.icon === '🏠') return <span style={{ color: '#a855f7', display: 'inline-flex' }}><Icon n="home" size={15} /></span>;
+    return <span className="custom-icon">{n.icon}</span>;
   }
   return n.kind === 'database'
-    ? <i className="fa-solid fa-database" style={{ color: '#38bdf8' }} aria-hidden="true" />
-    : <i className="fa-solid fa-file-lines" aria-hidden="true" />;
+    ? <span style={{ color: '#38bdf8', display: 'inline-flex' }}><Icon n="database" size={15} /></span>
+    : <Icon n="file" size={15} />;
 };
 
 // The menu behind a "+": a page, a database, or a ready-made one.
@@ -119,13 +119,15 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
   const row = (n: PageNode, depth: number, seen: Set<string>): ReactNode => {
     if (seen.has(n.id)) return null;
     const sub = (kids.get(n.id) ?? []).filter((k) => !k.trashed);
+    const hasChildren = sub.length > 0;
     const isOpen = !!open[n.id];
     const next = new Set(seen).add(n.id);
+    const indent = 8 + depth * 16;
     return (
       <div key={n.id} className="pt-node">
         <div
           className={`side-item pt-row ${current === n.id ? 'active' : ''} ${drop?.id === n.id ? `drop-${drop.where}` : ''}`}
-          style={{ paddingLeft: 6 + depth * 14 }}
+          style={{ paddingLeft: `${indent}px` }}
           draggable={n.level === 'full'}
           onDragStart={(e) => { setDrag(n.id); e.dataTransfer.setData('text/plain', n.id); e.dataTransfer.effectAllowed = 'move'; }}
           onDragEnd={() => { setDrag(null); setDrop(null); }}
@@ -138,7 +140,19 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           }}
           onDrop={(e) => { e.preventDefault(); dropOn(n); }}
         >
-          <button className={`pt-arrow ${isOpen ? 'open' : ''} ${sub.length ? '' : 'none'}`} aria-label={isOpen ? 'Collapse' : 'Expand'} aria-expanded={isOpen} onClick={() => toggle(n.id)}><Icon n="chevron" size={12} /></button>
+          {hasChildren ? (
+            <button
+              type="button"
+              className={`pt-arrow ${isOpen ? 'open' : ''}`}
+              aria-label={isOpen ? 'Collapse' : 'Expand'}
+              aria-expanded={isOpen}
+              onClick={(e) => { e.stopPropagation(); toggle(n.id); }}
+            >
+              <Icon n="chevronRight" size={11} />
+            </button>
+          ) : (
+            <span className="pt-arrow-spacer" aria-hidden="true" />
+          )}
           {renaming === n.id ? (
             <div className="pt-main" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
               <span className="hash pt-icon" aria-hidden>{iconOf(n)}</span>
@@ -174,7 +188,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
               />
             </div>
           ) : (
-            <button className="pt-main" onClick={() => onOpen(n.id)} onDoubleClick={(e) => { e.stopPropagation(); setRenaming(n.id); }} title={`${n.title || 'Untitled'} (double-click to rename)`}>
+            <button type="button" className="pt-main" onClick={() => onOpen(n.id)} onDoubleClick={(e) => { e.stopPropagation(); setRenaming(n.id); }} title={`${n.title || 'Untitled'} (double-click to rename)`}>
               <span className="hash pt-icon" aria-hidden>{iconOf(n)}</span>
               <span className="label">{n.title || 'Untitled'}</span>
               {n.published && <span className="pt-pub" title="Published to the web" aria-label="Published"><Icon n="globe" size={14} /></span>}
@@ -183,6 +197,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           <span className="pt-tools">
             {(n.level === 'edit' || n.level === 'full' || n.createdBy === me) && (
               <button
+                type="button"
                 className="icon-btn"
                 title="Delete page"
                 aria-label="Delete page"
@@ -196,8 +211,17 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
                 <Icon n="trash" size={13} />
               </button>
             )}
-            <button className="icon-btn" aria-label="Page options" onClick={() => setMenu(menu === n.id ? null : n.id)}><Icon n="more" size={14} /></button>
-            {(n.level === 'edit' || n.level === 'full') && <button className="icon-btn" aria-label="Add a page inside" onClick={(e) => { if (!isOpen) toggle(n.id); setPlusFor({ parentId: n.id, space: null }); plus.toggle(e); }}><Icon n="plus" size={14} /></button>}
+            <button type="button" className="icon-btn" aria-label="Page options" onClick={() => setMenu(menu === n.id ? null : n.id)}><Icon n="more" size={14} /></button>
+            {(n.level === 'edit' || n.level === 'full') && (
+              <button
+                type="button"
+                className="icon-btn"
+                aria-label="Add a page inside"
+                onClick={(e) => { if (!isOpen) toggle(n.id); setPlusFor({ parentId: n.id, space: null }); plus.toggle(e); }}
+              >
+                <Icon n="plus" size={13} />
+              </button>
+            )}
           </span>
           {menu === n.id && (
             <div className="menu pt-menu" role="menu" onMouseLeave={() => setMenu(null)}>
@@ -212,20 +236,45 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           )}
         </div>
         {isOpen && sub.map((k) => row(k, depth + 1, next))}
-        {isOpen && sub.length === 0 && <p className="side-hint muted" style={{ paddingLeft: 30 + depth * 14 }}>No pages inside</p>}
+        {isOpen && sub.length === 0 && <p className="side-hint muted" style={{ paddingLeft: `${indent + 36}px` }}>No pages inside</p>}
       </div>
     );
   };
 
-  const head = (key: string, label: ReactNode, add?: (el: HTMLElement) => void, onDropHere?: () => void, extra?: ReactNode) => (
-    <div className="side-section" onDragOver={(e) => { if (drag && onDropHere) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); onDropHere?.(); setDrag(null); }}>
-      <button className={`side-toggle ${sections[key] ? 'closed' : ''}`} aria-expanded={!sections[key]} onClick={() => setSections((s) => ({ ...s, [key]: !s[key] }))}><i aria-hidden>▾</i> {label}</button>
-      <span>
-        {extra}
-        {add && <button title="New page" aria-label="New page" onClick={(e) => add(e.currentTarget)}>+</button>}
-      </span>
-    </div>
-  );
+  const head = (key: string, label: ReactNode, add?: (el: HTMLElement) => void, onDropHere?: () => void, extra?: ReactNode) => {
+    const isClosed = !!sections[key];
+    return (
+      <div
+        className="side-section"
+        onDragOver={(e) => { if (drag && onDropHere) e.preventDefault(); }}
+        onDrop={(e) => { e.preventDefault(); onDropHere?.(); setDrag(null); }}
+      >
+        <button
+          type="button"
+          className={`side-toggle ${isClosed ? 'closed' : ''}`}
+          aria-expanded={!isClosed}
+          onClick={() => setSections((s) => ({ ...s, [key]: !s[key] }))}
+        >
+          <span className="side-chevron"><Icon n="chevronDown" size={11} /></span>
+          <span className="side-section-label">{label}</span>
+        </button>
+        <span className="side-section-actions">
+          {extra}
+          {add && (
+            <button
+              type="button"
+              className="icon-btn section-add-btn"
+              title="New page"
+              aria-label="New page"
+              onClick={(e) => add(e.currentTarget)}
+            >
+              <Icon n="plus" size={12} />
+            </button>
+          )}
+        </span>
+      </div>
+    );
+  };
 
   const openPlus = (parentId: string | null, space: string | null) => (el: HTMLElement) => {
     setPlusFor({ parentId, space });
@@ -247,7 +296,9 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
       {teamspaces.map((s) => {
         const pages = live.filter((n) => n.teamspaceId === s.id);
         const iconNode = s.icon === '🏠' || s.icon === '🏢' || s.id === 'general' ? (
-          <i className="fa-solid fa-house" style={{ color: '#a855f7', marginRight: 6, fontSize: 13 }} aria-hidden="true" />
+          <span className="ts-icon" style={{ color: '#a855f7', display: 'inline-flex', marginRight: 6 }}>
+            <Icon n="home" size={14} />
+          </span>
         ) : (
           <span style={{ marginRight: 6 }}>{s.icon}</span>
         );
@@ -262,23 +313,30 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
               openPlus(null, s.id),
               () => drag && send({ t: 'pageMove', id: drag, parentId: null, teamspaceId: s.id, shared: true, after: null })
             )}
-            {!sections[`ts-${s.id}`] && pages.map((n) => row(n, 0, new Set()))}
-            {!sections[`ts-${s.id}`] && pages.length === 0 && <p className="side-hint muted">No pages yet</p>}
+            {!sections[`ts-${s.id}`] && s.description && <p className="side-hint muted" style={{ paddingLeft: '24px' }}>{s.description}</p>}
+            {!sections[`ts-${s.id}`] && pages.map((n) => row(n, 1, new Set()))}
+            {!sections[`ts-${s.id}`] && pages.length === 0 && !s.description && <p className="side-hint muted" style={{ paddingLeft: '24px' }}>No pages yet</p>}
           </div>
         );
       })}
       {(shared.length > 0 || orphans.length > 0) && (
         <>
           {head('pshared', 'Shared')}
-          {!sections.pshared && [...shared, ...orphans].map((n) => row(n, 0, new Set()))}
+          {!sections.pshared && [...shared, ...orphans].map((n) => row(n, 1, new Set()))}
         </>
       )}
       {head('ppriv', 'Private', openPlus(null, null), () => drag && send({ t: 'pageMove', id: drag, parentId: null, shared: false, after: null }))}
-      {!sections.ppriv && mine.map((n) => row(n, 0, new Set()))}
-      {!sections.ppriv && mine.length === 0 && <p className="side-hint muted">No private pages</p>}
-      <div className="side-section pt-more">
-        <button className="side-toggle" onClick={onManageSpaces}><i aria-hidden>＋</i> Teamspaces</button>
-        <button className="side-toggle" onClick={onLibrary}><i aria-hidden>▤</i> Templates</button>
+      {!sections.ppriv && mine.map((n) => row(n, 1, new Set()))}
+      {!sections.ppriv && mine.length === 0 && <p className="side-hint muted" style={{ paddingLeft: '24px' }}>Only you can see pages here.</p>}
+      <div className="side-nav-actions">
+        <button type="button" className="side-action-row" onClick={onManageSpaces}>
+          <span className="side-action-icon"><Icon n="plus" size={14} /></span>
+          <span className="side-action-label">Teamspaces</span>
+        </button>
+        <button type="button" className="side-action-row" onClick={onLibrary}>
+          <span className="side-action-icon"><Icon n="panelsTopLeft" size={14} /></span>
+          <span className="side-action-label">Templates</span>
+        </button>
       </div>
       {trashed.length > 0 && (
         <>

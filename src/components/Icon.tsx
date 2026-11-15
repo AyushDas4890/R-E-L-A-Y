@@ -54,6 +54,11 @@ export const FA_CLASS_MAP = {
   layout: 'fa-solid fa-table',
   calendar: 'fa-solid fa-calendar-days',
   globe: 'fa-solid fa-globe',
+  chevronDown: 'fa-solid fa-chevron-down',
+  chevronRight: 'fa-solid fa-chevron-right',
+  hash: 'fa-solid fa-hashtag',
+  folder: 'fa-solid fa-folder',
+  panelsTopLeft: 'fa-solid fa-table-columns',
 } as const;
 
 const PATHS = {
@@ -111,6 +116,11 @@ const PATHS = {
   layout: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM3 9h18M9 21V9',
   calendar: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z',
   globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18',
+  chevronDown: 'm6 9 6 6 6-6',
+  chevronRight: 'm9 6 6 6-6 6',
+  hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
+  folder: 'M2 6a2 2 0 0 1 2-2h4l2 2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z',
+  panelsTopLeft: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM3 9h18M9 21V9',
 } as const;
 
 export type IconName = keyof typeof PATHS;

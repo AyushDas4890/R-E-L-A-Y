@@ -356,17 +356,26 @@ export default function App() {
     onDragLeave: (e: DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropKey === key) setDropKey(null); },
     onDrop: (e: DragEvent) => { if (!dragCh) return; e.preventDefault(); e.stopPropagation(); moveChannel(dragCh, target); setDragCh(null); setDropKey(null); },
   });
-  const section = (key: string, label: string, actions?: ReactNode) => (
-    <div
-      className={`side-section ${dragCh && dropKey === `head:${key}` ? 'dnd-over' : ''}`}
-      {...(key === 'starred' ? dropProps(`head:${key}`, { to: 'starred' }) : key === 'channels' ? dropProps(`head:${key}`, { to: 'channels' }) : snap.sections.some((sec) => sec.id === key) ? dropProps(`head:${key}`, { to: 'section', id: key }) : {})}
-    >
-      <button className={`side-toggle ${collapsed[key] ? 'closed' : ''}`} aria-expanded={!collapsed[key]} onClick={() => setCollapsed((c) => ({ ...c, [key]: !c[key] }))}>
-        <i aria-hidden>▾</i> {label}
-      </button>
-      {actions && <span>{actions}</span>}
-    </div>
-  );
+  const section = (key: string, label: string, actions?: ReactNode) => {
+    const isClosed = !!collapsed[key];
+    return (
+      <div
+        className={`side-section ${dragCh && dropKey === `head:${key}` ? 'dnd-over' : ''}`}
+        {...(key === 'starred' ? dropProps(`head:${key}`, { to: 'starred' }) : key === 'channels' ? dropProps(`head:${key}`, { to: 'channels' }) : snap.sections.some((sec) => sec.id === key) ? dropProps(`head:${key}`, { to: 'section', id: key }) : {})}
+      >
+        <button
+          type="button"
+          className={`side-toggle ${isClosed ? 'closed' : ''}`}
+          aria-expanded={!isClosed}
+          onClick={() => setCollapsed((c) => ({ ...c, [key]: !c[key] }))}
+        >
+          <span className="side-chevron"><Icon n="chevronDown" size={11} /></span>
+          <span className="side-section-label">{label}</span>
+        </button>
+        {actions && <span className="side-section-actions">{actions}</span>}
+      </div>
+    );
+  };
   const openThread = (id: string | null) => setPanel(id ? { kind: 'thread', id } : null);
   const togglePanel = (kind: 'canvas' | 'list' | 'details') => setPanel(panel?.kind === kind ? null : { kind });
 
@@ -428,7 +437,7 @@ export default function App() {
             }
           : {})}
       >
-        <span className="hash">{c.kind === 'dm' ? <Avatar user={snap.users[other]} size={18} online={snap.online.includes(other)} /> : c.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span>
+        <span className="hash">{c.kind === 'dm' ? <Avatar user={snap.users[other]} size={18} online={snap.online.includes(other)} /> : c.kind === 'private' ? <Icon n="lock" size={14} /> : <Icon n="hash" size={14} />}</span>
         <span className="label">{label}</span>
         {snap.huddles.some((h) => h.channelId === c.id) && <span title="Huddle live"><Icon n="headphones" size={14} /></span>}
         {muted && <span className="side-muted" title="Muted"><Icon n="bellOff" size={14} /></span>}
@@ -566,7 +575,8 @@ export default function App() {
           <header>
             <div className="menu-anchor ws-name">
               <button className="ws-menu-btn" aria-expanded={menu === 'workspace'} onClick={() => toggleMenu('workspace')}>
-                <h2>{snap.workspace.name}</h2><i aria-hidden>▾</i>
+                <h2>{snap.workspace.name}</h2>
+                <span className="arrow"><Icon n="chevronDown" size={11} /></span>
               </button>
               {menu === 'workspace' && (
                 <div className="menu ws-menu" role="menu">
@@ -652,7 +662,7 @@ export default function App() {
             {!collapsed.channels && joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map((c) => sidebarItem(c, 'channels'))}
             {!collapsed.channels && (
               <div className="menu-anchor">
-                <button className="side-item add" onClick={() => toggleMenu('addChannel')}><span className="hash">＋</span><span className="label">Add channels</span></button>
+                <button className="side-item add" onClick={() => toggleMenu('addChannel')}><span className="hash"><Icon n="plus" size={13} /></span><span className="label">Add channels</span></button>
                 {menu === 'addChannel' && (
                   <div className="menu inline" role="menu">
                     <button role="menuitem" onClick={() => { setModal('new'); setMenu(null); }}>Create a new channel</button>
@@ -671,7 +681,7 @@ export default function App() {
                 <span className="label">{u.name}</span>
               </button>
             ))}
-            {!collapsed.dms && <button className="side-item add" onClick={() => setModal('invite')}><span className="hash">＋</span><span className="label">Invite people</span></button>}
+            {!collapsed.dms && <button className="side-item add" onClick={() => setModal('invite')}><span className="hash"><Icon n="plus" size={13} /></span><span className="label">Invite people</span></button>}
 
             {section('apps', 'Apps')}
             {!collapsed.apps && (
