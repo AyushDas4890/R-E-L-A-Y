@@ -48,6 +48,10 @@ html:has(.site)::-webkit-scrollbar { display: none; }
 /* Relay Bot's robot on the demo window's top edge (HomeDemos.tsx useBotWalker). GSAP moves .site-bot
    (crawl, peek); .is-waving swings its right arm from the shoulder. */
 .site-stage { position: relative; margin-top: var(--spacing-12); }
+/* The hero demo breaks out of the 1080px column and covers ~72% of the viewport width, centred. */
+@media (min-width: 860px) {
+  .site-hero .site-stage { width: 72vw; max-width: none; align-self: center; left: 50%; transform: translateX(-50%); }
+}
 .site-bot { --u: .9px; position: absolute; z-index: 2; left: 0; top: calc(-86 * var(--u)); pointer-events: none; }
 .site-bot .nx-bot-shadow { display: none; }
 .site-bot.is-waving .nx-arm.r { animation: site-wave .7s ease-in-out 3; }
