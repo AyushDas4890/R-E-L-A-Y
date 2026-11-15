@@ -263,7 +263,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
               () => drag && send({ t: 'pageMove', id: drag, parentId: null, teamspaceId: s.id, shared: true, after: null })
             )}
             {!sections[`ts-${s.id}`] && pages.map((n) => row(n, 0, new Set()))}
-            {!sections[`ts-${s.id}`] && pages.length === 0 && <p className="side-hint muted">{s.id === 'general' ? 'Pages everyone in the workspace can edit.' : 'Nothing here yet.'}</p>}
+            {!sections[`ts-${s.id}`] && pages.length === 0 && <p className="side-hint muted">No pages yet</p>}
           </div>
         );
       })}
@@ -275,7 +275,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
       )}
       {head('ppriv', 'Private', openPlus(null, null), () => drag && send({ t: 'pageMove', id: drag, parentId: null, shared: false, after: null }))}
       {!sections.ppriv && mine.map((n) => row(n, 0, new Set()))}
-      {!sections.ppriv && mine.length === 0 && <p className="side-hint muted">Only you can see pages here.</p>}
+      {!sections.ppriv && mine.length === 0 && <p className="side-hint muted">No private pages</p>}
       <div className="side-section pt-more">
         <button className="side-toggle" onClick={onManageSpaces}><i aria-hidden>＋</i> Teamspaces</button>
         <button className="side-toggle" onClick={onLibrary}><i aria-hidden>▤</i> Templates</button>

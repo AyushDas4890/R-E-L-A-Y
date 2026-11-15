@@ -109,6 +109,8 @@ export default function App() {
   const [sideCollapsed, setSideCollapsed] = useState(() => recall('relay.sideCollapsed') === '1');
   const [sideW, setSideW] = useState(() => clampSide(Number(recall('relay.sideW'))));
   const [resizing, setResizing] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
+  const [deafened, setDeafened] = useState(false);
   useEffect(() => remember('relay.sideCollapsed', sideCollapsed ? '1' : '0'), [sideCollapsed]);
   useEffect(() => remember('relay.sideW', String(sideW)), [sideW]);
   const startResize = (e: ReactPointerEvent) => {
@@ -591,18 +593,47 @@ export default function App() {
             <button className="icon-btn side-head-btn compose-btn" title="New channel" onClick={() => setModal('new')}><Icon n="pencil" /></button>
           </header>
           <div className="side-top apple-only">
-            <button className="side-item" onClick={() => setModal('search')}><span className="hash"><Icon n="search" /></span><span className="label">Search</span></button>
-            <button className={`side-item ${view === 'home' ? 'active' : ''}`} onClick={() => showView('home')}><span className="hash"><Icon n="home" /></span><span className="label">Home</span></button>
-            <button className={`side-item ${view === 'activity' ? 'active' : ''}`} onClick={() => showView('activity')}>
-              <span className="hash"><Icon n="inbox" /></span><span className="label">Inbox</span>
-              {totalUnread + snap.inbox.filter((i) => !i.read).length > 0 && <span className="count">{totalUnread + snap.inbox.filter((i) => !i.read).length}</span>}
+            <button type="button" className="arc-search" onClick={() => setModal('search')} aria-label="Search">
+              <span className="arc-search-icon"><Icon n="search" size={14} /></span>
+              <span className="arc-search-text">Search</span>
+              <kbd className="arc-search-kbd">Ctrl K</kbd>
             </button>
-            <button className={`side-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => showView('calendar')}><span className="hash"><Icon n="clock" /></span><span className="label">Calendar</span></button>
+
+            <div className="arc-fav-grid">
+              <button
+                type="button"
+                className={`arc-fav-tile ${view === 'home' ? 'active' : ''}`}
+                title="Home"
+                onClick={() => showView('home')}
+              >
+                <span className="arc-fav-icon tile-home"><Icon n="home" size={18} /></span>
+              </button>
+              <button
+                type="button"
+                className={`arc-fav-tile ${view === 'activity' ? 'active' : ''}`}
+                title="Inbox"
+                onClick={() => showView('activity')}
+              >
+                <span className="arc-fav-icon tile-inbox"><Icon n="inbox" size={18} /></span>
+                {totalUnread + snap.inbox.filter((i) => !i.read).length > 0 && (
+                  <span className="arc-fav-badge">{totalUnread + snap.inbox.filter((i) => !i.read).length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                className={`arc-fav-tile ${view === 'calendar' ? 'active' : ''}`}
+                title="Calendar"
+                onClick={() => showView('calendar')}
+              >
+                <span className="arc-fav-icon tile-calendar"><Icon n="clock" size={18} /></span>
+              </button>
+            </div>
           </div>
           <div className="side-scroll">
             {navItem('huddles', <Icon n="headphones" />, 'Huddles')}
             {navItem('directory', <Icon n="users" />, 'People')}
             {navItem('saved', <Icon n="bookmark" />, 'Later')}
+            {navItem('workflows', <Icon n="zap" />, 'Workflows')}
 
             <PageTree nodes={snap.pages} favorites={snap.pageFavorites} teamspaces={snap.teamspaces} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} onLibrary={() => showView('library')} onManageSpaces={() => setModal('spaces')} />
 
@@ -649,12 +680,43 @@ export default function App() {
               </button>
             )}
           </div>
-          <div className="side-bottom apple-only">
-            <button className="side-item" onClick={() => showView('workflows')}><span className="hash"><Icon n="zap" /></span><span className="label">Workflows</span></button>
-            <button className="side-item" onClick={() => setModal('scheduled')}><span className="hash"><Icon n="clock" /></span><span className="label">Scheduled messages</span>{snap.scheduled.length > 0 && <span className="count">{snap.scheduled.length}</span>}</button>
-            {admin && <button className="side-item" onClick={() => setModal('admin')}><span className="hash"><Icon n="settings" /></span><span className="label">Admin console</span>{(snap.admin?.flags.length ?? 0) > 0 && <span className="count">{snap.admin?.flags.length}</span>}</button>}
-            <button className="side-item" onClick={() => setModal('plan')}><span className="hash"><Icon n="gem" /></span><span className="label">Plan</span></button>
-            <button className="side-item" onClick={() => setModal('profile')}><span className="hash"><Icon n="user" /></span><span className="label">Preferences</span></button>
+          <div className="discord-user-bar" aria-label="User Account">
+            <button className="discord-user-info" onClick={() => setModal('profile')} title="Open profile & preferences">
+              <div className="discord-avatar-wrap">
+                <Avatar user={me} size={32} online={connected} />
+                <span className={`discord-status-dot ${dnd.active ? 'dnd' : connected ? 'online' : 'offline'}`} />
+              </div>
+              <div className="discord-user-text">
+                <span className="discord-display-name">{me?.name || 'User'}</span>
+                <span className="discord-handle">@{me?.name?.toLowerCase().replace(/\s+/g, '') || 'you'}</span>
+              </div>
+            </button>
+            <div className="discord-user-controls">
+              <button
+                className={`discord-ctrl-btn ${micMuted ? 'muted' : ''}`}
+                title={micMuted ? 'Unmute microphone' : 'Mute microphone'}
+                aria-label="Mute microphone"
+                onClick={() => setMicMuted((m) => !m)}
+              >
+                <Icon n={micMuted ? 'micOff' : 'mic'} size={18} />
+              </button>
+              <button
+                className={`discord-ctrl-btn ${deafened ? 'muted' : ''}`}
+                title={deafened ? 'Undeafen audio' : 'Deafen audio'}
+                aria-label="Deafen audio"
+                onClick={() => setDeafened((d) => !d)}
+              >
+                <Icon n={deafened ? 'volumeX' : 'headphones'} size={18} />
+              </button>
+              <button
+                className="discord-ctrl-btn"
+                title="User Settings"
+                aria-label="User Settings"
+                onClick={() => setModal('profile')}
+              >
+                <Icon n="settings" size={18} />
+              </button>
+            </div>
           </div>
           <div className={`side-resize apple-only ${resizing ? 'drag' : ''}`} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" onPointerDown={startResize} onDoubleClick={() => setSideW(SIDE_DEFAULT)} />
         </aside>
