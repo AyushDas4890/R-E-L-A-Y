@@ -197,8 +197,8 @@
 [data-theme^='apple'] .ws-menu-btn { padding: 4px 6px; border-radius: 6px; }
 [data-theme^='apple'] .side-head-btn, [data-theme^='apple'] .compose-btn { width: 28px; height: 28px; border-radius: 6px; background: transparent; color: var(--side-muted); display: inline-grid; place-items: center; }
 [data-theme^='apple'] .side-head-btn:hover, [data-theme^='apple'] .compose-btn:hover { background: var(--t3); color: var(--text); }
-[data-theme^='apple'] .side-scroll { padding: 4px 8px 16px; }
-[data-theme^='apple'] .side-top { display: flex; flex-direction: column; gap: 8px; padding: 4px 10px 10px; }
+[data-theme^='apple'] .side-scroll { padding: 0 8px 12px; }
+[data-theme^='apple'] .side-top { display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 8px; }
 [data-theme^='apple'] .side-bottom { display: grid; gap: 1px; padding: 6px 6px 8px; border-top: 1px solid var(--hair-c); }
 [data-theme^='apple'] .side-item { padding: 0 10px; height: 32px; min-height: 32px; border-radius: 6px; font-size: 14px; color: var(--side-muted); font-weight: 450; display: flex; align-items: center; }
 [data-theme^='apple'] .side-item .hash { width: 20px; opacity: 1; display: inline-flex; align-items: center; justify-content: center; }
