@@ -1,6 +1,6 @@
 :root {
   /* Density (Preferences > Appearance). Sizes only; compact overrides them below. */
-  --msg-pad-y: 6px; --msg-pad: var(--msg-pad-y) 20px; --side-row: 32px; --font-size: 15px;
+  --msg-pad-y: 6px; --msg-pad: var(--msg-pad-y) 20px; --side-row: 34px; --font-size: 15px;
   --font: 'Public Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* One type pair across home, sign-in and workspace: Audiowide for display, Public Sans for text. */
   --display: 'Audiowide', var(--font);
@@ -68,7 +68,7 @@ kbd { font: 11px var(--font); border: 1px solid var(--line); border-radius: 5px;
 
 .sidebar { width: var(--side); background: var(--side-bg); color: var(--side-text); display: flex; flex-direction: column; flex: none; height: 100%; position: relative; user-select: none; }
 .sidebar > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 14px; height: 52px; min-height: 52px; border-bottom: 1px solid var(--hair-c, rgba(255, 255, 255, 0.04)); }
-.sidebar h2 { margin: 0; font-size: 17px; font-weight: 650; }
+.sidebar h2 { margin: 0; font-size: 17.5px; font-weight: 700; }
 .ws-menu-btn { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; padding: 4px 6px; border-radius: 6px; color: var(--text); cursor: pointer; transition: background 0.15s ease; }
 .ws-menu-btn:hover { background: var(--hover, rgba(255, 255, 255, 0.08)); }
 .ws-menu-btn .arrow { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
@@ -78,16 +78,16 @@ kbd { font: 11px var(--font); border: 1px solid var(--line); border-radius: 5px;
 .search-trigger:hover { background: rgba(255,255,255,.12); color: var(--side-text); }
 .search-trigger kbd { border-color: rgba(255,255,255,.18); color: var(--side-muted); }
 .side-scroll { overflow-y: auto; overflow-x: hidden; padding: 0 8px 16px; flex: 1; min-height: 0; }
-.side-section { display: flex; justify-content: space-between; align-items: center; padding: 10px 6px 3px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--side-muted); min-height: 28px; margin-top: 6px; }
-.side-section button { color: var(--side-muted); font-size: 12px; }
+.side-section { display: flex; justify-content: space-between; align-items: center; padding: 10px 6px 3px 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--side-muted); min-height: 30px; margin-top: 6px; }
+.side-section button { color: var(--side-muted); font-size: 13px; }
 .side-section button:hover { color: var(--side-text); }
 .sidebar .muted { color: var(--side-muted); }
-.side-item { width: 100%; min-height: var(--side-row); height: var(--side-row); display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; color: var(--side-muted); text-align: left; position: relative; font-size: 14px; font-weight: 450; cursor: pointer; border: none; background: transparent; box-sizing: border-box; }
+.side-item { width: 100%; min-height: var(--side-row); height: var(--side-row); display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; color: var(--side-muted); text-align: left; position: relative; font-size: 15px; font-weight: 500; cursor: pointer; border: none; background: transparent; box-sizing: border-box; }
 .side-item:hover { background: var(--side-hover); color: var(--side-text); }
 .side-item.active { background: var(--side-active); color: var(--side-text); box-shadow: none; font-weight: 550; }
 .side-item.unread { color: var(--side-text); font-weight: 650; }
 .side-item .hash { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: .85; }
-.side-item .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.side-item .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
 /* Unread lamps: amber means something is waiting for you. */
 .count { background: var(--signal); color: #10233f; font-size: 11px; font-weight: 800; padding: 0 7px; border-radius: 99px; }
 .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 25%, transparent); }
@@ -580,15 +580,15 @@ input[type='checkbox'].fit { width: auto; }
   line-height: 1.2;
 }
 .discord-display-name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 650;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .discord-handle {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -632,7 +632,7 @@ input[type='checkbox'].fit { width: auto; }
 /* Arc Search Input Pill */
 .arc-search {
   width: 100%;
-  height: 34px;
+  height: 36px;
   border-radius: 9px;
   border: 1px solid var(--hair-c, rgba(255, 255, 255, 0.06));
   background: var(--t2, rgba(255, 255, 255, 0.05));
@@ -641,7 +641,7 @@ input[type='checkbox'].fit { width: auto; }
   align-items: center;
   padding: 0 10px;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14.5px;
   cursor: pointer;
   transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
   box-sizing: border-box;
@@ -668,11 +668,11 @@ input[type='checkbox'].fit { width: auto; }
 }
 
 .arc-search-kbd {
-  font-size: 10px;
+  font-size: 11px;
   font-family: inherit;
   font-weight: 600;
   color: var(--muted);
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--hair-c, rgba(255, 255, 255, 0.1));
@@ -972,11 +972,11 @@ input[type='checkbox'].fit { width: auto; }
 .menu.inline { position: absolute; left: 8px; right: 8px; top: 100%; min-width: 0; }
 
 /* ===== Sidebar ===== */
-.sidebar > header { padding: 10px 10px 8px 14px; gap: 4px; }
-.ws-name { min-width: 0; }
-.ws-menu-btn { display: flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 8px 4px 4px; border-radius: 8px; color: var(--side-text); }
+.sidebar > header { padding: 0 10px 0 12px; height: 52px; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.ws-name { min-width: 0; flex-shrink: 0; max-width: calc(100% - 96px); }
+.ws-menu-btn { display: flex; align-items: center; gap: 6px; max-width: 100%; padding: 4px 6px; border-radius: 8px; color: var(--side-text); flex-shrink: 0; }
 .ws-menu-btn:hover { background: var(--side-hover); }
-.ws-menu-btn h2 { margin: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-menu-btn h2 { margin: 0; font-size: 16.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ws-menu-btn i { font-style: normal; font-size: 12px; opacity: .8; }
 .ws-menu { left: 0; right: auto; top: calc(100% + 6px); min-width: 280px; transform-origin: top left; }
 .menu-head { display: flex; gap: 10px; align-items: center; padding: 8px 10px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }

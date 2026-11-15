@@ -2,9 +2,9 @@
 
 /* ---- Sidebar tree ---- */
 .pt-node { width: 100%; }
-.pt-row { width: 100%; height: 32px; min-height: 32px; display: flex; align-items: center; gap: 4px; padding-right: 8px; border-radius: 6px; cursor: pointer; box-sizing: border-box; position: relative; }
+.pt-row { width: 100%; height: 34px; min-height: 34px; display: flex; align-items: center; gap: 4px; padding-right: 8px; border-radius: 6px; cursor: pointer; box-sizing: border-box; position: relative; }
 .pt-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; text-align: left; color: inherit; font: inherit; padding: 0; background: transparent; border: none; cursor: pointer; overflow: hidden; }
-.pt-main .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 450; line-height: 1.2; }
+.pt-main .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; line-height: 1.2; }
 .pt-icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 14px; line-height: 1; }
 .pt-arrow { width: 16px; height: 16px; min-width: 16px; min-height: 16px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--side-muted, var(--muted)); flex: none; background: transparent; border: none; padding: 0; cursor: pointer; transition: background 0.15s, color 0.15s; }
 .pt-arrow:hover:not(.none) { background: var(--t3, var(--hover)); color: var(--text); }
