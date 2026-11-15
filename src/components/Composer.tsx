@@ -187,8 +187,8 @@ export function Composer({
           }}
         />
         <div className="composer-actions">
-          <label className="icon-btn" title="Attach files">
-            ＋
+          <label className="icon-btn" title="Attach files" aria-label="Attach files">
+            <Icon n="plus" size={15} />
             <input type="file" multiple hidden onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
           </label>
           <button className="icon-btn" title="Emoji" onClick={() => setPicker(!picker)}><Icon n="smile" /></button>

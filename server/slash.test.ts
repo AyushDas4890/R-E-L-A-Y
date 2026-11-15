@@ -29,3 +29,7 @@ test('/remind #channel targets a channel', async () => {
   const s = parseSlash('/remind #launch ship notes in 2h');
   assert.deepEqual(s && s.kind === 'remind' ? [s.channel, s.text, s.inMs] : null, ['launch', 'ship notes', 7_200_000]);
 });
+
+test('remind with zero or invalid number gives usage', () => {
+  assert.equal(parseSlash('/remind me test in 0m')?.kind, 'usage');
+});

@@ -1607,7 +1607,8 @@ const server = http.createServer((req, res) => {
     return;
   }
   const requested = path.normalize(path.join(distDir, url.pathname === '/' ? 'index.html' : url.pathname));
-  const file = requested.startsWith(distDir) && fs.existsSync(requested) && fs.statSync(requested).isFile()
+  const isSafe = requested.startsWith(distDir + path.sep) || requested === distDir;
+  const file = isSafe && fs.existsSync(requested) && fs.statSync(requested).isFile()
     ? requested
     : path.join(distDir, 'index.html');
   res.writeHead(200, {
