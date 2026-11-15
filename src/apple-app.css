@@ -153,7 +153,7 @@
   text-overflow: ellipsis;
 }
 [data-theme^='apple'] .side-section {
-  padding: 14px 6px 4px 8px;
+  padding: 10px 6px 3px 8px;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -162,8 +162,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: 28px;
+  margin-top: 6px;
 }
-[data-theme^='apple'] .side-hint { padding: 4px 10px 8px; font-size: 12px; color: var(--muted); line-height: 1.35; margin: 0; }
+[data-theme^='apple'] .side-hint { padding: 2px 10px 4px 24px; font-size: 12px; color: var(--muted); line-height: 1.35; margin: 0; }
 
 /* Clean monochromatic line icons */
 [data-theme^='apple'] :is(.side-top, .side-bottom) .side-item .hash,

@@ -204,8 +204,8 @@
 [data-theme^='apple'] .side-item .hash { width: 20px; opacity: 1; display: inline-flex; align-items: center; justify-content: center; }
 [data-theme^='apple'] .side-item:hover { background: var(--side-hover); color: var(--text); }
 [data-theme^='apple'] .side-item.unread { color: var(--text); font-weight: 650; }
-[data-theme^='apple'] .side-section { padding: 12px 6px 3px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--side-muted); min-height: 28px; }
-[data-theme^='apple'] .side-hint { padding: 4px 10px 8px; font-size: 12px; line-height: 1.35; }
+[data-theme^='apple'] .side-section { padding: 10px 6px 3px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--side-muted); min-height: 28px; margin-top: 6px; }
+[data-theme^='apple'] .side-hint { padding: 2px 10px 4px 24px; font-size: 12px; line-height: 1.35; margin: 0; }
 [data-theme^='apple'] .side-resize { position: absolute; top: 0; right: -3px; bottom: 0; width: 6px; cursor: col-resize; z-index: 3; }
 [data-theme^='apple'] .side-resize:hover, [data-theme^='apple'] .side-resize.drag { background: linear-gradient(90deg, transparent 2px, var(--accent) 2px, var(--accent) 4px, transparent 4px); opacity: .6; }
 

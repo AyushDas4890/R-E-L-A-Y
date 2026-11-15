@@ -191,22 +191,6 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
             </button>
           )}
           <span className="pt-tools">
-            {(n.level === 'edit' || n.level === 'full' || n.createdBy === me) && (
-              <button
-                type="button"
-                className="icon-btn"
-                title="Delete page"
-                aria-label="Delete page"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm(`Move "${n.title || 'Untitled'}" to trash?`)) {
-                    send({ t: 'pageTrash', id: n.id });
-                  }
-                }}
-              >
-                <Icon n="trash" size={13} />
-              </button>
-            )}
             <button type="button" className="icon-btn" aria-label="Page options" onClick={() => setMenu(menu === n.id ? null : n.id)}><Icon n="more" size={14} /></button>
             {(n.level === 'edit' || n.level === 'full') && (
               <button

@@ -78,7 +78,7 @@ kbd { font: 11px var(--font); border: 1px solid var(--line); border-radius: 5px;
 .search-trigger:hover { background: rgba(255,255,255,.12); color: var(--side-text); }
 .search-trigger kbd { border-color: rgba(255,255,255,.18); color: var(--side-muted); }
 .side-scroll { overflow-y: auto; overflow-x: hidden; padding: 4px 8px 16px; flex: 1; min-height: 0; }
-.side-section { display: flex; justify-content: space-between; align-items: center; padding: 14px 6px 4px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--side-muted); min-height: 28px; }
+.side-section { display: flex; justify-content: space-between; align-items: center; padding: 10px 6px 3px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--side-muted); min-height: 28px; margin-top: 6px; }
 .side-section button { color: var(--side-muted); font-size: 12px; }
 .side-section button:hover { color: var(--side-text); }
 .sidebar .muted { color: var(--side-muted); }
