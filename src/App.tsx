@@ -749,43 +749,55 @@ export default function App() {
             : ch ? (
             <>
               <header className="channel-head">
-                <div className="channel-title">
-                  <h2>
-                    {ch.kind !== 'dm' && (
-                      <button className={`star-btn ${starredIds.has(ch.id) ? 'on' : ''}`} aria-label={starredIds.has(ch.id) ? 'Unstar channel' : 'Star channel'} aria-pressed={starredIds.has(ch.id)} onClick={() => send({ t: 'star', channelId: ch.id })}><Icon n="star" fill={starredIds.has(ch.id)} /></button>
-                    )}
-                    <button className="title-btn" onClick={() => togglePanel('details')}>{ch.kind === 'dm' ? '' : ch.kind === 'private' ? <><Icon n="lock" size={14} />{' '}</> : '# '}{channelLabel(ch, snap.users, snap.me)}</button>
-                  </h2>
-                  {ch.topic && <p className="topic">{ch.topic}</p>}
-                </div>
-                <div className="head-actions" onClick={(e) => e.stopPropagation()}>
-                  {ch.kind !== 'dm' && <button className="ghost-btn invite-btn" onClick={() => setModal('invite')}><Icon n="user" /> <span>Invite teammates</span></button>}
-                  <button className="member-stack" title="Members" onClick={() => togglePanel('details')}>
-                    {ch.members.slice(0, 3).map((id) => <Avatar key={id} user={snap.users[id]} size={22} />)}
-                    <b>{ch.members.length}</b>
-                  </button>
-                  <button className="icon-btn head-icon" title="Start a huddle" aria-label="Start a huddle" onClick={() => send({ t: 'huddle', channelId: ch.id, action: 'join' })}><Icon n="headphones" /></button>
-                  <div className="menu-anchor">
-                    <button className={`icon-btn head-icon ${level !== 'mentions' ? 'lit' : ''}`} title={`Notifications: ${LEVEL_LABEL[level]}`} aria-label="Channel notifications" aria-expanded={menu === 'bell'} onClick={() => toggleMenu('bell')}>{level === 'mute' ? <Icon n="bellOff" /> : <Icon n="bell" />}</button>
-                    {menu === 'bell' && (
-                      <div className="menu" role="menu">
-                        <p className="menu-title">Notify me about…</p>
-                        {(['all', 'mentions', 'mute'] as ChannelLevel[]).map((l) => (
-                          <button key={l} role="menuitemradio" aria-checked={level === l} className={level === l ? 'checked' : ''} onClick={() => { levels.setLevel(ch.id, l); setMenu(null); }}>{level === l && <Icon n="check" />} {LEVEL_LABEL[l]}</button>
-                        ))}
-                      </div>
+                <div className="channel-head-top">
+                  <div className="channel-title">
+                    <h2>
+                      {ch.kind !== 'dm' && (
+                        <button className={`star-btn ${starredIds.has(ch.id) ? 'on' : ''}`} aria-label={starredIds.has(ch.id) ? 'Unstar channel' : 'Star channel'} aria-pressed={starredIds.has(ch.id)} onClick={() => send({ t: 'star', channelId: ch.id })}><Icon n="star" fill={starredIds.has(ch.id)} size={15} /></button>
+                      )}
+                      <button className="title-btn" onClick={() => togglePanel('details')}>
+                        <span className="channel-prefix">{ch.kind === 'dm' ? '' : ch.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span>
+                        <span className="channel-name">{channelLabel(ch, snap.users, snap.me)}</span>
+                      </button>
+                    </h2>
+                    {ch.topic && (
+                      <>
+                        <span className="topic-divider" aria-hidden="true" />
+                        <p className="topic" title={ch.topic}>{ch.topic}</p>
+                      </>
                     )}
                   </div>
-                  <button className="icon-btn head-icon" title="Search" aria-label="Search" onClick={() => setModal('search')}>⌕</button>
-                  <button className="icon-btn head-icon" title="Channel details" aria-label="Channel details" onClick={() => togglePanel('details')}>⋮</button>
+                  <div className="head-actions" onClick={(e) => e.stopPropagation()}>
+                    {ch.kind !== 'dm' && <button className="ghost-btn invite-btn" onClick={() => setModal('invite')} title="Invite teammates"><Icon n="user" size={13} /> <span>Invite</span></button>}
+                    <button className="member-stack" title={`Members (${ch.members.length})`} onClick={() => togglePanel('details')}>
+                      <div className="member-avatars">
+                        {ch.members.slice(0, 3).map((id) => <Avatar key={id} user={snap.users[id]} size={20} />)}
+                      </div>
+                      <b className="member-count">{ch.members.length}</b>
+                    </button>
+                    <button className="icon-btn head-icon" title="Start a huddle" aria-label="Start a huddle" onClick={() => send({ t: 'huddle', channelId: ch.id, action: 'join' })}><Icon n="headphones" size={15} /></button>
+                    <div className="menu-anchor">
+                      <button className={`icon-btn head-icon ${level !== 'mentions' ? 'lit' : ''}`} title={`Notifications: ${LEVEL_LABEL[level]}`} aria-label="Channel notifications" aria-expanded={menu === 'bell'} onClick={() => toggleMenu('bell')}>{level === 'mute' ? <Icon n="bellOff" size={15} /> : <Icon n="bell" size={15} />}</button>
+                      {menu === 'bell' && (
+                        <div className="menu" role="menu">
+                          <p className="menu-title">Notify me about…</p>
+                          {(['all', 'mentions', 'mute'] as ChannelLevel[]).map((l) => (
+                            <button key={l} role="menuitemradio" aria-checked={level === l} className={level === l ? 'checked' : ''} onClick={() => { levels.setLevel(ch.id, l); setMenu(null); }}>{level === l && <Icon n="check" size={14} />} {LEVEL_LABEL[l]}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button className="icon-btn head-icon" title="Search" aria-label="Search" onClick={() => setModal('search')}><Icon n="search" size={15} /></button>
+                    <button className="icon-btn head-icon" title="Channel details" aria-label="Channel details" onClick={() => togglePanel('details')}><Icon n="more" size={15} /></button>
+                  </div>
                 </div>
                 <nav className="channel-tabs" aria-label="Channel views" onClick={(e) => e.stopPropagation()}>
-                  <button className={!panel || panel.kind === 'thread' || panel.kind === 'details' ? 'on' : ''} onClick={() => setPanel(null)}><Icon n="message" /> Messages</button>
-                  <button className={panel?.kind === 'canvas' ? 'on' : ''} onClick={() => togglePanel('canvas')}><Icon n="file" /> Canvas</button>
-                  <button className={panel?.kind === 'list' ? 'on' : ''} onClick={() => togglePanel('list')}><Icon n="checkSquare" /> List</button>
-                  <button onClick={() => send({ t: 'send', channelId: ch.id, text: '/summarize' })}><Icon n="sparkles" /> Recap</button>
+                  <button className={!panel || panel.kind === 'thread' || panel.kind === 'details' ? 'on' : ''} onClick={() => setPanel(null)}><Icon n="message" size={14} /> Messages</button>
+                  <button className={panel?.kind === 'canvas' ? 'on' : ''} onClick={() => togglePanel('canvas')}><Icon n="file" size={14} /> Canvas</button>
+                  <button className={panel?.kind === 'list' ? 'on' : ''} onClick={() => togglePanel('list')}><Icon n="checkSquare" size={14} /> List</button>
+                  <button onClick={() => send({ t: 'send', channelId: ch.id, text: '/summarize' })}><Icon n="sparkles" size={14} /> Recap</button>
                   <div className="menu-anchor">
-                    <button className="tab-add" aria-label="Add a tab" aria-expanded={menu === 'addTab'} onClick={() => toggleMenu('addTab')}>＋</button>
+                    <button className="tab-add" aria-label="Add a tab" aria-expanded={menu === 'addTab'} onClick={() => toggleMenu('addTab')}><Icon n="plus" size={13} /></button>
                     {menu === 'addTab' && (
                       <div className="menu" role="menu">
                         <button role="menuitem" onClick={() => { setPanel({ kind: 'canvas' }); setMenu(null); }}><Icon n="file" /> Canvas</button>

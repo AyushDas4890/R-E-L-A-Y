@@ -69,11 +69,11 @@
 [data-theme^='apple'] .side-item.add .hash { background: var(--t2); }
 
 /* Conversation */
-[data-theme^='apple'] .channel-head { border-bottom: 0; }
-[data-theme^='apple'] .channel-title h2 { font-size: 17px; }
+[data-theme^='apple'] .channel-head { border-bottom: 1px solid var(--hair-c); }
+[data-theme^='apple'] .channel-title h2 { font-size: 18px; }
 [data-theme^='apple'] .channel-tabs button { font-weight: 500; }
 [data-theme^='apple'] .channel-tabs button::after { background: var(--text); }
-[data-theme^='apple'] .huddle-btn, [data-theme^='apple'] .member-stack { border: 0; box-shadow: var(--hair); border-radius: 999px; background: var(--surface); }
+[data-theme^='apple'] .huddle-btn, [data-theme^='apple'] .member-stack { border: 0; box-shadow: var(--hair); border-radius: 6px; background: var(--surface); }
 [data-theme^='apple'] .huddle-btn:hover, [data-theme^='apple'] .member-stack:hover { box-shadow: 0 0 0 1px var(--edge); }
 [data-theme^='apple'] .day-divider { font-weight: 500; }
 [data-theme^='apple'] .day-divider span { border: 0; background: transparent; }
