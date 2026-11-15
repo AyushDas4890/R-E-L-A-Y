@@ -635,7 +635,7 @@ export default function App() {
                 title="Calendar"
                 onClick={() => showView('calendar')}
               >
-                <span className="arc-fav-icon tile-calendar"><Icon n="clock" size={20} /></span>
+                <span className="arc-fav-icon tile-calendar"><Icon n="calendar" size={20} /></span>
               </button>
             </div>
           </div>
