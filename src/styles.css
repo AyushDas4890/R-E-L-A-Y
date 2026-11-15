@@ -67,8 +67,8 @@ kbd { font: 11px var(--font); border: 1px solid var(--line); border-radius: 5px;
 .rail-me { margin-top: 8px; }
 
 .sidebar { width: var(--side); background: var(--side-bg); color: var(--side-text); display: flex; flex-direction: column; flex: none; height: 100%; position: relative; user-select: none; }
-.sidebar > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 12px; height: 48px; min-height: 48px; border-bottom: 1px solid var(--hair-c, rgba(255, 255, 255, 0.04)); }
-.sidebar h2 { margin: 0; font-size: 16px; font-weight: 650; }
+.sidebar > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 14px; height: 52px; min-height: 52px; border-bottom: 1px solid var(--hair-c, rgba(255, 255, 255, 0.04)); }
+.sidebar h2 { margin: 0; font-size: 17px; font-weight: 650; }
 .ws-menu-btn { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; padding: 4px 6px; border-radius: 6px; color: var(--text); cursor: pointer; transition: background 0.15s ease; }
 .ws-menu-btn:hover { background: var(--hover, rgba(255, 255, 255, 0.08)); }
 .ws-menu-btn .arrow { display: inline-flex; align-items: center; justify-content: center; color: var(--muted); }
@@ -84,7 +84,7 @@ kbd { font: 11px var(--font); border: 1px solid var(--line); border-radius: 5px;
 .sidebar .muted { color: var(--side-muted); }
 .side-item { width: 100%; min-height: var(--side-row); height: var(--side-row); display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; color: var(--side-muted); text-align: left; position: relative; font-size: 14px; font-weight: 450; cursor: pointer; border: none; background: transparent; box-sizing: border-box; }
 .side-item:hover { background: var(--side-hover); color: var(--side-text); }
-.side-item.active { background: var(--side-active); color: var(--side-text); box-shadow: inset 3px 0 var(--signal); font-weight: 550; }
+.side-item.active { background: var(--side-active); color: var(--side-text); box-shadow: none; font-weight: 550; }
 .side-item.unread { color: var(--side-text); font-weight: 650; }
 .side-item .hash { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; opacity: .85; }
 .side-item .label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
@@ -406,33 +406,49 @@ input[type='checkbox'].fit { width: auto; }
   letter-spacing: 0.04em;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 4px;
+  gap: 0;
+  padding: 0;
   border-radius: 4px;
   background: transparent;
   border: none;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
+  text-align: left;
 }
 .side-toggle:hover {
   color: var(--side-text);
-  background: var(--side-hover);
 }
 .side-chevron, .side-toggle i {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  flex-shrink: 0;
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .side-toggle.closed .side-chevron, .side-toggle.closed i {
   transform: rotate(-90deg);
 }
+.side-section-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
 .side-section-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--side-muted);
+  line-height: 1;
 }
 .side-section-actions {
   display: inline-flex;
@@ -610,13 +626,13 @@ input[type='checkbox'].fit { width: auto; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 2px 10px 8px;
+  padding: 4px 10px 10px;
 }
 
 /* Arc Search Input Pill */
 .arc-search {
   width: 100%;
-  height: 32px;
+  height: 34px;
   border-radius: 9px;
   border: 1px solid var(--hair-c, rgba(255, 255, 255, 0.06));
   background: var(--t2, rgba(255, 255, 255, 0.05));
@@ -671,12 +687,12 @@ input[type='checkbox'].fit { width: auto; }
 .arc-fav-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 8px;
   width: 100%;
 }
 
 .arc-fav-tile {
-  height: 40px;
+  height: 42px;
   border-radius: 11px;
   border: 1px solid var(--hair-c, rgba(255, 255, 255, 0.06));
   background: var(--t2, rgba(255, 255, 255, 0.06));

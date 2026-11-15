@@ -616,7 +616,7 @@ export default function App() {
                 title="Home"
                 onClick={() => showView('home')}
               >
-                <span className="arc-fav-icon tile-home"><Icon n="home" size={18} /></span>
+                <span className="arc-fav-icon tile-home"><Icon n="home" size={20} /></span>
               </button>
               <button
                 type="button"
@@ -624,7 +624,7 @@ export default function App() {
                 title="Inbox"
                 onClick={() => showView('activity')}
               >
-                <span className="arc-fav-icon tile-inbox"><Icon n="inbox" size={18} /></span>
+                <span className="arc-fav-icon tile-inbox"><Icon n="inbox" size={20} /></span>
                 {totalUnread + snap.inbox.filter((i) => !i.read).length > 0 && (
                   <span className="arc-fav-badge">{totalUnread + snap.inbox.filter((i) => !i.read).length}</span>
                 )}
@@ -635,15 +635,15 @@ export default function App() {
                 title="Calendar"
                 onClick={() => showView('calendar')}
               >
-                <span className="arc-fav-icon tile-calendar"><Icon n="clock" size={18} /></span>
+                <span className="arc-fav-icon tile-calendar"><Icon n="clock" size={20} /></span>
               </button>
             </div>
           </div>
           <div className="side-scroll">
-            {navItem('huddles', <Icon n="headphones" />, 'Huddles')}
-            {navItem('directory', <Icon n="users" />, 'People')}
-            {navItem('saved', <Icon n="bookmark" />, 'Later')}
-            {navItem('workflows', <Icon n="zap" />, 'Workflows')}
+            {navItem('huddles', <Icon n="headphones" size={18} />, 'Huddles')}
+            {navItem('directory', <Icon n="users" size={18} />, 'People')}
+            {navItem('saved', <Icon n="bookmark" size={18} />, 'Later')}
+            {navItem('workflows', <Icon n="zap" size={18} />, 'Workflows')}
 
             <PageTree nodes={snap.pages} favorites={snap.pageFavorites} teamspaces={snap.teamspaces} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} onLibrary={() => showView('library')} onManageSpaces={() => setModal('spaces')} />
 

@@ -59,6 +59,7 @@ export const FA_CLASS_MAP = {
   hash: 'fa-solid fa-hashtag',
   folder: 'fa-solid fa-folder',
   panelsTopLeft: 'fa-solid fa-table-columns',
+  template: 'fa-solid fa-file-lines',
 } as const;
 
 const PATHS = {
@@ -121,11 +122,36 @@ const PATHS = {
   hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
   folder: 'M2 6a2 2 0 0 1 2-2h4l2 2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z',
   panelsTopLeft: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM3 9h18M9 21V9',
+  template: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8M8 9h2',
 } as const;
 
 export type IconName = keyof typeof PATHS;
 
 export function Icon({ n, size = 16, fill }: { n: IconName; size?: number; fill?: boolean }) {
+  const d = PATHS[n];
+  if (d) {
+    return (
+      <svg
+        className={`icon icon-${n} ${fill ? 'filled' : ''}`}
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill={fill ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+        style={{
+          display: 'inline-block',
+          verticalAlign: 'middle',
+          flexShrink: 0,
+        }}
+      >
+        <path d={d} />
+      </svg>
+    );
+  }
   const faCls = FA_CLASS_MAP[n];
   if (faCls) {
     return (
@@ -145,9 +171,5 @@ export function Icon({ n, size = 16, fill }: { n: IconName; size?: number; fill?
       />
     );
   }
-  return (
-    <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill={fill ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={PATHS[n]} />
-    </svg>
-  );
+  return null;
 }

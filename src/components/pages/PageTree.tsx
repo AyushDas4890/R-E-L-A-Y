@@ -122,7 +122,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
     const hasChildren = sub.length > 0;
     const isOpen = !!open[n.id];
     const next = new Set(seen).add(n.id);
-    const indent = 8 + depth * 16;
+    const indent = 6 + depth * 12;
     return (
       <div key={n.id} className="pt-node">
         <div
@@ -140,19 +140,15 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           }}
           onDrop={(e) => { e.preventDefault(); dropOn(n); }}
         >
-          {hasChildren ? (
-            <button
-              type="button"
-              className={`pt-arrow ${isOpen ? 'open' : ''}`}
-              aria-label={isOpen ? 'Collapse' : 'Expand'}
-              aria-expanded={isOpen}
-              onClick={(e) => { e.stopPropagation(); toggle(n.id); }}
-            >
-              <Icon n="chevronRight" size={11} />
-            </button>
-          ) : (
-            <span className="pt-arrow-spacer" aria-hidden="true" />
-          )}
+          <button
+            type="button"
+            className={`pt-arrow ${isOpen ? 'open' : ''} ${hasChildren ? '' : 'none'}`}
+            aria-label={isOpen ? 'Collapse' : 'Expand'}
+            aria-expanded={isOpen}
+            onClick={(e) => { e.stopPropagation(); toggle(n.id); }}
+          >
+            <Icon n="chevronRight" size={11} />
+          </button>
           {renaming === n.id ? (
             <div className="pt-main" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }} onClick={(e) => e.stopPropagation()}>
               <span className="hash pt-icon" aria-hidden>{iconOf(n)}</span>
@@ -241,8 +237,8 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
     );
   };
 
-  const head = (key: string, label: ReactNode, add?: (el: HTMLElement) => void, onDropHere?: () => void, extra?: ReactNode) => {
-    const isClosed = !!sections[key];
+  const head = (key: string, label: string, icon?: ReactNode, add?: (el: HTMLElement) => void, onDropHere?: () => void, extra?: ReactNode) => {
+    const isClosed = Boolean(sections[key]);
     return (
       <div
         className="side-section"
@@ -256,6 +252,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           onClick={() => setSections((s) => ({ ...s, [key]: !s[key] }))}
         >
           <span className="side-chevron"><Icon n="chevronDown" size={11} /></span>
+          {icon && <span className="side-section-icon">{icon}</span>}
           <span className="side-section-label">{label}</span>
         </button>
         <span className="side-section-actions">
@@ -296,26 +293,23 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
       {teamspaces.map((s) => {
         const pages = live.filter((n) => n.teamspaceId === s.id);
         const iconNode = s.icon === '🏠' || s.icon === '🏢' || s.id === 'general' ? (
-          <span className="ts-icon" style={{ color: '#a855f7', display: 'inline-flex', marginRight: 6 }}>
+          <span className="ts-icon" style={{ color: '#a855f7', display: 'inline-flex' }}>
             <Icon n="home" size={14} />
           </span>
         ) : (
-          <span style={{ marginRight: 6 }}>{s.icon}</span>
+          <span>{s.icon}</span>
         );
         return (
           <div key={s.id}>
             {head(
               `ts-${s.id}`,
-              <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                {iconNode}
-                <span>{s.name}</span>
-              </span>,
+              s.name,
+              iconNode,
               openPlus(null, s.id),
               () => drag && send({ t: 'pageMove', id: drag, parentId: null, teamspaceId: s.id, shared: true, after: null })
             )}
-            {!sections[`ts-${s.id}`] && s.description && <p className="side-hint muted" style={{ paddingLeft: '24px' }}>{s.description}</p>}
             {!sections[`ts-${s.id}`] && pages.map((n) => row(n, 1, new Set()))}
-            {!sections[`ts-${s.id}`] && pages.length === 0 && !s.description && <p className="side-hint muted" style={{ paddingLeft: '24px' }}>No pages yet</p>}
+            {!sections[`ts-${s.id}`] && pages.length === 0 && <p className="side-hint muted" style={{ paddingLeft: '24px' }}>No pages yet</p>}
           </div>
         );
       })}
@@ -325,7 +319,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           {!sections.pshared && [...shared, ...orphans].map((n) => row(n, 1, new Set()))}
         </>
       )}
-      {head('ppriv', 'Private', openPlus(null, null), () => drag && send({ t: 'pageMove', id: drag, parentId: null, shared: false, after: null }))}
+      {head('ppriv', 'Private', undefined, openPlus(null, null), () => drag && send({ t: 'pageMove', id: drag, parentId: null, shared: false, after: null }))}
       {!sections.ppriv && mine.map((n) => row(n, 1, new Set()))}
       {!sections.ppriv && mine.length === 0 && <p className="side-hint muted" style={{ paddingLeft: '24px' }}>Only you can see pages here.</p>}
       <div className="side-nav-actions">
@@ -334,7 +328,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
           <span className="side-action-label">Teamspaces</span>
         </button>
         <button type="button" className="side-action-row" onClick={onLibrary}>
-          <span className="side-action-icon"><Icon n="panelsTopLeft" size={14} /></span>
+          <span className="side-action-icon"><Icon n="template" size={14} /></span>
           <span className="side-action-label">Templates</span>
         </button>
       </div>
