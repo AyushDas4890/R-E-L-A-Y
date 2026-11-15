@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dndPresets, plainText, shouldNotify } from './notify.ts';
+import { dndPresets, legacyPrefs, plainText, shouldNotify } from './notify.ts';
 import type { Message, Snapshot } from './types.ts';
 
 const msg = (over: Partial<Message>): Message => ({ id: 'x', channelId: 'general', userId: 'bob', text: 'hi', ts: 0, reactions: {}, ...over });
@@ -42,4 +42,12 @@ test('shouldNotify respects per-channel levels', () => {
   assert.equal(shouldNotify(msg({}), snap, 'all'), true);
   assert.equal(shouldNotify(msg({ text: 'ping <@me>' }), snap, 'mute'), false);
   assert.equal(shouldNotify(msg({ channelId: 'dm-bob-me' }), snap, 'mute'), false);
+});
+
+test('legacyPrefs maps the old browser keys to one workspace', () => {
+  const lastRead = JSON.stringify({ general: 10, 'w1/general': 20, 'w2/general': 30 });
+  const levels = JSON.stringify({ general: 'mute', bad: 5 });
+  assert.deepEqual(legacyPrefs('hq', { lastRead, levels, dndUntil: '99' }), { lastRead: { general: 10 }, levels: { general: 'mute' }, dndUntil: 99 });
+  assert.deepEqual(legacyPrefs('w1', { lastRead, levels: null, dndUntil: null }), { lastRead: { general: 20 }, levels: {}, dndUntil: 0 });
+  assert.deepEqual(legacyPrefs('w1', { lastRead: '{oops', levels: '[1]', dndUntil: 'x' }), { lastRead: {}, levels: {}, dndUntil: 0 });
 });

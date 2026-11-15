@@ -1,0 +1,16 @@
+/* Home: the page before any workspace. Astryx lays the page out; this file keeps only what drag and drop
+   and the drop overlay need. Theme tokens only, so every theme works. */
+/* The page sits on an Astryx surface so Astryx text colours always have their own background under them. */
+.hs { position: relative; min-height: 100vh; background: var(--color-background-surface); }
+/* The content region holds the page and the "drop here" overlay. */
+.hs-stage { position: relative; }
+.hs-stage.dropping { box-shadow: inset 0 0 0 2px var(--accent); }
+.hs-drop { position: absolute; inset: 0; z-index: 2; text-align: center; background: color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none; }
+/* Card header: the kind label pushes the delete button to the end. */
+.hs-kind { margin-inline-end: auto; }
+/* To-do rows: a plain list, and a done task's text is struck through. */
+.hs-tasks { list-style: none; margin: 0; padding: 0; }
+.hs-tasks li.done input:not([type="checkbox"]) { text-decoration: line-through; color: var(--muted); }
+/* Workspace rows can be dragged into a new order. */
+.hs-ws[draggable="true"] { cursor: grab; }
+.hs-ws.dnd-over { outline-offset: -2px; }

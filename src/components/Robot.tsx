@@ -1,3 +1,4 @@
+import '../robot.css';
 // The Relay mascot, drawn in CSS (styles in nexus.css). Layers are split so GSAP tweens never fight:
 // .nx-bot = entrance, .nx-bot-scroll = scroll parallax, .nx-bot-inner = idle float,
 // .nx-bot-head = look-at rotation, .nx-face = eye/mouth offset.

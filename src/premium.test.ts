@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  BOT_HELP,
+  botReply,
   barred,
   canPost,
   computeAnalytics,
   explainTerm,
+  fillWorkflow,
   mentionsUser,
   pruneRetention,
   scheduleDue,
@@ -105,4 +108,25 @@ test('analytics ignore bots and system messages', () => {
   assert.equal(out.filesShared, 1);
   assert.equal(out.reactions, 2);
   assert.equal(out.messagesByDay.length, 14);
+});
+
+test('Relay Bot answers help, topics and questions from visible messages', () => {
+  const users = { a: user('a'), relaybot: user('relaybot') };
+  const msgs = [msg('1', 'a', 'the wifi password is hunter2', 1)];
+  assert.equal(botReply('help', msgs, users, 'relaybot'), BOT_HELP);
+  assert.equal(botReply('<@relaybot> what can you do', msgs, users, 'relaybot'), BOT_HELP);
+  assert.match(botReply('how do huddles work', msgs, users, 'relaybot'), /Huddle/);
+  assert.match(botReply('what is the wifi password?', msgs, users, 'relaybot'), /hunter2/);
+  assert.match(botReply('where is the parking garage?', msgs, users, 'relaybot'), /couldn’t find/);
+});
+
+test('schedules read the clock in the publisher’s time zone', () => {
+  // 09:30 in UTC+5:30 (offset -330) is 04:00 UTC.
+  const t = { type: 'schedule' as const, channelId: 'c', time: '09:30', weekdaysOnly: false, tzOffset: -330 };
+  assert.ok(scheduleDue(t, new Date(Date.UTC(2026, 0, 7, 4, 0))));
+  assert.equal(scheduleDue(t, new Date(Date.UTC(2026, 0, 7, 9, 30))), null);
+});
+
+test('workflow placeholders fill in the user and channel', () => {
+  assert.equal(fillWorkflow('Welcome {user} to {channel}!', { userId: 'u1', channel: 'general' }), 'Welcome <@u1> to #general!');
 });

@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { Ctx } from './ctx.ts';
 import { channelLabel } from './format.tsx';
-import { getDevSession, readKey, saveDevSession, useAuthToken, useLastRead, useRelay, useUnread } from './store.ts';
+import { getDevSession, useAuthToken, useLastRead, useOlderHistory, useRelay, useUnread } from './store.ts';
 import { authEnabled } from './supabase.ts';
-import { Login } from './components/Login.tsx';
+import { Login, SignInStage } from './components/Login.tsx';
+import { ResetPassword } from './components/ResetPassword.tsx';
+import { Boot } from './components/Boot.tsx';
 import { Landing } from './components/Landing.tsx';
+import { PageIntro } from './components/PageIntro.tsx';
+import { HelpPage } from './components/Help.tsx';
+import { useRoute } from './components/Site.tsx';
 import { gsap } from 'gsap';
 import { pageTransition } from './transition.ts';
 import { Avatar } from './components/Avatar.tsx';
 import { Composer } from './components/Composer.tsx';
-import { HuddleBar } from './components/Huddle.tsx';
+import { HuddleBar, ScreenOverlay } from './components/Huddle.tsx';
 import { useHuddleCalls } from './huddle-call.ts';
 import { MessageList } from './components/MessageList.tsx';
 import {
@@ -19,23 +24,37 @@ import {
   ScheduledModal,
   SchedulePicker,
   SearchPalette,
-  WorkflowModal,
+  ShortcutsModal,
+  WorkflowsView,
 } from './components/Modals.tsx';
 import { CanvasPanel, DetailsPanel, ThreadPanel } from './components/Panels.tsx';
 import { AdminModal, TermsGate } from './components/Admin.tsx';
 import { ListPanel } from './components/Lists.tsx';
-import { ActivityView, DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
-import { CreateWorkspaceModal, FindWorkspacesModal, InviteModal, WorkspacePicker, WorkspaceSwitcher, WorkspaceTile } from './components/Workspaces.tsx';
+import { DirectoryView, DmsView, HuddlesView, SavedView } from './components/Views.tsx';
+import { HomeScreen } from './components/HomeScreen.tsx';
+import { InviteModal, WorkspaceTile } from './components/Workspaces.tsx';
 import { canPost, isAdmin } from './premium.ts';
-import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, type ChannelLevel } from './notify.ts';
-import { useAppearance } from './appearance.ts';
+import { INTERNAL } from './dnd.ts';
+import './dnd.css';
+import { dndPresets, useChannelLevels, useDnd, useMessageAlerts, usePrefsMigration, type ChannelLevel } from './notify.ts';
+import { clampSide, SIDE_DEFAULT, useAppearance } from './appearance.ts';
 import { Backdrop } from './components/Appearance.tsx';
+import { Icon } from './components/Icon.tsx';
+import { PageTree, type NewPageOptions } from './components/pages/PageTree.tsx';
+import { CalendarApp } from './components/pages/CalendarApp.tsx';
+import { HomeView } from './components/pages/HomeView.tsx';
+import { InboxView } from './components/pages/InboxView.tsx';
+import { LibraryView } from './components/pages/LibraryView.tsx';
+import { TeamspaceModal } from './components/pages/TeamspaceModal.tsx';
+import { pushRecent } from './recent.ts';
+import { nextChannel } from './shortcuts.ts';
+import { PageView } from './components/pages/PageView.tsx';
 
-type Modal = null | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'workflows' | 'admin' | 'invite' | 'createWs' | 'findWs' | { schedule: string };
+type Modal = null | 'spaces' | 'search' | 'new' | 'profile' | 'plan' | 'scheduled' | 'admin' | 'invite' | 'shortcuts' | { schedule: string };
 type Panel = null | { kind: 'thread'; id: string } | { kind: 'canvas' } | { kind: 'list' } | { kind: 'details' };
-type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles';
+type View = 'channel' | 'activity' | 'dms' | 'saved' | 'directory' | 'huddles' | 'page' | 'home' | 'calendar' | 'library' | 'workflows';
 type Menu = null | 'workspace' | 'more' | 'create' | 'dnd' | 'bell' | 'addTab' | 'addChannel';
-interface Place { view: View; channel: string }
+interface Place { view: View; channel: string; page?: string }
 
 const untilLabel = (ts: number) => new Date(ts).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 const params = new URLSearchParams(window.location.search);
@@ -46,11 +65,32 @@ if (params.get('ws')) try { localStorage.setItem('relay.workspace', params.get('
 // Back would drop the visitor mid-page, on a section they didn't ask for.
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const LEVEL_LABEL: Record<ChannelLevel, string> = { all: 'All new posts', mentions: 'Just mentions', mute: 'Mute' };
+const VIEW_LABEL: Record<Exclude<View, 'channel' | 'page'>, string> = { activity: 'Inbox', dms: 'Direct messages', saved: 'Later', directory: 'People', huddles: 'Huddles', home: 'Home', calendar: 'Calendar', library: 'Templates', workflows: 'Workflows' };
+const remember = (key: string, value: string) => {
+  try { localStorage.setItem(key, value); } catch { /* storage blocked: the setting just won't persist */ }
+};
+const recall = (key: string) => {
+  try { return localStorage.getItem(key); } catch { return null; }
+};
 
 export default function App() {
-  const { token, ready, signOut } = useAuthToken();
+  const { token, ready, signOut, recovery, devSession: signedInDev } = useAuthToken();
   const [devSession, setDevSession] = useState(getDevSession);
+  // A dev sign-in or sign-up from auth.ts saved a new session: use it without a reload.
+  useEffect(() => { if (signedInDev) setDevSession(signedInDev); }, [signedInDev]);
   const [invite, setInvite] = useState(inviteFromUrl);
+  // Show the scroll-zoom intro overlay on every page load / refresh.
+  const [showIntro, setShowIntro] = useState(true);
+  const doneIntro = () => setShowIntro(false);
+  // Help pages are public and also open for signed-in people, so they are decided before anything else.
+  const [siteRoute, goSite] = useRoute();
+  // The reset page stays up once opened, even after a successful update fires USER_UPDATED (which
+  // clears `recovery`), so the "Password updated" screen is seen. Only finishing or leaving it ends it.
+  // Two effects, so a route change while `recovery` is still true does not latch it again.
+  const [resetting, setResetting] = useState(false);
+  useEffect(() => { if (recovery) setResetting(true); }, [recovery]);
+  // Leaving /reset by a nav link ends it too (the recovery effect above re-latches it only while a recovery session is live).
+  useEffect(() => { setResetting(siteRoute === 'reset' ? true : (r) => (recovery ? r : false)); }, [siteRoute]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
   // Sign-in is its own history entry, so the browser's Back button returns to the landing page
   // instead of leaving the site. (`history` below is the in-app channel history, hence window.history.)
@@ -79,13 +119,14 @@ export default function App() {
   }, []);
   // In auth mode the token comes from Supabase; in dev mode from localStorage.
   const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
-  const { snap, typing, error, authError, analytics, workspaces, connected, send, listen, clearError, switchWorkspace } = useRelay(session);
+  const { snap, typing, error, authError, analytics, workspaces, atHome, home, lastWorkspace, connected, send, listen, clearError, switchWorkspace, goHome } = useRelay(session);
   const calls = useHuddleCalls(send, listen, connected);
   const leave = () => {
     void signOut();
     setDevSession(null);
   };
-  const { lastRead, markRead } = useLastRead();
+  const { lastRead, markRead } = useLastRead(snap, send);
+  const loadOlder = useOlderHistory(snap, send, connected);
   const unread = useUnread(snap, lastRead);
   // Navigation history, so the top bar's back and forward buttons work like a browser.
   const [history, setHistory] = useState<{ stack: Place[]; at: number }>({ stack: [{ view: 'channel', channel: 'general' }], at: 0 });
@@ -96,18 +137,42 @@ export default function App() {
   const [modal, setModal] = useState<Modal>(null);
   const [menu, setMenu] = useState<Menu>(null);
   const appearance = useAppearance();
+  // The sidebar stays open or closed (Ctrl+\) and people can drag its edge.
+  const [sideCollapsed, setSideCollapsed] = useState(() => recall('relay.sideCollapsed') === '1');
+  const [sideW, setSideW] = useState(() => clampSide(Number(recall('relay.sideW'))));
+  const [resizing, setResizing] = useState(false);
+  useEffect(() => remember('relay.sideCollapsed', sideCollapsed ? '1' : '0'), [sideCollapsed]);
+  useEffect(() => remember('relay.sideW', String(sideW)), [sideW]);
+  const startResize = (e: ReactPointerEvent) => {
+    e.preventDefault();
+    setResizing(true);
+    const onMove = (ev: PointerEvent) => setSideW(clampSide(ev.clientX));
+    const onUp = () => {
+      setResizing(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
   // Phone layout: the channel list is its own screen, opened from the header or tab bar.
   const [navOpen, setNavOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  // Dragging a channel in the sidebar: which one, and which header or channel it is hovering over.
+  const [dragCh, setDragCh] = useState<string | null>(null);
+  const [dropKey, setDropKey] = useState<string | null>(null);
+  // A page I just asked for opens as soon as the server says it exists.
+  const openAfterCreate = useRef(false);
   const [showBrowse, setShowBrowse] = useState(false);
   const [bannerHidden, setBannerHidden] = useState(() => localStorage.getItem('relay.alertBanner') === 'hidden');
-  const dnd = useDnd();
-  const levels = useChannelLevels(snap?.workspace.id);
+  const dnd = useDnd(snap, send);
+  const levels = useChannelLevels(snap, send);
+  usePrefsMigration(snap, send);
 
   const go = (to: Partial<Place>) => {
     setHistory(({ stack, at }) => {
       const next = { ...stack[at], ...to };
-      if (next.view === stack[at].view && next.channel === stack[at].channel) return { stack, at };
+      if (next.view === stack[at].view && next.channel === stack[at].channel && next.page === stack[at].page) return { stack, at };
       const kept = stack.slice(0, at + 1).concat(next).slice(-50);
       return { stack: kept, at: kept.length - 1 };
     });
@@ -119,27 +184,68 @@ export default function App() {
     setPanel(threadId ? { kind: 'thread', id: threadId } : null);
   }, levels.levelOf);
 
+  // The workspace shortcuts need the current sidebar, unread counts and panel, so the render below
+  // installs them here each time and the single keydown listener calls through.
+  const shortcutKey = useRef<(e: KeyboardEvent) => void>(() => {});
+  // Off until a workspace has rendered (and again whenever none is showing).
+  shortcutKey.current = () => {};
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'k') return shortcutKey.current(e);
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setModal('search');
       }
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault();
+        setSideCollapsed((c) => !c);
+      }
       if (e.key === 'Escape') setMenu(null);
+      shortcutKey.current(e);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // A new workspace starts at #general with a clean history.
+  useEffect(
+    () =>
+      listen((ev) => {
+        if (ev.t === 'pageCreated' && openAfterCreate.current) {
+          openAfterCreate.current = false;
+          go({ view: 'page', page: ev.id });
+        }
+      }),
+    [listen],
+  );
+  // ?p=<page id> links open that page once the workspace has loaded.
+  const deepLink = useRef(params.get('p'));
   useEffect(() => {
-    if (!snap) return;
-    setHistory({ stack: [{ view: 'channel', channel: 'general' }], at: 0 });
-    setPanel(null);
+    if (!snap || !deepLink.current) return;
+    const id = deepLink.current;
+    deepLink.current = null;
+    // After the effect below that resets history for a new workspace.
+    setTimeout(() => go({ view: 'page', page: id }), 0);
   }, [snap?.workspace.id]);
 
+  // A workspace opens on #general with a clean history; its Home page is one click away in the sidebar.
+  // Coming back from the main Home into the same workspace also starts there.
   useEffect(() => {
-    if (snap && view === 'channel' && snap.channels[active]) markRead(readKey(snap.workspace.id, active));
+    if (!snap || atHome) return;
+    setHistory({ stack: [{ view: 'channel', channel: 'general' }], at: 0 });
+    setPanel(null);
+  }, [snap?.workspace.id, atHome]);
+
+  // markRead below bumps lastRead as soon as a channel opens, so the "New messages" divider uses
+  // what was unread at the moment the channel was opened: lastRead then, and the newest message
+  // then, so messages arriving while the reader watches don't grow a divider.
+  const [unreadAtOpen, setUnreadAtOpen] = useState({ lastRead: 0, newest: 0 });
+  useLayoutEffect(() => {
+    let newest = 0;
+    for (const m of snap?.messages ?? []) if (m.channelId === active && !m.threadId && m.ts > newest) newest = m.ts;
+    setUnreadAtOpen({ lastRead: lastRead[active] ?? 0, newest });
+  }, [active, view, snap?.workspace.id]);
+  useEffect(() => {
+    if (snap && view === 'channel' && snap.channels[active]) markRead(active);
   }, [active, view, snap?.messages.length, snap?.workspace.id]);
 
   const totalUnread = Object.entries(unread).reduce((n, [cid, u]) => n + (levels.levelOf(cid) === 'mute' ? 0 : u.mentions || 0), 0);
@@ -168,52 +274,73 @@ export default function App() {
   }, [inWorkspace, snap?.workspace.id]);
   useEffect(() => {
     if (!inWorkspace || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const rows = gsap.utils.toArray<HTMLElement>('.main .message-list > *').slice(-30);
+    const rows = gsap.utils.toArray<HTMLElement>('.main .message-list .vrow > *').slice(-30);
     const tween = gsap.fromTo(rows, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.025, ease: 'power3.out', clearProps: 'transform,opacity' });
     gsap.fromTo('.channel-head', { y: -10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: 'power2.out', clearProps: 'transform,opacity' });
     return () => { tween.kill(); };
   }, [inWorkspace, active, view]);
 
-  const createWorkspace = (name: string) => {
-    send({ t: 'createWorkspace', name });
-    setModal(null);
-  };
-
-  if (!session || (authError && authError.code === 'auth-required')) {
-    if (!ready) return <div className="welcome"><div className="logo">R</div></div>;
-    if (!showLogin && !authError) return <Landing onGetStarted={openLogin} />;
+  // Supabase's reset email lands on /reset; the recovery event can also arrive on another path.
+  if (resetting || siteRoute === 'reset') {
+    const leaveReset = () => {
+      window.history.replaceState(null, '', '/');
+      setResetting(false);
+      goSite('home');
+    };
+    // Back to sign in: drop the recovery session (if any) so the sign-in page shows, not the workspace.
+    const cancelReset = () => {
+      if (session) leave();
+      leaveReset();
+      openLogin();
+    };
+    return <SignInStage onBack={cancelReset}><ResetPassword onDone={leaveReset} onCancel={cancelReset} /></SignInStage>;
+  }
+  if (siteRoute === 'help') {
+    return <HelpPage go={goSite} signedIn={!!session && !authError} onGetStarted={() => (session ? goSite('home') : openLogin())} />;
+  }
+  // Signed in, but the server turned the person away: an unconfirmed email, a domain outside the
+  // allowed list, the owner's approval pending, no invite, or removed from the organisation. These
+  // show on the sign-in page with the server's message, an invite-code field and a Sign out button.
+  // Nobody refused here is offered other workspaces or a way to create one.
+  const blocked = !!authError && authError.code !== 'auth-required';
+  if (!session || blocked || (authError && authError.code === 'auth-required')) {
+    if (!ready) return <Boot status="Starting Relay…" />;
+    if (!showLogin && !authError) return (
+      <>
+        {showIntro && <PageIntro onDone={doneIntro} />}
+        <Landing onGetStarted={openLogin} />
+      </>
+    );
     return (
       <Login
+        key={authError?.code ?? 'signin'}
         onBack={authError ? undefined : closeLogin}
         invite={invite}
         onInvite={setInvite}
         error={authError?.message}
-        signedIn={false}
-        onDevEnter={(tok, inv) => pageTransition(() => { setInvite(inv); setDevSession(saveDevSession(tok, inv)); })}
+        signedIn={!!blocked}
         onSignOut={leave}
+        initialMode={authError?.code === 'unverified' ? 'verify' : undefined}
+        email={authError?.code === 'unverified' ? recall('relay.lastEmail') ?? undefined : undefined}
       />
     );
   }
-  // Signed in, but no workspace we can open: pick one, join with a code, or create one.
-  if (authError) {
+  // Opening the app lands here: your own page, with the workspaces you can enter on the side.
+  if (atHome && !snap) {
+    if (!connected && !home.name && !workspaces.mine.length) return <Boot status="Connecting to Relay server…" hint="The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own." />;
     return (
-      <WorkspacePicker
-        message={authError.message}
-        mine={workspaces.mine}
-        discover={workspaces.discover}
-        onSwitch={switchWorkspace}
-        onCreate={createWorkspace}
-        onInvite={setInvite}
-        onSignOut={leave}
-      />
+      <>
+        {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
+        <HomeScreen name={home.name} items={home.items} mine={workspaces.mine} lastWorkspace={lastWorkspace} send={send} onEnter={switchWorkspace} onSignOut={leave} />
+      </>
     );
   }
   if (!snap) {
     return (
-      <div className="welcome">
-        <p className="muted">{connected ? 'Loading workspace…' : 'Connecting to Relay server…'}</p>
-        {!connected && <p className="muted"><small>The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.</small></p>}
-      </div>
+      <Boot
+        status={connected ? 'Loading workspace…' : 'Connecting to Relay server…'}
+        hint={connected ? undefined : 'The server sleeps when idle and can take up to a minute to wake. This page keeps retrying on its own.'}
+      />
     );
   }
 
@@ -222,7 +349,7 @@ export default function App() {
   const joined = channels.filter((c) => c.kind !== 'dm' && c.members.includes(snap.me));
   const browse = channels.filter((c) => c.kind === 'public' && !c.members.includes(snap.me));
   const dms = channels.filter((c) => c.kind === 'dm');
-  const people = Object.values(snap.users).filter((u) => u.id !== snap.me && !u.bot);
+  const people = Object.values(snap.users).filter((u) => u.id !== snap.me && !u.bot && !u.inactive);
   const ch = snap.channels[active] ?? snap.channels.general ?? channels[0];
   const typingNow = Object.keys(typing[ch?.id] ?? {}).map((id) => snap.users[id]?.name).filter(Boolean);
   const isMember = ch?.members.includes(snap.me);
@@ -235,9 +362,45 @@ export default function App() {
     setPanel(null);
   };
   const showView = (v: View) => go({ view: v });
+  const openPage = (id: string) => {
+    pushRecent(id.split('.')[0]);
+    go({ view: 'page', page: id });
+  };
+  const createPage = (parentId: string | null, space: string | null, options: NewPageOptions = {}) => {
+    openAfterCreate.current = true;
+    const where = space ? { teamspaceId: space, shared: true } : {};
+    if (options.db) send({ t: 'dbCreate', parentId, ...where, title: '', ...(typeof options.db === 'string' ? { preset: options.db } : {}) });
+    else send({ t: 'pageCreate', parentId, ...where, ...(options.template ? { template: options.template } : {}) });
+  };
   const toggleMenu = (m: Menu) => setMenu(menu === m ? null : m);
+  type ChannelTarget = { to: 'starred' } | { to: 'channels' } | { to: 'section'; id: string; before?: string };
+  // Dropping a channel on Starred stars it, on Channels returns it to the main list, on a section files it there
+  // (before the channel it landed on, if any). Leaving Starred un-stars it, since a starred channel shows only there.
+  const moveChannel = (id: string, target: ChannelTarget) => {
+    const isStarred = starredIds.has(id);
+    if (target.to === 'starred') {
+      if (!isStarred) send({ t: 'star', channelId: id });
+      return;
+    }
+    if (isStarred) send({ t: 'star', channelId: id });
+    const next = snap.sections.map((sec) => {
+      const ids = sec.channelIds.filter((x) => x !== id);
+      if (target.to !== 'section' || sec.id !== target.id) return { ...sec, channelIds: ids };
+      const at = target.before ? ids.indexOf(target.before) : -1;
+      return { ...sec, channelIds: at < 0 ? [...ids, id] : [...ids.slice(0, at), id, ...ids.slice(at)] };
+    });
+    if (JSON.stringify(next) !== JSON.stringify(snap.sections)) send({ t: 'sections', sections: next });
+  };
+  const dropProps = (key: string, target: ChannelTarget) => ({
+    onDragOver: (e: DragEvent) => { if (dragCh) { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; if (dropKey !== key) setDropKey(key); } },
+    onDragLeave: (e: DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropKey === key) setDropKey(null); },
+    onDrop: (e: DragEvent) => { if (!dragCh) return; e.preventDefault(); e.stopPropagation(); moveChannel(dragCh, target); setDragCh(null); setDropKey(null); },
+  });
   const section = (key: string, label: string, actions?: ReactNode) => (
-    <div className="side-section">
+    <div
+      className={`side-section ${dragCh && dropKey === `head:${key}` ? 'dnd-over' : ''}`}
+      {...(key === 'starred' ? dropProps(`head:${key}`, { to: 'starred' }) : key === 'channels' ? dropProps(`head:${key}`, { to: 'channels' }) : snap.sections.some((sec) => sec.id === key) ? dropProps(`head:${key}`, { to: 'section', id: key }) : {})}
+    >
       <button className={`side-toggle ${collapsed[key] ? 'closed' : ''}`} aria-expanded={!collapsed[key]} onClick={() => setCollapsed((c) => ({ ...c, [key]: !c[key] }))}>
         <i aria-hidden>▾</i> {label}
       </button>
@@ -247,7 +410,7 @@ export default function App() {
   const openThread = (id: string | null) => setPanel(id ? { kind: 'thread', id } : null);
   const togglePanel = (kind: 'canvas' | 'list' | 'details') => setPanel(panel?.kind === kind ? null : { kind });
 
-  const ctx = { snap, send, typing, openThread, openChannel, analytics, calls };
+  const ctx = { snap, send, typing, openThread, openChannel, analytics, calls, listen };
   const admin = isAdmin(me);
   const sectioned = new Set(snap.sections.flatMap((sec) => sec.channelIds));
   const addSection = () => {
@@ -269,38 +432,105 @@ export default function App() {
     }
   };
 
-  const sidebarItem = (c: (typeof channels)[number]) => {
+  // Runs a command picked in the palette (ids from src/commands.ts). The palette has closed itself first.
+  const runCommand = (id: string) => {
+    const views: Record<string, View> = { 'go-home': 'channel', 'go-dms': 'dms', 'go-activity': 'activity', 'go-saved': 'saved', 'go-people': 'directory', 'go-calendar': 'calendar', 'go-pages': 'home', 'new-dm': 'dms' };
+    if (views[id]) return showView(views[id]);
+    switch (id) {
+      case 'new-channel': return setModal('new');
+      case 'set-status': return setModal('profile');
+      case 'toggle-density': return appearance.setDensity(appearance.density === 'compact' ? 'comfortable' : 'compact');
+      case 'theme-dark': return appearance.setTheme('apple-dark');
+      case 'theme-light': return appearance.setTheme('apple');
+      case 'shortcuts': return setModal('shortcuts');
+      case 'admin-console': return setModal('admin');
+      case 'invite-people': return setModal('invite');
+    }
+  };
+
+  // `zone` says where in the sidebar the item sits ('starred', 'channels', 'dms' or a section id), so a drop on it knows where to put the dragged channel.
+  const sidebarItem = (c: (typeof channels)[number], zone?: string) => {
     const muted = levels.levelOf(c.id) === 'mute';
     const u = muted ? undefined : unread[c.id];
     const label = channelLabel(c, snap.users, snap.me);
     const other = c.kind === 'dm' ? c.members.find((m) => m !== snap.me) ?? snap.me : '';
     return (
-      <button key={c.id} className={`side-item ${view === 'channel' && c.id === ch?.id ? 'active' : ''} ${u ? 'unread' : ''} ${muted ? 'muted' : ''}`} onClick={() => openChannel(c.id)}>
-        <span className="hash">{c.kind === 'dm' ? <Avatar user={snap.users[other]} size={18} online={snap.online.includes(other)} /> : c.kind === 'private' ? '🔒' : '#'}</span>
+      <button
+        key={c.id}
+        className={`side-item ${view === 'channel' && c.id === ch?.id ? 'active' : ''} ${u ? 'unread' : ''} ${muted ? 'muted' : ''} ${dragCh === c.id ? 'dnd-dragging' : ''} ${dragCh && dragCh !== c.id && dropKey === `item:${c.id}` ? 'dnd-over' : ''}`}
+        onClick={() => openChannel(c.id)}
+        {...(zone && c.members.includes(snap.me)
+          ? {
+              draggable: true,
+              onDragStart: (e: DragEvent) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData(INTERNAL, c.id); e.dataTransfer.setData('text/plain', ''); setDragCh(c.id); },
+              onDragEnd: () => { setDragCh(null); setDropKey(null); },
+              ...dropProps(`item:${c.id}`, zone === 'starred' ? { to: 'starred' } : zone === 'channels' || zone === 'dms' ? { to: 'channels' } : { to: 'section', id: zone, before: c.id }),
+            }
+          : {})}
+      >
+        <span className="hash">{c.kind === 'dm' ? <Avatar user={snap.users[other]} size={18} online={snap.online.includes(other)} /> : c.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span>
         <span className="label">{label}</span>
-        {snap.huddles.some((h) => h.channelId === c.id) && <span title="Huddle live">🎧</span>}
-        {muted && <span className="side-muted" title="Muted">🔕</span>}
+        {snap.huddles.some((h) => h.channelId === c.id) && <span title="Huddle live"><Icon n="headphones" size={14} /></span>}
+        {muted && <span className="side-muted" title="Muted"><Icon n="bellOff" size={14} /></span>}
         {u && u.mentions > 0 ? <span className="count">{u.mentions}</span> : u ? <span className="pip" /> : null}
       </button>
     );
   };
-  const navItem = (v: View, icon: string, label: string) => (
+  const navItem = (v: View, icon: ReactNode, label: string) => (
     <button className={`side-item nav ${view === v ? 'active' : ''}`} onClick={() => showView(v)}>
       <span className="hash" aria-hidden>{icon}</span><span className="label">{label}</span>
       {v === 'huddles' && snap.huddles.length > 0 && <span className="count live">{snap.huddles.length}</span>}
     </button>
   );
+  // Channels in the order the sidebar shows them: starred, then sections, then Channels, then DMs.
+  const sidebarOrder = [
+    ...starred.map((c) => c.id),
+    ...snap.sections.flatMap((sec) => sec.channelIds.filter((id) => snap.channels[id]?.members.includes(snap.me) && !starredIds.has(id))),
+    ...joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map((c) => c.id),
+    ...dms.filter((c) => !starredIds.has(c.id)).map((c) => c.id),
+  ];
+  const unreadCounts: Record<string, number> = {};
+  for (const [cid, u] of Object.entries(unread)) if (levels.levelOf(cid) !== 'mute') unreadCounts[cid] = u.count;
+  shortcutKey.current = (e: KeyboardEvent) => {
+    const mod = e.metaKey || e.ctrlKey;
+    const target = e.target as HTMLElement | null;
+    const typingInField = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+    // Alt+arrows belong to the field (word/line movement) while typing; only claimed when there is a channel to go to.
+    if (e.altKey && !mod && !typingInField && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      const to = nextChannel(sidebarOrder, view === 'channel' ? active : '', e.key === 'ArrowDown' ? 1 : -1, e.shiftKey, unreadCounts);
+      if (to) { e.preventDefault(); openChannel(to); }
+      return;
+    }
+    // Not while any dialog is open: App-level modals, the palette (the 'search' modal), or a dialog a view opened itself.
+    const dialogOpen = !!modal || !!document.querySelector('[role="dialog"], [aria-modal="true"]');
+    if (mod && e.shiftKey && !dialogOpen && e.key.toLowerCase() === 'k') { e.preventDefault(); return showView('dms'); }
+    if (mod && e.shiftKey && !dialogOpen && e.key.toLowerCase() === 'a') { e.preventDefault(); return showView('activity'); }
+    // Esc from a field inside the right panel (the thread reply composer, say) closes the panel too.
+    const fieldOutsidePanel = typingInField && !target?.closest('.panel');
+    if (e.key === 'Escape' && panel && !modal && !menu && !fieldOutsidePanel && !e.defaultPrevented) return setPanel(null);
+    if (e.key === '?' && !mod && !e.altKey && !typingInField && !modal) { e.preventDefault(); setModal('shortcuts'); }
+  };
   const channelEmpty = channelMessages.filter((m) => !m.system && m.userId !== 'relaybot').length === 0;
 
   return (
     <Ctx.Provider value={ctx}>
-      <div className={`shell ${navOpen ? 'nav-open' : ''} ${panel ? 'has-panel' : ''}`} onClick={() => menu && setMenu(null)}>
+      <ScreenOverlay />
+      <div
+        className={`shell ${navOpen ? 'nav-open' : ''} ${panel ? 'has-panel' : ''} ${sideCollapsed ? 'side-collapsed' : ''}`}
+        style={{ '--side': `${sideW}px` } as CSSProperties}
+        onClick={() => menu && setMenu(null)}
+      >
         <header className="topbar">
-          <button className="icon-btn nav-toggle" aria-label="Show channels" onClick={() => setNavOpen(!navOpen)}>☰</button>
+          <button className="icon-btn nav-toggle" aria-label="Show channels" onClick={() => setNavOpen(!navOpen)}><Icon n="menu" /></button>
+          <button className="icon-btn side-toggle-top apple-only" aria-label="Open sidebar" title="Open sidebar (Ctrl+\)" onClick={() => setSideCollapsed(false)}><Icon n="panelLeft" /></button>
           <div className="history-nav">
             <button className="icon-btn" aria-label="Back" disabled={history.at === 0} onClick={() => setHistory((h) => ({ ...h, at: Math.max(0, h.at - 1) }))}>←</button>
             <button className="icon-btn" aria-label="Forward" disabled={history.at >= history.stack.length - 1} onClick={() => setHistory((h) => ({ ...h, at: Math.min(h.stack.length - 1, h.at + 1) }))}>→</button>
           </div>
+          <nav className="crumbs apple-only" aria-label="Where you are">
+            <span>{snap.workspace.name}</span><i aria-hidden>/</i>
+            <span>{view === 'page' ? (() => { const pn = snap.pages.find((x) => x.id === place.page); return pn ? `${pn.icon || '📄'} ${pn.title || 'Untitled'}` : 'Page'; })() : view === 'channel' ? (ch ? `${ch.kind === 'dm' ? '' : '# '}${channelLabel(ch, snap.users, snap.me)}` : '') : VIEW_LABEL[view]}</span>
+          </nav>
           <button className="omnibar" onClick={() => setModal('search')}>
             <span aria-hidden>⌕</span>
             <span className="grow">Search {snap.workspace.name}</span>
@@ -315,7 +545,7 @@ export default function App() {
                 title={dnd.active ? `Notifications paused until ${untilLabel(dnd.until)}` : 'Pause notifications'}
                 onClick={() => toggleMenu('dnd')}
               >
-                {dnd.active ? '🌙' : '🔕'}
+                {dnd.active ? <Icon n="moon" /> : <Icon n="bellOff" />}
               </button>
               {menu === 'dnd' && (
                 <div className="menu" role="menu">
@@ -333,44 +563,42 @@ export default function App() {
 
       <div className="app">
         <nav className="rail" onClick={(e) => e.stopPropagation()}>
-          <WorkspaceSwitcher current={snap.workspace} mine={workspaces.mine} onSwitch={switchWorkspace} onCreate={() => setModal('createWs')} onFind={() => setModal('findWs')} />
-          <span className="rail-divider" />
-          <button className={`rail-btn ${view === 'channel' ? 'active' : ''}`} title="Home" onClick={() => showView('channel')}>⌂<span>Home</span></button>
-          <button className={`rail-btn ${view === 'dms' ? 'active' : ''}`} title="Direct messages" onClick={() => showView('dms')}>💬<span>DMs</span></button>
-          <button className={`rail-btn ${view === 'activity' ? 'active' : ''}`} title="Activity" onClick={() => showView('activity')}>🔔<span>Activity</span>{totalUnread > 0 && <b className="rail-badge">{totalUnread}</b>}</button>
-          <button className={`rail-btn ${view === 'saved' ? 'active' : ''}`} title="Saved for later" onClick={() => showView('saved')}>🔖<span>Later</span></button>
+          <button className={`rail-btn ${view === 'channel' ? 'active' : ''}`} title="Home" onClick={() => showView('channel')}><Icon n="home" size={20} /><span>Home</span></button>
+          <button className={`rail-btn ${view === 'dms' ? 'active' : ''}`} title="Direct messages" onClick={() => showView('dms')}><Icon n="message" size={20} /><span>DMs</span></button>
+          <button className={`rail-btn ${view === 'activity' ? 'active' : ''}`} title="Activity" onClick={() => showView('activity')}><Icon n="bell" size={20} /><span>Activity</span>{totalUnread > 0 && <b className="rail-badge">{totalUnread}</b>}</button>
+          <button className={`rail-btn ${view === 'saved' ? 'active' : ''}`} title="Saved for later" onClick={() => showView('saved')}><Icon n="bookmark" size={20} /><span>Later</span></button>
           <div className="menu-anchor">
-            <button className="rail-btn" title="More" aria-expanded={menu === 'more'} onClick={() => toggleMenu('more')}>⋯<span>More</span>{snap.scheduled.length > 0 && <b className="rail-badge">{snap.scheduled.length}</b>}</button>
+            <button className="rail-btn" title="More" aria-expanded={menu === 'more'} onClick={() => toggleMenu('more')}><Icon n="more" size={20} /><span>More</span>{snap.scheduled.length > 0 && <b className="rail-badge">{snap.scheduled.length}</b>}</button>
             {menu === 'more' && (
               <div className="menu side" role="menu">
-                <button role="menuitem" onClick={() => { setModal('workflows'); setMenu(null); }}>⚡ Workflows</button>
-                <button role="menuitem" onClick={() => { setModal('scheduled'); setMenu(null); }}>⏱ Scheduled messages{snap.scheduled.length ? ` (${snap.scheduled.length})` : ''}</button>
-                <button role="menuitem" onClick={() => showView('huddles')}>🎧 Huddles</button>
-                <button role="menuitem" onClick={() => showView('directory')}>👥 People</button>
-                <button role="menuitem" onClick={() => { setModal('plan'); setMenu(null); }}>💎 Plan</button>
+                <button role="menuitem" onClick={() => { showView('workflows'); setMenu(null); }}><Icon n="zap" /> Workflows</button>
+                <button role="menuitem" onClick={() => { setModal('scheduled'); setMenu(null); }}><Icon n="clock" /> Scheduled messages{snap.scheduled.length ? ` (${snap.scheduled.length})` : ''}</button>
+                <button role="menuitem" onClick={() => showView('huddles')}><Icon n="headphones" /> Huddles</button>
+                <button role="menuitem" onClick={() => showView('directory')}><Icon n="users" /> People</button>
+                <button role="menuitem" onClick={() => { setModal('plan'); setMenu(null); }}><Icon n="gem" /> Plan</button>
               </div>
             )}
           </div>
           {admin && (
             <button className="rail-btn" title="Admin console" onClick={() => setModal('admin')}>
-              ⚙<span>Admin</span>{(snap.admin?.flags.length ?? 0) > 0 && <b className="rail-badge">{snap.admin?.flags.length}</b>}
+              <Icon n="settings" size={20} /><span>Admin</span>{(snap.admin?.flags.length ?? 0) > 0 && <b className="rail-badge">{snap.admin?.flags.length}</b>}
             </button>
           )}
           <span className="spacer" />
           <div className="menu-anchor">
-            <button className="rail-create" title="Create" aria-label="Create" aria-expanded={menu === 'create'} onClick={() => toggleMenu('create')}>＋</button>
+            <button className="rail-create" title="Create" aria-label="Create" aria-expanded={menu === 'create'} onClick={() => toggleMenu('create')}><Icon n="plus" size={20} /></button>
             {menu === 'create' && (
               <div className="menu side up" role="menu">
                 <button role="menuitem" onClick={() => { setModal('new'); setMenu(null); }}># New channel</button>
-                <button role="menuitem" onClick={() => showView('directory')}>💬 New message</button>
-                <button role="menuitem" onClick={() => { setModal('invite'); setMenu(null); }}>➕ Invite people</button>
-                <button role="menuitem" onClick={() => { setModal('createWs'); setMenu(null); }}>🏢 New workspace</button>
+                <button role="menuitem" onClick={() => showView('directory')}><Icon n="message" /> New message</button>
+                <button role="menuitem" onClick={() => { setModal('invite'); setMenu(null); }}><Icon n="plus" /> Invite people</button>
               </div>
             )}
           </div>
+          <button className="rail-btn" title="Sign out" onClick={leave}><Icon n="logout" size={20} /><span>Sign out</span></button>
           <button className="rail-me" title="Profile and preferences" onClick={() => setModal('profile')}>
             <Avatar user={me} size={34} online={connected} />
-            {dnd.active && <i className="dnd-badge" aria-hidden>🌙</i>}
+            {dnd.active && <i className="dnd-badge" aria-hidden><Icon n="moon" size={12} /></i>}
           </button>
         </nav>
 
@@ -383,42 +611,56 @@ export default function App() {
               {menu === 'workspace' && (
                 <div className="menu ws-menu" role="menu">
                   <div className="menu-head"><WorkspaceTile ws={snap.workspace} size={36} /><div><strong>{snap.workspace.name}</strong><small className="muted">{snap.settings.inviteOnly ? 'Invite-only' : 'Open to anyone who signs in'}</small></div></div>
+                  <button role="menuitem" onClick={() => { goHome(); setMenu(null); }}>Back to Home</button>
                   <button role="menuitem" onClick={() => { setModal('invite'); setMenu(null); }}>Invite people to {snap.workspace.name}</button>
                   <button role="menuitem" onClick={() => { setModal('profile'); setMenu(null); }}>Preferences</button>
+                  <button role="menuitem" onClick={() => { window.open('/help', '_blank', 'noopener'); setMenu(null); }}>Help center</button>
                   {admin && <button role="menuitem" onClick={() => { setModal('admin'); setMenu(null); }}>Admin console</button>}
                   {admin && <button role="menuitem" onClick={() => { renameWorkspace(); setMenu(null); }}>Rename workspace</button>}
                   {workspaces.mine.length > 1 && <p className="menu-title">Switch workspace</p>}
                   {workspaces.mine.filter((w) => w.id !== snap.workspace.id).map((w) => (
                     <button key={w.id} role="menuitem" className="ws-item" onClick={() => { switchWorkspace(w.id); setMenu(null); }}><WorkspaceTile ws={w} size={22} /> {w.name}</button>
                   ))}
-                  <button role="menuitem" onClick={() => { setModal('createWs'); setMenu(null); }}>Create a new workspace</button>
+                  <button role="menuitem" className="danger" onClick={() => { if (confirm(`Leave ${snap.workspace.name}? You can rejoin later if it is open or you have an invite.`)) send({ t: 'leaveWorkspace' }); setMenu(null); }}>Leave workspace</button>
+                  <button role="menuitem" className="danger" onClick={() => { if (confirm(`Delete your account in ${snap.workspace.name}? Your messages stay but show "Deleted user", and your saved items, reminders and settings here are erased. This cannot be undone.`)) send({ t: 'deleteMyAccount' }); setMenu(null); }}>Delete my account</button>
                   <button role="menuitem" className="danger" onClick={leave}>Sign out</button>
                 </div>
               )}
             </div>
             <span className="spacer" />
-            <button className="icon-btn side-head-btn" title="New sidebar section" onClick={addSection}>⊞</button>
-            <button className="icon-btn side-head-btn compose-btn" title="New channel" onClick={() => setModal('new')}>✎</button>
+            <button className="icon-btn side-head-btn apple-only" aria-label="Close sidebar" title="Close sidebar (Ctrl+\)" onClick={() => setSideCollapsed(true)}><Icon n="panelLeft" /></button>
+            <button className="icon-btn side-head-btn" title="New sidebar section" onClick={addSection}><Icon n="grid" /></button>
+            <button className="icon-btn side-head-btn compose-btn" title="New channel" onClick={() => setModal('new')}><Icon n="pencil" /></button>
           </header>
+          <div className="side-top apple-only">
+            <button className="side-item" onClick={() => setModal('search')}><span className="hash"><Icon n="search" /></span><span className="label">Search</span></button>
+            <button className={`side-item ${view === 'home' ? 'active' : ''}`} onClick={() => showView('home')}><span className="hash"><Icon n="home" /></span><span className="label">Home</span></button>
+            <button className={`side-item ${view === 'activity' ? 'active' : ''}`} onClick={() => showView('activity')}>
+              <span className="hash"><Icon n="inbox" /></span><span className="label">Inbox</span>
+              {totalUnread + snap.inbox.filter((i) => !i.read).length > 0 && <span className="count">{totalUnread + snap.inbox.filter((i) => !i.read).length}</span>}
+            </button>
+            <button className={`side-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => showView('calendar')}><span className="hash"><Icon n="clock" /></span><span className="label">Calendar</span></button>
+          </div>
           <div className="side-scroll">
-            {navItem('huddles', '🎧', 'Huddles')}
-            {navItem('directory', '👥', 'People')}
-            {navItem('activity', '@', 'Mentions & reactions')}
-            {navItem('saved', '🔖', 'Later')}
+            {navItem('huddles', <Icon n="headphones" />, 'Huddles')}
+            {navItem('directory', <Icon n="users" />, 'People')}
+            {navItem('saved', <Icon n="bookmark" />, 'Later')}
 
-            {section('starred', 'Starred')}
-            {!collapsed.starred && starred.map(sidebarItem)}
-            {!collapsed.starred && starred.length === 0 && <p className="muted small side-hint">Star a channel with ☆ in its header to pin it here.</p>}
+            <PageTree nodes={snap.pages} favorites={snap.pageFavorites} teamspaces={snap.teamspaces} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} onLibrary={() => showView('library')} onManageSpaces={() => setModal('spaces')} />
+
+            {section('starred', 'Favorites')}
+            {!collapsed.starred && starred.map((c) => sidebarItem(c, 'starred'))}
+            {!collapsed.starred && starred.length === 0 && <p className="muted small side-hint">Star a channel from its header, or drag one here, to pin it.</p>}
 
             {snap.sections.map((sec) => (
               <div key={sec.id}>
                 {section(sec.id, sec.name, <button title="Remove section (channels move back to Channels)" onClick={() => removeSection(sec.id)}>×</button>)}
-                {!collapsed[sec.id] && sec.channelIds.map((id) => snap.channels[id]).filter((c) => c && c.members.includes(snap.me) && !starredIds.has(c.id)).map(sidebarItem)}
-                {!collapsed[sec.id] && sec.channelIds.length === 0 && <p className="muted small side-hint">Move channels here from a channel's details.</p>}
+                {!collapsed[sec.id] && sec.channelIds.map((id) => snap.channels[id]).filter((c) => c && c.members.includes(snap.me) && !starredIds.has(c.id)).map((c) => sidebarItem(c, sec.id))}
+                {!collapsed[sec.id] && sec.channelIds.length === 0 && <p className="muted small side-hint">Drag channels onto this section's name, or move them from a channel's details.</p>}
               </div>
             ))}
             {section('channels', 'Channels')}
-            {!collapsed.channels && joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map(sidebarItem)}
+            {!collapsed.channels && joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map((c) => sidebarItem(c, 'channels'))}
             {!collapsed.channels && (
               <div className="menu-anchor">
                 <button className="side-item add" onClick={() => toggleMenu('addChannel')}><span className="hash">＋</span><span className="label">Add channels</span></button>
@@ -430,10 +672,10 @@ export default function App() {
                 )}
               </div>
             )}
-            {!collapsed.channels && showBrowse && browse.map(sidebarItem)}
+            {!collapsed.channels && showBrowse && browse.map((c) => sidebarItem(c))}
 
             {section('dms', 'Direct messages')}
-            {!collapsed.dms && dms.filter((c) => !starredIds.has(c.id)).map(sidebarItem)}
+            {!collapsed.dms && dms.filter((c) => !starredIds.has(c.id)).map((c) => sidebarItem(c, 'dms'))}
             {!collapsed.dms && people.filter((u) => !dms.some((d) => d.members.includes(u.id))).slice(0, 8).map((u) => (
               <button key={u.id} className="side-item" onClick={() => dmWith(u.id)}>
                 <span className="hash"><Avatar user={u} size={18} online={snap.online.includes(u.id)} /></span>
@@ -449,6 +691,14 @@ export default function App() {
               </button>
             )}
           </div>
+          <div className="side-bottom apple-only">
+            <button className="side-item" onClick={() => showView('workflows')}><span className="hash"><Icon n="zap" /></span><span className="label">Workflows</span></button>
+            <button className="side-item" onClick={() => setModal('scheduled')}><span className="hash"><Icon n="clock" /></span><span className="label">Scheduled messages</span>{snap.scheduled.length > 0 && <span className="count">{snap.scheduled.length}</span>}</button>
+            {admin && <button className="side-item" onClick={() => setModal('admin')}><span className="hash"><Icon n="settings" /></span><span className="label">Admin console</span>{(snap.admin?.flags.length ?? 0) > 0 && <span className="count">{snap.admin?.flags.length}</span>}</button>}
+            <button className="side-item" onClick={() => setModal('plan')}><span className="hash"><Icon n="gem" /></span><span className="label">Plan</span></button>
+            <button className="side-item" onClick={() => setModal('profile')}><span className="hash"><Icon n="user" /></span><span className="label">Preferences</span></button>
+          </div>
+          <div className={`side-resize apple-only ${resizing ? 'drag' : ''}`} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" onPointerDown={startResize} onDoubleClick={() => setSideW(SIDE_DEFAULT)} />
         </aside>
         <button className="nav-scrim" aria-label="Close channels" tabIndex={-1} onClick={() => setNavOpen(false)} />
 
@@ -456,7 +706,12 @@ export default function App() {
           <Backdrop bg={appearance.background} dim={appearance.dim} />
           {!connected && <div className="banner">Reconnecting…</div>}
           {error && <div className="banner error" onClick={clearError}>{error} (click to dismiss)</div>}
-          {view === 'activity' ? <ActivityView />
+          {view === 'page' && place.page ? <PageView key={place.page} pageId={place.page} onOpen={openPage} onGone={() => go({ view: 'channel' })} />
+            : view === 'home' ? <HomeView onOpen={openPage} onNew={(db) => createPage(null, null, db ? { db: true } : {})} onLibrary={() => showView('library')} onCalendar={() => showView('calendar')} />
+            : view === 'calendar' ? <CalendarApp onOpen={openPage} />
+            : view === 'library' ? <LibraryView onOpen={openPage} />
+            : view === 'workflows' ? <WorkflowsView />
+            : view === 'activity' ? <InboxView onOpen={openPage} />
             : view === 'saved' ? <SavedView />
             : view === 'dms' ? <DmsView onNew={() => showView('directory')} />
             : view === 'directory' ? <DirectoryView onMessage={dmWith} />
@@ -467,26 +722,26 @@ export default function App() {
                 <div className="channel-title">
                   <h2>
                     {ch.kind !== 'dm' && (
-                      <button className={`star-btn ${starredIds.has(ch.id) ? 'on' : ''}`} aria-label={starredIds.has(ch.id) ? 'Unstar channel' : 'Star channel'} aria-pressed={starredIds.has(ch.id)} onClick={() => send({ t: 'star', channelId: ch.id })}>{starredIds.has(ch.id) ? '★' : '☆'}</button>
+                      <button className={`star-btn ${starredIds.has(ch.id) ? 'on' : ''}`} aria-label={starredIds.has(ch.id) ? 'Unstar channel' : 'Star channel'} aria-pressed={starredIds.has(ch.id)} onClick={() => send({ t: 'star', channelId: ch.id })}><Icon n="star" fill={starredIds.has(ch.id)} /></button>
                     )}
-                    <button className="title-btn" onClick={() => togglePanel('details')}>{ch.kind === 'dm' ? '' : ch.kind === 'private' ? '🔒 ' : '# '}{channelLabel(ch, snap.users, snap.me)}</button>
+                    <button className="title-btn" onClick={() => togglePanel('details')}>{ch.kind === 'dm' ? '' : ch.kind === 'private' ? <><Icon n="lock" size={14} />{' '}</> : '# '}{channelLabel(ch, snap.users, snap.me)}</button>
                   </h2>
                   {ch.topic && <p className="topic">{ch.topic}</p>}
                 </div>
                 <div className="head-actions" onClick={(e) => e.stopPropagation()}>
-                  {ch.kind !== 'dm' && <button className="ghost-btn invite-btn" onClick={() => setModal('invite')}>👤 <span>Invite teammates</span></button>}
+                  {ch.kind !== 'dm' && <button className="ghost-btn invite-btn" onClick={() => setModal('invite')}><Icon n="user" /> <span>Invite teammates</span></button>}
                   <button className="member-stack" title="Members" onClick={() => togglePanel('details')}>
                     {ch.members.slice(0, 3).map((id) => <Avatar key={id} user={snap.users[id]} size={22} />)}
                     <b>{ch.members.length}</b>
                   </button>
-                  <button className="icon-btn head-icon" title="Start a huddle" aria-label="Start a huddle" onClick={() => send({ t: 'huddle', channelId: ch.id, action: 'join' })}>🎧</button>
+                  <button className="icon-btn head-icon" title="Start a huddle" aria-label="Start a huddle" onClick={() => send({ t: 'huddle', channelId: ch.id, action: 'join' })}><Icon n="headphones" /></button>
                   <div className="menu-anchor">
-                    <button className={`icon-btn head-icon ${level !== 'mentions' ? 'lit' : ''}`} title={`Notifications: ${LEVEL_LABEL[level]}`} aria-label="Channel notifications" aria-expanded={menu === 'bell'} onClick={() => toggleMenu('bell')}>{level === 'mute' ? '🔕' : '🔔'}</button>
+                    <button className={`icon-btn head-icon ${level !== 'mentions' ? 'lit' : ''}`} title={`Notifications: ${LEVEL_LABEL[level]}`} aria-label="Channel notifications" aria-expanded={menu === 'bell'} onClick={() => toggleMenu('bell')}>{level === 'mute' ? <Icon n="bellOff" /> : <Icon n="bell" />}</button>
                     {menu === 'bell' && (
                       <div className="menu" role="menu">
                         <p className="menu-title">Notify me about…</p>
                         {(['all', 'mentions', 'mute'] as ChannelLevel[]).map((l) => (
-                          <button key={l} role="menuitemradio" aria-checked={level === l} className={level === l ? 'checked' : ''} onClick={() => { levels.setLevel(ch.id, l); setMenu(null); }}>{level === l ? '✓ ' : ''}{LEVEL_LABEL[l]}</button>
+                          <button key={l} role="menuitemradio" aria-checked={level === l} className={level === l ? 'checked' : ''} onClick={() => { levels.setLevel(ch.id, l); setMenu(null); }}>{level === l && <Icon n="check" />} {LEVEL_LABEL[l]}</button>
                         ))}
                       </div>
                     )}
@@ -495,17 +750,17 @@ export default function App() {
                   <button className="icon-btn head-icon" title="Channel details" aria-label="Channel details" onClick={() => togglePanel('details')}>⋮</button>
                 </div>
                 <nav className="channel-tabs" aria-label="Channel views" onClick={(e) => e.stopPropagation()}>
-                  <button className={!panel || panel.kind === 'thread' || panel.kind === 'details' ? 'on' : ''} onClick={() => setPanel(null)}>💬 Messages</button>
-                  <button className={panel?.kind === 'canvas' ? 'on' : ''} onClick={() => togglePanel('canvas')}>📄 Canvas</button>
-                  <button className={panel?.kind === 'list' ? 'on' : ''} onClick={() => togglePanel('list')}>☑ List</button>
-                  <button onClick={() => send({ t: 'send', channelId: ch.id, text: '/summarize' })}>✨ Recap</button>
+                  <button className={!panel || panel.kind === 'thread' || panel.kind === 'details' ? 'on' : ''} onClick={() => setPanel(null)}><Icon n="message" /> Messages</button>
+                  <button className={panel?.kind === 'canvas' ? 'on' : ''} onClick={() => togglePanel('canvas')}><Icon n="file" /> Canvas</button>
+                  <button className={panel?.kind === 'list' ? 'on' : ''} onClick={() => togglePanel('list')}><Icon n="checkSquare" /> List</button>
+                  <button onClick={() => send({ t: 'send', channelId: ch.id, text: '/summarize' })}><Icon n="sparkles" /> Recap</button>
                   <div className="menu-anchor">
                     <button className="tab-add" aria-label="Add a tab" aria-expanded={menu === 'addTab'} onClick={() => toggleMenu('addTab')}>＋</button>
                     {menu === 'addTab' && (
                       <div className="menu" role="menu">
-                        <button role="menuitem" onClick={() => { setPanel({ kind: 'canvas' }); setMenu(null); }}>📄 Canvas</button>
-                        <button role="menuitem" onClick={() => { setPanel({ kind: 'list' }); setMenu(null); }}>☑ List</button>
-                        <button role="menuitem" onClick={() => { setModal('workflows'); setMenu(null); }}>⚡ Workflow</button>
+                        <button role="menuitem" onClick={() => { setPanel({ kind: 'canvas' }); setMenu(null); }}><Icon n="file" /> Canvas</button>
+                        <button role="menuitem" onClick={() => { setPanel({ kind: 'list' }); setMenu(null); }}><Icon n="checkSquare" /> List</button>
+                        <button role="menuitem" onClick={() => { showView('workflows'); setMenu(null); }}><Icon n="zap" /> Workflow</button>
                       </div>
                     )}
                   </div>
@@ -515,7 +770,7 @@ export default function App() {
               {channelEmpty && ch.kind !== 'dm' && (
                 <div className="starter">
                   <div className="starter-head">
-                    <h3>👋 Welcome to #{ch.name}</h3>
+                    <h3>Welcome to #{ch.name}</h3>
                     <p className="muted">{ch.topic ? ch.topic.replace(/[.!?]?$/, '.') : 'This is the very beginning of the channel.'} Here are a few ways to get it going.</p>
                   </div>
                   <div className="starter-cards">
@@ -523,7 +778,7 @@ export default function App() {
                       <strong>Write a canvas</strong><small>A shared doc for plans and notes</small>
                       <span className="starter-art" aria-hidden><i /><i /><i /></span>
                     </button>
-                    <button className="starter-card c2" onClick={() => setModal('workflows')}>
+                    <button className="starter-card c2" onClick={() => showView('workflows')}>
                       <strong>Start from a template</strong><small>Standups, triage, help desk and more</small>
                       <span className="starter-art" aria-hidden><i /><i /><i /></span>
                     </button>
@@ -536,12 +791,12 @@ export default function App() {
               )}
               {channelMessages.length === 0 && ch.kind === 'dm' ? (
                 <div className="empty">
-                  <div className="empty-mark" aria-hidden>👋</div>
+                  <div className="empty-mark" aria-hidden><Icon n="message" size={28} /></div>
                   <h3>This is the very beginning of your conversation</h3>
                   <p className="muted">Say hi, share a file, or try <code>/remind me stretch in 10m</code>.</p>
                 </div>
               ) : (
-                <MessageList messages={channelMessages} />
+                <MessageList messages={channelMessages} lastReadAtOpen={unreadAtOpen.lastRead} newestAtOpen={unreadAtOpen.newest} onOlder={snap.history[active] ? () => loadOlder(active) : undefined} />
               )}
               <div className="typing">
                 {typingNow.length > 0 && (
@@ -553,7 +808,7 @@ export default function App() {
               </div>
               {(isMember || ch.kind === 'dm') && !canPost(ch, me) ? (
                 <div className="join-bar">
-                  <span>📣 Only admins can post in #{ch.name}. You can still reply in threads.</span>
+                  <span><Icon n="megaphone" /> Only admins can post in #{ch.name}. You can still reply in threads.</span>
                 </div>
               ) : isMember || ch.kind === 'dm' ? (
                 <Composer
@@ -571,31 +826,35 @@ export default function App() {
           ) : null}
           {alerts.permission === 'default' && !bannerHidden && (
             <div className="alert-banner" role="status">
-              <span>🔔 Relay needs your permission to send notifications.</span>
+              <span><Icon n="bell" /> Relay needs your permission to send notifications.</span>
               <button className="link-btn" onClick={() => void alerts.request()}>Enable notifications</button>
               <button className="icon-btn" aria-label="Dismiss" onClick={() => { setBannerHidden(true); localStorage.setItem('relay.alertBanner', 'hidden'); }}>×</button>
             </div>
           )}
         </main>
 
-        {panel?.kind === 'thread' && <ThreadPanel parentId={panel.id} onClose={() => setPanel(null)} />}
+        {panel?.kind === 'thread' && <ThreadPanel key={panel.id} parentId={panel.id} onClose={() => setPanel(null)} />}
         {panel?.kind === 'canvas' && ch && <CanvasPanel channelId={ch.id} onClose={() => setPanel(null)} />}
         {panel?.kind === 'list' && ch && <ListPanel channelId={ch.id} onClose={() => setPanel(null)} />}
         {panel?.kind === 'details' && ch && <DetailsPanel channelId={ch.id} onClose={() => setPanel(null)} />}
       </div>
 
         <nav className="tabbar" aria-label="Sections">
-          <button className={navOpen ? 'on' : ''} onClick={() => setNavOpen(true)}>⌂<span>Home</span></button>
-          <button className={!navOpen && view === 'dms' ? 'on' : ''} onClick={() => showView('dms')}>💬<span>DMs</span></button>
-          <button className={!navOpen && view === 'activity' ? 'on' : ''} onClick={() => showView('activity')}>🔔<span>Activity</span>{totalUnread > 0 && <b className="rail-badge">{totalUnread}</b>}</button>
-          <button className={!navOpen && view === 'saved' ? 'on' : ''} onClick={() => showView('saved')}>🔖<span>Later</span></button>
-          <button onClick={() => setModal('profile')}>🙂<span>You</span></button>
+          <button className={navOpen ? 'on' : ''} onClick={() => setNavOpen(true)}><Icon n="home" size={20} /><span>Home</span></button>
+          <button className={!navOpen && view === 'dms' ? 'on' : ''} onClick={() => showView('dms')}><Icon n="message" size={20} /><span>DMs</span></button>
+          <button className={!navOpen && view === 'activity' ? 'on' : ''} onClick={() => showView('activity')}><Icon n="bell" size={20} /><span>Activity</span>{totalUnread > 0 && <b className="rail-badge">{totalUnread}</b>}</button>
+          <button className={!navOpen && view === 'saved' ? 'on' : ''} onClick={() => showView('saved')}><Icon n="bookmark" size={20} /><span>Later</span></button>
+          <button onClick={() => setModal('profile')}><Icon n="user" size={20} /><span>You</span></button>
         </nav>
       </div>
 
       {modal === 'search' && (
         <SearchPalette
           onClose={() => setModal(null)}
+          onOpenPage={openPage}
+          onCommand={runCommand}
+          onPerson={dmWith}
+          isAdmin={admin}
           onPick={(cid, tid) => {
             openChannel(cid);
             if (tid) setPanel({ kind: 'thread', id: tid });
@@ -603,15 +862,14 @@ export default function App() {
           }}
         />
       )}
+      {modal === 'spaces' && <TeamspaceModal onClose={() => setModal(null)} />}
       {modal === 'new' && <NewChannelModal onClose={() => setModal(null)} />}
       {modal === 'profile' && <ProfileModal onClose={() => setModal(null)} appearance={appearance} />}
+      {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
       {modal === 'plan' && <PlanModal onClose={() => setModal(null)} />}
       {modal === 'scheduled' && <ScheduledModal onClose={() => setModal(null)} />}
-      {modal === 'workflows' && <WorkflowModal onClose={() => setModal(null)} />}
       {modal === 'admin' && admin && <AdminModal onClose={() => setModal(null)} />}
       {modal === 'invite' && <InviteModal snap={snap} send={send} onClose={() => setModal(null)} />}
-      {modal === 'createWs' && <CreateWorkspaceModal onClose={() => setModal(null)} onCreate={createWorkspace} />}
-      {modal === 'findWs' && <FindWorkspacesModal discover={workspaces.discover} onClose={() => setModal(null)} onJoin={(id) => { switchWorkspace(id); setModal(null); }} />}
       <TermsGate />
       {typeof modal === 'object' && modal && 'schedule' in modal && ch && (
         <SchedulePicker text={modal.schedule} channelId={ch.id} onClose={() => setModal(null)} />

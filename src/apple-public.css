@@ -1,0 +1,47 @@
+/* Apple touch for the workspace picker (signed in, before a workspace theme applies): pill buttons,
+   the floating glass nav, generous radii and soft focus halos. The public pages themselves are built
+   on Astryx (site.css). site.css then dresses the picker in its dark glass. */
+.ws-picker {
+  --ap-ink: #1d1d1f;
+  --ap-ink-2: #6e6e73;
+  --ap-ink-3: #86868b;
+  --ap-bg: #f5f5f7;
+  --ap-line: rgba(0, 0, 0, .08);
+  --ap-blue: #0071e3;
+  --ap-blue-hover: #0077ed;
+  --ap-blue-ink: #0066cc;
+  --ap-card: #fff;
+  --ap-card-2: #fbfbfd;
+  --ap-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', Inter, 'Segoe UI', system-ui, sans-serif;
+  --ap-spring: cubic-bezier(.32, .72, 0, 1);
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
+}
+.ws-picker :is(h1, h2, h3) { letter-spacing: -.03em; }
+
+/* Buttons: pills with 100ms press, weight 500 */
+.ap-pill { height: 44px; border-radius: 999px; font-weight: 500; transition: background-color .2s ease, transform .12s var(--ap-spring), box-shadow .2s ease; }
+.ap-pill.blue { box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .2), 0 1px 2px rgba(0, 0, 0, .12); }
+.ap-pill.quiet { background: #fff; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .14); }
+.ap-pill:active:not(:disabled) { transform: scale(.97); }
+.ap-link-btn { transition: color .2s ease, opacity .2s ease; }
+
+/* Picker card and nav */
+.ws-picker .ws-picker-card {
+  border-radius: 28px; background: rgba(255, 255, 255, .86);
+  backdrop-filter: saturate(180%) blur(30px); -webkit-backdrop-filter: saturate(180%) blur(30px);
+  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .06), 0 1px 2px rgba(0, 0, 0, .04), 0 32px 72px -20px rgba(0, 0, 0, .2);
+}
+.ws-picker input { border-radius: 12px; transition: border-color .2s ease, box-shadow .2s ease; }
+.ws-picker .ws-create-inline input:focus { border-color: var(--ap-blue); box-shadow: 0 0 0 4px rgba(0, 113, 227, .16); }
+.ws-picker :is(button, a) { border-radius: 999px; }
+.ws-picker .ws-row { border-radius: 0; transition: background-color .15s ease; }
+.ws-picker .ws-group { border-radius: 16px; }
+.ap-si-nav { background: rgba(255, 255, 255, .72); backdrop-filter: saturate(180%) blur(24px); -webkit-backdrop-filter: saturate(180%) blur(24px); }
+
+/* Focus: one soft ring */
+.ws-picker :focus-visible { outline: 3px solid rgba(0, 113, 227, .4); outline-offset: 2px; border-radius: 10px; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .ap-si-nav, .ws-picker .ws-picker-card { backdrop-filter: none; -webkit-backdrop-filter: none; background: #fff; }
+}

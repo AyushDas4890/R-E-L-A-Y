@@ -80,7 +80,8 @@ function AnalyticsTab() {
 
 function MembersTab() {
   const { snap, send } = useRelayCtx();
-  const people = Object.values(snap.users).filter((u) => !u.bot);
+  const people = Object.values(snap.users).filter((u) => !u.bot && !u.inactive);
+  const removed = snap.admin?.removed ?? [];
   const holds = snap.admin?.legalHolds ?? [];
   const iAmOwner = snap.users[snap.me]?.role === 'owner';
   return (
@@ -105,6 +106,14 @@ function MembersTab() {
             <option value="member">Member</option>
             <option value="guest">Guest</option>
           </select>
+          {u.id !== snap.me && <button className="ghost-btn danger" onClick={() => { if (confirm(`Remove ${u.name} from ${snap.workspace.name}? They are signed out at once and can't rejoin, even with an invite, until you restore them.`)) send({ t: 'removeMember', userId: u.id }); }}>Remove</button>}
+        </div>
+      ))}
+      {removed.length > 0 && <p className="muted small">Removed people</p>}
+      {removed.map((id) => (
+        <div key={id} className="member wide">
+          <span className="grow">{snap.users[id]?.name ?? id}</span>
+          <button className="ghost-btn" onClick={() => send({ t: 'restoreMember', userId: id })}>Allow back in</button>
         </div>
       ))}
       <p className="muted small">{snap.admin?.preservedCount ?? 0} edited or deleted messages preserved under legal hold. They're included in exports.</p>
@@ -115,7 +124,7 @@ function MembersTab() {
 function GroupsTab() {
   const { snap, send } = useRelayCtx();
   const [groups, setGroups] = useState<UserGroup[]>(snap.groups);
-  const people = Object.values(snap.users).filter((u) => !u.bot);
+  const people = Object.values(snap.users).filter((u) => !u.bot && !u.inactive);
   const patch = (id: string, change: Partial<UserGroup>) => setGroups(groups.map((g) => (g.id === id ? { ...g, ...change } : g)));
   return (
     <div className="grid-gap">
@@ -224,6 +233,77 @@ function FlagsTab() {
   );
 }
 
+function SignUpPolicyCard() {
+  const { snap, send } = useRelayCtx();
+  const [orgName, setOrgName] = useState(snap.settings.orgName ?? '');
+  const [domains, setDomains] = useState((snap.settings.allowedDomains ?? []).join('\n'));
+  const [defaultRole, setDefaultRole] = useState<'member' | 'guest'>(snap.settings.defaultRole ?? 'member');
+  const [defaultChannels, setDefaultChannels] = useState<string[]>(snap.settings.defaultChannels ?? []);
+  const [inviteOnly, setInviteOnly] = useState(!!snap.settings.inviteOnly);
+  const [saved, setSaved] = useState(false);
+  const publicChannels = Object.values(snap.channels).filter((c) => c.kind === 'public');
+  const ownerEmailSet = snap.admin?.ownerEmailSet ?? true;
+  const save = () => {
+    // One domain per line (commas also work). The server lowercases, strips a leading @ and drops invalid entries.
+    const allowedDomains = domains.split(/[\n,]/).map((d) => d.trim()).filter(Boolean);
+    send({ t: 'settings', settings: { orgName, allowedDomains, defaultRole, defaultChannels, inviteOnly } });
+    setSaved(true);
+  };
+  const edit = <T,>(set: (v: T) => void) => (v: T) => { set(v); setSaved(false); };
+  return (
+    <div className="workflow grid-gap">
+      <h4>Sign-up policy</h4>
+      {!ownerEmailSet && (
+        <p className="small" role="note" style={{ padding: '8px 12px', borderRadius: 8, background: 'rgba(255, 177, 16, .18)', color: 'inherit' }}>
+          No RELAY_OWNER_EMAIL is set: the first person to sign in became owner. Set it in the server environment for production.
+        </p>
+      )}
+      <label>Organisation name
+        <input value={orgName} maxLength={60} onChange={(e) => edit(setOrgName)(e.target.value)} placeholder={snap.workspace.name} />
+      </label>
+      <label>Allowed email domains
+        <textarea rows={3} value={domains} onChange={(e) => edit(setDomains)(e.target.value)} placeholder={'example.com\nexample.org'} />
+      </label>
+      <p className="muted small">Leave empty to let any email address create an account. Invite links still work for other domains.</p>
+      <label>Role for new people
+        <select value={defaultRole} onChange={(e) => edit(setDefaultRole)(e.target.value === 'guest' ? 'guest' : 'member')}>
+          <option value="member">Member</option>
+          <option value="guest">Guest</option>
+        </select>
+      </label>
+      <div>
+        <p className="muted small">Channels new people join automatically</p>
+        {publicChannels.length === 0 && <p className="muted small">No public channels yet.</p>}
+        <div className="chips">
+          {publicChannels.map((c) => (
+            <label key={c.id} className={`chip toggle ${defaultChannels.includes(c.id) ? 'on' : ''}`}>
+              <input
+                type="checkbox"
+                hidden
+                checked={defaultChannels.includes(c.id)}
+                onChange={(e) => edit(setDefaultChannels)(e.target.checked ? [...defaultChannels, c.id] : defaultChannels.filter((x) => x !== c.id))}
+              />
+              #{c.name}
+            </label>
+          ))}
+        </div>
+      </div>
+      <label className="check invite-mode">
+        <input type="checkbox" checked={inviteOnly} onChange={(e) => edit(setInviteOnly)(e.target.checked)} />
+        <span>
+          <strong>Require an invite to join</strong>
+          <small className="muted">{inviteOnly ? 'People outside the allowed domains need an invite link. Current members can still sign in.' : 'Off: anyone allowed by the domain list can create an account and join.'}</small>
+        </span>
+      </label>
+      <div className="row">
+        <span className="spacer" />
+        {saved && <small className="muted">Saved</small>}
+        <button className="send-btn" onClick={save}>Save sign-up policy</button>
+      </div>
+    </div>
+  );
+}
+
 function InvitesTab() {
   const { snap, send } = useRelayCtx();
   const [copied, setCopied] = useState<string | null>(null);
@@ -235,13 +315,8 @@ function InvitesTab() {
   };
   return (
     <div className="grid-gap">
-      <label className="check invite-mode">
-        <input type="checkbox" checked={inviteOnly} onChange={(e) => send({ t: 'settings', settings: { inviteOnly: e.target.checked } })} />
-        <span>
-          <strong>Require an invite to join</strong>
-          <small className="muted">{inviteOnly ? 'New people need an invite link. Current members can still sign in.' : 'Off: anyone who signs in with GitHub or Google joins this workspace.'}</small>
-        </span>
-      </label>
+      <SignUpPolicyCard />
+      <h4>Invites</h4>
       <div className="row-between">
         <p className="muted">{inviteOnly ? 'Send these links to people you want to add.' : 'Invite links still work, and pre-fill the code if you turn invites on later.'}</p>
         <button className="send-btn" onClick={() => send({ t: 'inviteCreate' })}>Generate invite link</button>

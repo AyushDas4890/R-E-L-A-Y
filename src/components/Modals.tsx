@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PLAN_FEATURES } from '../types.ts';
 import type { Workflow } from '../types.ts';
 import { useRelayCtx } from '../ctx.ts';
 import { channelLabel, timeLabel } from '../format.tsx';
-import { searchAnswer, WORKFLOW_TEMPLATES } from '../premium.ts';
+import { WORKFLOW_TEMPLATES } from '../premium.ts';
 import type { Appearance } from '../appearance.ts';
 import { AppearanceSettings } from './Appearance.tsx';
+import { Icon } from './Icon.tsx';
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -13,9 +14,27 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+  // Focus moves into the dialog on open (unless a field inside already took it with autoFocus) and goes
+  // back to whatever had it before when the dialog closes.
+  const dialog = useRef<HTMLDivElement>(null);
+  const [opener] = useState(() => (typeof document === 'undefined' ? null : (document.activeElement as HTMLElement | null)));
+  useEffect(() => {
+    const el = dialog.current;
+    if (el && !el.contains(document.activeElement)) el.focus();
+    // The restore waits a tick and is cancelled if the effect re-runs (StrictMode mounts twice in dev), so an
+    // autoFocus field inside the dialog is never robbed of focus by the development double-mount.
+    let restore = 0;
+    return () => {
+      restore = window.setTimeout(() => { if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus(); }, 0);
+      // A re-mount (StrictMode) cancels the pending restore; a real close lets it run.
+      pending.current = restore;
+    };
+  }, [opener]);
+  const pending = useRef(0);
+  useEffect(() => { if (pending.current) { clearTimeout(pending.current); pending.current = 0; } });
   return (
     <div className="scrim" onMouseDown={onClose}>
-      <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
+      <div ref={dialog} tabIndex={-1} className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
         <header>
           <h2>{title}</h2>
           <button className="icon-btn" aria-label="Close" onClick={onClose}>×</button>
@@ -26,80 +45,26 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   );
 }
 
-export function SearchPalette({ onClose, onPick }: { onClose: () => void; onPick: (channelId: string, threadId?: string) => void }) {
-  const { snap } = useRelayCtx();
-  const [q, setQ] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => inputRef.current?.focus(), []);
-
-  const results = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    const channels = Object.values(snap.channels)
-      .map((c) => ({ c, label: channelLabel(c, snap.users, snap.me) }))
-      .filter((x) => !needle || x.label.toLowerCase().includes(needle))
-      .slice(0, 6);
-    const messages = needle
-      ? snap.messages
-          .filter((m) => !m.system && m.text.toLowerCase().includes(needle))
-          .slice(-8)
-          .reverse()
-      : [];
-    const answer = /\?\s*$/.test(q) ? searchAnswer(q, snap.messages) : null;
-    return { channels, messages, answer };
-  }, [q, snap]);
-
-  return (
-    <div className="scrim top" onMouseDown={onClose}>
-      <div className="palette" onMouseDown={(e) => e.stopPropagation()}>
-        <input
-          ref={inputRef}
-          value={q}
-          placeholder="Search, or ask a question ending in ?"
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Escape' && onClose()}
-        />
-        <div className="palette-results">
-          {results.answer && (
-            <button className="answer" onClick={() => onPick(results.answer!.channelId, results.answer!.threadId ?? results.answer!.id)}>
-              <span>✨</span>
-              <div>
-                <strong>Best answer</strong> from {snap.users[results.answer.userId]?.name} in {channelLabel(snap.channels[results.answer.channelId], snap.users, snap.me)}
-                <small>{results.answer.text.slice(0, 200)}</small>
-              </div>
-            </button>
-          )}
-          {results.channels.map(({ c, label }) => (
-            <button key={c.id} onClick={() => onPick(c.id)}>
-              <span>{c.kind === 'dm' ? '●' : c.kind === 'private' ? '🔒' : '#'}</span> {label}
-            </button>
-          ))}
-          {results.messages.map((m) => (
-            <button key={m.id} onClick={() => onPick(m.channelId, m.threadId ?? m.id)}>
-              <span>💬</span>
-              <div>
-                <strong>{snap.users[m.userId]?.name}</strong> in {channelLabel(snap.channels[m.channelId], snap.users, snap.me)}
-                <small>{m.text.slice(0, 100)}</small>
-              </div>
-            </button>
-          ))}
-          {q && results.channels.length + results.messages.length === 0 && <p className="muted pad">No matches.</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
+export { SearchPalette } from './Palette.tsx';
 
 export function NewChannelModal({ onClose }: { onClose: () => void }) {
   const { send } = useRelayCtx();
   const [name, setName] = useState('');
   const [topic, setTopic] = useState('');
   const [priv, setPriv] = useState(false);
+  const create = () => {
+    if (!name.trim()) return;
+    send({ t: 'createChannel', name, topic, kind: priv ? 'private' : 'public' });
+    onClose();
+  };
+  // Enter in either field creates the channel, same as the button.
+  const onEnter = (e: React.KeyboardEvent) => { if (e.key === 'Enter') create(); };
   return (
     <Modal title="Create a channel" onClose={onClose}>
-      <label>Name<input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. launch-plan" /></label>
-      <label>Topic<input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="What is this channel about?" /></label>
+      <label>Name<input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={onEnter} placeholder="e.g. launch-plan" /></label>
+      <label>Topic<input value={topic} onChange={(e) => setTopic(e.target.value)} onKeyDown={onEnter} placeholder="What is this channel about?" /></label>
       <label className="check"><input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} /> Make private</label>
-      <button className="send-btn" disabled={!name.trim()} onClick={() => { send({ t: 'createChannel', name, topic, kind: priv ? 'private' : 'public' }); onClose(); }}>Create</button>
+      <button className="send-btn" disabled={!name.trim()} onClick={create}>Create</button>
     </Modal>
   );
 }
@@ -119,8 +84,43 @@ export function ProfileModal({ onClose, appearance }: { onClose: () => void; app
         <label style={{ width: 80 }}>Status<input value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="🌴" /></label>
         <label className="grow">&nbsp;<input value={text} onChange={(e) => setText(e.target.value)} placeholder="On vacation" /></label>
       </div>
+      {me.email && (
+        <label className="check">
+          <input type="checkbox" checked={snap.prefs?.email !== false} onChange={(e) => send({ t: 'setEmail', on: e.target.checked })} />
+          Email me about mentions and DMs when I'm away ({me.email})
+        </label>
+      )}
       <AppearanceSettings a={appearance} />
       <button className="send-btn" onClick={() => { send({ t: 'profile', name, title, status: { emoji, text } }); onClose(); }}>Save</button>
+    </Modal>
+  );
+}
+
+// The keyboard shortcuts, opened with ? or from the command palette.
+const SHORTCUTS: [string, string][] = [
+  ['Ctrl/⌘ + K', 'Open the command palette'],
+  ['Alt + ↑ / ↓', 'Previous / next channel'],
+  ['Alt + Shift + ↑ / ↓', 'Previous / next unread channel'],
+  ['Ctrl/⌘ + Shift + K', 'Direct messages'],
+  ['Ctrl/⌘ + Shift + A', 'Activity'],
+  ['Ctrl/⌘ + \\', 'Show or hide the sidebar (Notion and Apple looks)'],
+  ['Enter', 'Send a message'],
+  ['Shift + Enter', 'New line in a message'],
+  ['Esc', 'Close the side panel or dialog'],
+  ['?', 'Show these shortcuts'],
+];
+
+export function ShortcutsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="Keyboard shortcuts" onClose={onClose} wide>
+      <dl className="shortcut-list">
+        {SHORTCUTS.map(([keys, what]) => (
+          <div key={keys} className="shortcut-row">
+            <dt><kbd>{keys}</kbd></dt>
+            <dd>{what}</dd>
+          </div>
+        ))}
+      </dl>
     </Modal>
   );
 }
@@ -130,13 +130,13 @@ export function PlanModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Plan & billing" onClose={onClose}>
       <div className="plan-card">
-        <span className="badge">★ ACTIVE</span>
+        <span className="badge">Active</span>
         <h3>{snap.workspace.plan}</h3>
         <p className="muted">Relay is self-hosted, so nothing is gated. Every premium capability is switched on for every member, with no seat limits and no billing.</p>
       </div>
       <ul className="feature-list">
         {PLAN_FEATURES.map((f) => (
-          <li key={f}>✓ {f}</li>
+          <li key={f}><Icon n="check" /> {f}</li>
         ))}
       </ul>
     </Modal>
@@ -147,7 +147,7 @@ export function ScheduledModal({ onClose }: { onClose: () => void }) {
   const { snap, send } = useRelayCtx();
   return (
     <Modal title="Scheduled messages" onClose={onClose}>
-      {snap.scheduled.length === 0 && <p className="muted">Nothing scheduled. Use ⏱ Schedule in the composer.</p>}
+      {snap.scheduled.length === 0 && <p className="muted">Nothing scheduled. Use Schedule in the composer.</p>}
       {snap.scheduled.map((s) => (
         <div key={s.id} className="sched-item">
           <div>
@@ -184,26 +184,31 @@ export function SchedulePicker({ text, channelId, onClose }: { text: string; cha
   );
 }
 
-export function WorkflowModal({ onClose }: { onClose: () => void }) {
+// The Workflow Builder, as a full page in the main pane.
+export function WorkflowsView() {
   const { snap, send } = useRelayCtx();
   const [list, setList] = useState<Workflow[]>(snap.workflows);
+  const [saved, setSaved] = useState(true);
+  const setListDirty = (next: Workflow[]) => { setList(next); setSaved(false); };
   const channels = Object.values(snap.channels).filter((c) => c.kind !== 'dm');
-  const patch = (id: string, fn: (w: Workflow) => Workflow) => setList(list.map((w) => (w.id === id ? fn(w) : w)));
+  const patch = (id: string, fn: (w: Workflow) => Workflow) => setListDirty(list.map((w) => (w.id === id ? fn(w) : w)));
 
   const add = () =>
-    setList([
+    setListDirty([
       ...list,
       { id: crypto.randomUUID(), name: 'New workflow', enabled: true, trigger: { type: 'keyword', keyword: 'hello', channelId: 'any' }, reply: 'Hi there!' },
     ]);
 
   return (
-    <Modal title="Workflow Builder" onClose={onClose} wide>
+    <>
+      <header className="channel-head"><div className="channel-title"><h2>Workflows</h2><p className="topic">Teach Relay Bot to reply on its own: on a keyword, when someone joins, or on a schedule</p></div></header>
+      <div className="workflows-page">
       {list.map((w) => (
         <div key={w.id} className="workflow">
           <div className="row">
             <input className="grow" value={w.name} onChange={(e) => patch(w.id, (x) => ({ ...x, name: e.target.value }))} />
             <label className="check"><input type="checkbox" checked={w.enabled} onChange={(e) => patch(w.id, (x) => ({ ...x, enabled: e.target.checked }))} /> On</label>
-            <button className="ghost-btn danger" onClick={() => setList(list.filter((x) => x.id !== w.id))}>Delete</button>
+            <button className="ghost-btn danger" onClick={() => setListDirty(list.filter((x) => x.id !== w.id))}>Delete</button>
           </div>
           <div className="row">
             <select
@@ -254,7 +259,7 @@ export function WorkflowModal({ onClose }: { onClose: () => void }) {
               {channels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
             </select>
           </div>
-          <textarea value={w.reply} onChange={(e) => patch(w.id, (x) => ({ ...x, reply: e.target.value }))} placeholder="Bot reply" />
+          <textarea value={w.reply} onChange={(e) => patch(w.id, (x) => ({ ...x, reply: e.target.value }))} placeholder={w.trigger.type === 'join' ? 'Bot reply. Use {user} to mention the person who joined.' : 'Bot reply. Use {user} to mention the sender, {channel} for the channel name.'} />
           {w.trigger.type === 'keyword' && (
             w.branch ? (
               <div className="branch">
@@ -280,15 +285,21 @@ export function WorkflowModal({ onClose }: { onClose: () => void }) {
           value=""
           onChange={(e) => {
             const tpl = WORKFLOW_TEMPLATES[Number(e.target.value)];
-            if (tpl) setList([...list, { ...tpl, id: crypto.randomUUID() }]);
+            if (tpl) setListDirty([...list, { ...tpl, id: crypto.randomUUID() }]);
           }}
         >
           <option value="">Start from a template…</option>
           {WORKFLOW_TEMPLATES.map((tpl, i) => <option key={tpl.name} value={i}>{tpl.name}</option>)}
         </select>
         <span className="spacer" />
-        <button className="send-btn" onClick={() => { send({ t: 'workflows', list }); onClose(); }}>Publish</button>
+        <button className="send-btn" onClick={() => {
+          // Stamp schedules with this browser's time zone so "9:30" means 9:30 where the publisher is.
+          const tzOffset = new Date().getTimezoneOffset();
+          send({ t: 'workflows', list: list.map((w) => (w.trigger.type === 'schedule' ? { ...w, trigger: { ...w.trigger, tzOffset } } : w)) });
+          setSaved(true);
+        }}>{saved ? 'Published' : 'Publish'}</button>
       </div>
-    </Modal>
+      </div>
+    </>
   );
 }

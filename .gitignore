@@ -8,3 +8,7 @@ ruvector.db
 .env.local
 
 .vercel
+.claude
+.serena
+graphify-out
+

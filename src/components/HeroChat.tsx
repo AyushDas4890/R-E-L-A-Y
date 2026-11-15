@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
+import { Icon } from './Icon.tsx';
 
 // A tiny live demo for the home page: Relay Bot answers a scripted chat, then answers
 // whatever the visitor types. Replies are canned keyword matches, not a model.
@@ -9,23 +10,23 @@ interface Line { id: number; who: string; text: string; bot?: boolean }
 
 const SCRIPT: Omit<Line, 'id'>[] = [
   { who: 'Maya', text: 'Who’s in the design review today?' },
-  { who: 'Relay Bot', text: 'Maya, Ken and Priya. Agenda is pinned in #design 📌', bot: true },
+  { who: 'Relay Bot', text: 'Maya, Ken and Priya. Agenda is pinned in #design', bot: true },
   { who: 'Ken', text: '/remind #launch ship notes in 2h' },
-  { who: 'Relay Bot', text: 'Done. I’ll ping #launch at 4:00 PM ⏰', bot: true },
+  { who: 'Relay Bot', text: 'Done. I’ll ping #launch at 4:00 PM', bot: true },
 ];
 
 const ANSWERS: [RegExp, string][] = [
-  [/\b(hi|hey|hello|yo)\b/i, 'Hey! 👋 I live in every channel. Ask me about huddles, canvases or reminders.'],
-  [/huddle|call|voice|meet/i, 'Hit 🎧 Huddle in any channel. When it ends I post the notes back to the channel.'],
+  [/\b(hi|hey|hello|yo)\b/i, 'Hey. I live in every channel. Ask me about huddles, canvases or reminders.'],
+  [/huddle|call|voice|meet/i, 'Hit Huddle in any channel. When it ends I post the notes back to the channel.'],
   [/canvas|doc|notes/i, 'Every channel has a canvas for docs right beside the chat. Edits sync live.'],
   [/remind|schedule|later/i, 'Try /remind me stretch in 10m, or schedule a message for tomorrow morning.'],
   [/search|find/i, 'Press Ctrl+K and I’ll search every message, person and channel at once.'],
-  [/price|cost|free|paid|plan/i, 'Everything is unlocked. No seat limits, no paywalls 🎉'],
+  [/price|cost|free|paid|plan/i, 'Everything is unlocked. No seat limits, no paywalls'],
   [/workflow|automat/i, 'Workflow Builder can welcome new members, answer keywords and branch on conditions.'],
   [/who|you|bot/i, 'I’m Relay Bot. I recap channels, run workflows and answer questions like this one.'],
 ];
 
-const answer = (q: string) => ANSWERS.find(([re]) => re.test(q))?.[1] ?? 'Good question! Sign in and ask me inside your workspace, I know a lot more there 🙂';
+const answer = (q: string) => ANSWERS.find(([re]) => re.test(q))?.[1] ?? 'Good question! Sign in and ask me inside your workspace, I know a lot more there';
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function HeroChat({ active, onMood, poke }: { active: boolean; onMood: (m: Mood) => void; poke: number }) {
@@ -75,7 +76,7 @@ export function HeroChat({ active, onMood, poke }: { active: boolean; onMood: (m
   useEffect(() => {
     if (!poke || busy.current) return;
     takenOver.current = true;
-    void botSays('👋 Hi! I’m Relay Bot. Type a question below and I’ll answer.');
+    void botSays('Hi, I’m Relay Bot. Type a question below and I’ll answer.');
   }, [poke]);
 
   useEffect(() => {
@@ -113,7 +114,7 @@ export function HeroChat({ active, onMood, poke }: { active: boolean; onMood: (m
       </div>
       <form className="hc-input" onSubmit={ask}>
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask Relay Bot anything…" maxLength={120} aria-label="Ask Relay Bot" />
-        <button disabled={!draft.trim()} aria-label="Send">➤</button>
+        <button disabled={!draft.trim()} aria-label="Send"><Icon n="send" /></button>
       </form>
     </div>
   );

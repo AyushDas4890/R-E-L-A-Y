@@ -3,7 +3,8 @@
 export interface SupabaseUser {
   id: string;
   email: string | null;
-  user_metadata: { full_name?: string; name?: string; user_name?: string; avatar_url?: string; picture?: string };
+  email_confirmed_at?: string | null;
+  user_metadata: { full_name?: string; name?: string; user_name?: string; avatar_url?: string; picture?: string; email_verified?: boolean };
 }
 
 export interface AuthClient {
@@ -15,13 +16,19 @@ export interface Identity {
   name: string;
   email: string | null;
   avatarUrl?: string;
+  // Whether the provider vouches for the email address. Sign-up policy refuses unverified emails.
+  emailVerified: boolean;
 }
 
 export async function verifyToken(token: string, client: AuthClient): Promise<Identity | null> {
   if (!token) return null;
   const { data, error } = await client.auth.getUser(token);
   if (error || !data.user) return null;
-  const u = data.user;
+  return identityFromUser(data.user);
+}
+
+// Maps a Supabase user record to Relay identity fields (display name, avatar, verification).
+export function identityFromUser(u: SupabaseUser): Identity {
   const meta = u.user_metadata ?? {};
   const name =
     meta.full_name?.trim() ||
@@ -35,5 +42,8 @@ export async function verifyToken(token: string, client: AuthClient): Promise<Id
     email: u.email,
     // GitHub sends avatar_url; Google sends picture (Supabase usually copies it to avatar_url too).
     avatarUrl: meta.avatar_url ?? meta.picture,
+    // Only email_confirmed_at counts: Supabase sets it server-side. user_metadata is writable by the
+    // signed-in user (auth.updateUser), so an email_verified flag there could be spoofed.
+    emailVerified: !!u.email_confirmed_at,
   };
 }

@@ -11,20 +11,26 @@
     "build": "tsc --noEmit && vite build",
     "start": "node server/index.ts",
     "lint": "tsc --noEmit",
-    "test": "node --test server/slash.test.ts server/invites.test.ts server/store.test.ts server/auth.test.ts server/unfurl.test.ts src/premium.test.ts src/notify.test.ts"
+    "test": "node --test server/slash.test.ts server/invites.test.ts server/signup.test.ts server/store.test.ts server/prefs.test.ts server/access.test.ts server/history.test.ts server/messageSync.test.ts server/notifications.test.ts server/pages.test.ts server/databases.test.ts server/collab.test.ts server/publish.test.ts src/editor.test.ts src/formula.test.ts src/dbquery.test.ts src/localAi.test.ts src/undo.test.ts server/auth.test.ts server/jwt.test.ts server/devAuth.test.ts server/unfurl.test.ts src/premium.test.ts src/notify.test.ts src/auth.test.ts src/appearance.test.ts src/help.test.ts src/calendarMath.test.ts server/home.test.ts src/home.test.ts src/dnd.test.ts src/messageRows.test.ts src/commands.test.ts src/shortcuts.test.ts"
   },
   "dependencies": {
+    "@astryxdesign/core": "^0.7.16",
+    "@astryxdesign/theme-neutral": "^0.7.16",
+    "@stylexjs/stylex": "^0.19.2",
     "@supabase/supabase-js": "^2.45.0",
+    "@tanstack/react-virtual": "^3.14.26",
     "gsap": "^3.15.0",
+    "jose": "^6.2.17",
     "motion": "^14.7.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "^0.7.16",
     "@types/node": "^22.10.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.5.13",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.7.2",

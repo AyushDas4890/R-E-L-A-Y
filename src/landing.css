@@ -1,8 +1,9 @@
 /* Landing + auth shell: fixed dark palette, independent of the workspace theme. */
 .lp, .auth {
-  --lp-bg: #060d1a; --lp-text: #eef3fa; --lp-muted: #93a4bd; --lp-line: rgba(255,255,255,.1);
+  --lp-bg: #060d1a; --lp-text: #eef3fa; --lp-muted: #93a4bd; --lp-line: rgba(167,139,250,.15);
+  --lp-violet: #7c3aed; --lp-violet-soft: rgba(124,58,237,.35);
   position: relative; min-height: 100%; color: var(--lp-text);
-  background: radial-gradient(60% 70% at 0% 20%, rgba(225,29,72,.35), transparent 70%), radial-gradient(60% 70% at 100% 60%, rgba(37,99,235,.4), transparent 70%), var(--lp-bg); overflow-x: hidden;
+  background: radial-gradient(60% 70% at 0% 20%, rgba(109,40,217,.4), transparent 70%), radial-gradient(60% 70% at 100% 60%, rgba(124,58,237,.35), transparent 70%), var(--lp-bg); overflow-x: hidden;
 }
 .lp { height: 100%; overflow-y: auto; scroll-behavior: smooth; }
 .lp-bg { position: fixed; inset: 0; opacity: .9; mix-blend-mode: screen; pointer-events: none; z-index: 0; }
@@ -17,12 +18,12 @@
 
 .lp-btn { display: inline-flex; align-items: center; justify-content: center; padding: 11px 22px; border-radius: 10px; font: 700 15px var(--font); text-decoration: none; cursor: pointer; border: 1px solid transparent; transition: transform .15s, background .15s, box-shadow .15s; }
 .lp-btn:hover { transform: translateY(-1px); }
-.lp-btn-primary { background: var(--signal); color: #10233f; box-shadow: 0 8px 30px rgba(245,164,0,.35); }
-.lp-btn-ghost { background: rgba(255,255,255,.06); color: var(--lp-text); border-color: var(--lp-line); }
-.lp-btn-ghost:hover { background: rgba(255,255,255,.12); }
+.lp-btn-primary { background: var(--lp-violet); color: #fff; box-shadow: 0 8px 30px rgba(124,58,237,.45); }
+.lp-btn-ghost { background: rgba(167,139,250,.08); color: var(--lp-text); border-color: rgba(167,139,250,.25); }
+.lp-btn-ghost:hover { background: rgba(167,139,250,.15); }
 
 .lp-hero { max-width: 1120px; margin: 0 auto; padding: 56px 20px 40px; text-align: center; display: grid; justify-items: center; gap: 22px; }
-.lp-badge { padding: 6px 14px; border: 1px solid var(--lp-line); border-radius: 999px; background: rgba(255,255,255,.05); font-size: 13px; font-weight: 600; }
+.lp-badge { padding: 6px 14px; border: 1px solid rgba(167,139,250,.3); border-radius: 999px; background: rgba(124,58,237,.12); font-size: 13px; font-weight: 600; color: #c4b5fd; }
 .lp-title { margin: 0; font: 800 clamp(36px, 7vw, 72px)/1.05 var(--display); letter-spacing: -.02em; display: grid; justify-items: center; }
 .lp-title > *, .lp-title p { margin: 0; line-height: 1.1; }
 .lp-sub { margin: 0; max-width: 560px; color: var(--lp-muted); font-size: clamp(16px, 2vw, 19px); line-height: 1.55; }
@@ -44,10 +45,10 @@
 .lp-card { height: 100%; padding: 26px; text-align: left; }
 .lp-card h3 { margin: 14px 0 8px; font: 400 18px var(--display); }
 .lp-card p { margin: 0; color: var(--lp-muted); font-size: 14.5px; line-height: 1.55; }
-.lp-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: rgba(245,164,0,.15); color: var(--signal); font-size: 18px; font-weight: 800; }
+.lp-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: rgba(124,58,237,.18); color: #c4b5fd; font-size: 18px; font-weight: 800; }
 
 .lp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; text-align: center; border-top: 1px solid var(--lp-line); border-bottom: 1px solid var(--lp-line); }
-.lp-stat > div { font: 800 clamp(40px, 7vw, 64px) var(--display); color: var(--signal); }
+.lp-stat > div { font: 800 clamp(40px, 7vw, 64px) var(--display); color: #c4b5fd; }
 .lp-stat > span { color: var(--lp-muted); font-size: 14px; font-weight: 600; }
 .lp-final { text-align: center; }
 .lp-foot { padding: 28px 20px 40px; text-align: center; color: var(--lp-muted); font-size: 13px; }
@@ -98,9 +99,9 @@
   .lp-btn { transition: none; }
 }
 
-.glow { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(90px); opacity: .35; }
-.glow-a { left: -15vmax; top: -25vmax; background: radial-gradient(circle, #f5a400, transparent 65%); animation: drift 18s ease-in-out infinite alternate; }
-.glow-b { right: -20vmax; top: 5vmax; background: radial-gradient(circle, #1f5bd8, transparent 65%); animation: drift 22s ease-in-out infinite alternate-reverse; }
+.glow { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(90px); opacity: .32; }
+.glow-a { left: -15vmax; top: -25vmax; background: radial-gradient(circle, #7c3aed, transparent 65%); animation: drift 18s ease-in-out infinite alternate; }
+.glow-b { right: -20vmax; top: 5vmax; background: radial-gradient(circle, #a855f7, transparent 65%); animation: drift 22s ease-in-out infinite alternate-reverse; }
 @keyframes drift { to { transform: translate(8vmax, 6vmax) scale(1.15); } }
 @media (prefers-reduced-motion: reduce) { .glow { animation: none; } }
 

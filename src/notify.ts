@@ -1,16 +1,87 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { mentionsUser } from './premium.ts';
-import type { Message, Snapshot } from './types.ts';
+import { mentionsUser, plainText } from './premium.ts';
+import type { ChannelLevel, ClientEvent, Message, Snapshot, UserPrefs } from './types.ts';
 
-// Do Not Disturb is per-device: a timestamp until which alerts stay quiet (0 = off).
-export function useDnd() {
-  const [until, setUntilState] = useState<number>(() => {
+const NO_PREFS: UserPrefs = { lastRead: {}, levels: {}, dndUntil: 0, email: true };
+
+// A browser-side copy of the server's prefs. The server is the source of truth; this only fills in
+// when the UI is newer than the server it talks to (no `prefs` in the snapshot yet).
+const cacheKey = (workspaceId: string) => `relay.prefs.${workspaceId}`;
+
+function readPrefsCache(workspaceId: string): UserPrefs | null {
+  try {
+    const raw = localStorage.getItem(cacheKey(workspaceId));
+    return raw ? { ...NO_PREFS, ...(JSON.parse(raw) as Partial<UserPrefs>) } : null;
+  } catch {
+    return null;
+  }
+}
+
+export function usePrefs(snap: Snapshot | null): UserPrefs {
+  const workspaceId = snap?.workspace.id;
+  const fromServer = snap?.prefs;
+  useEffect(() => {
+    if (!workspaceId || !fromServer) return;
     try {
-      return Number(localStorage.getItem('relay.dndUntil')) || 0;
+      localStorage.setItem(cacheKey(workspaceId), JSON.stringify(fromServer));
     } catch {
-      return 0;
+      /* private mode: the server copy is the one that counts */
     }
-  });
+  }, [workspaceId, fromServer]);
+  return fromServer ?? (workspaceId ? readPrefsCache(workspaceId) : null) ?? NO_PREFS;
+}
+
+// What this browser kept before prefs moved to the server, in the shape `importPrefs` takes.
+// Read state was one map for all workspaces: HQ used bare channel ids, others `<workspace>/<channel>`.
+export function legacyPrefs(
+  workspaceId: string,
+  raw: { lastRead?: string | null; levels?: string | null; dndUntil?: string | null },
+): { lastRead: Record<string, number>; levels: Record<string, string>; dndUntil: number } {
+  const parse = (text?: string | null): Record<string, unknown> => {
+    try {
+      const v = text ? JSON.parse(text) : {};
+      return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  };
+  const lastRead: Record<string, number> = {};
+  const prefix = `${workspaceId}/`;
+  for (const [key, ts] of Object.entries(parse(raw.lastRead))) {
+    if (typeof ts !== 'number') continue;
+    if (workspaceId === 'hq' ? !key.includes('/') : key.startsWith(prefix)) lastRead[workspaceId === 'hq' ? key : key.slice(prefix.length)] = ts;
+  }
+  const levels: Record<string, string> = {};
+  for (const [id, lv] of Object.entries(parse(raw.levels))) if (typeof lv === 'string') levels[id] = lv;
+  return { lastRead, levels, dndUntil: Number(raw.dndUntil) || 0 };
+}
+
+// Uploads the old browser-only values once per workspace per browser. The server only fills gaps,
+// so a second device with stale values can't undo anything.
+export function usePrefsMigration(snap: Snapshot | null, send: (ev: ClientEvent) => void): void {
+  const workspaceId = snap?.workspace.id;
+  const hasPrefs = !!snap?.prefs;
+  useEffect(() => {
+    if (!workspaceId || !hasPrefs) return;
+    const flag = `relay.prefsMigrated.${workspaceId}`;
+    try {
+      if (localStorage.getItem(flag)) return;
+      const legacy = legacyPrefs(workspaceId, {
+        lastRead: localStorage.getItem('relay.lastRead'),
+        levels: localStorage.getItem(`relay.levels.${workspaceId}`),
+        dndUntil: localStorage.getItem('relay.dndUntil'),
+      });
+      send({ t: 'importPrefs', ...legacy });
+      localStorage.setItem(flag, '1');
+    } catch {
+      /* storage blocked: nothing to migrate */
+    }
+  }, [workspaceId, hasPrefs]);
+}
+
+// Do Not Disturb: a timestamp until which alerts stay quiet (0 = off). Kept on the server.
+export function useDnd(snap: Snapshot | null, send: (ev: ClientEvent) => void) {
+  const until = usePrefs(snap).dndUntil;
   const [, tick] = useState(0);
   useEffect(() => {
     if (!until) return;
@@ -20,14 +91,7 @@ export function useDnd() {
     const t = setTimeout(() => tick((n) => n + 1), Math.min(left, 2 ** 31 - 1));
     return () => clearTimeout(t);
   }, [until]);
-  const setUntil = useCallback((ts: number) => {
-    setUntilState(ts);
-    try {
-      localStorage.setItem('relay.dndUntil', String(ts));
-    } catch {
-      /* private mode: DND lasts for this tab only */
-    }
-  }, []);
+  const setUntil = useCallback((ts: number) => send({ t: 'setDnd', until: ts }), [send]);
   return { until, active: until > Date.now(), setUntil };
 }
 
@@ -43,43 +107,14 @@ export function dndPresets(now = new Date()): { label: string; until: number }[]
   ];
 }
 
-// Alerts can't render formatting, so turn message markup into plain readable text.
-export function plainText(text: string, users: Snapshot['users']): string {
-  return text
-    .replace(/<@([^>]+)>/g, (_, id: string) => `@${users[id]?.name ?? 'someone'}`)
-    .replace(/```([\s\S]*?)```/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    // Only marks at word edges, so snake_case_names survive.
-    .replace(/(^|\W)(\*\*|__|~~|\*|_)(\S(?:[\s\S]*?\S)?)\2(?=\W|$)/g, '$1$3')
-    .replace(/^>\s?/gm, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+export { plainText };
 
-export type ChannelLevel = 'all' | 'mentions' | 'mute';
+export type { ChannelLevel };
 
-// Per-device notification level for each channel, kept per workspace.
-export function useChannelLevels(workspaceId: string | undefined) {
-  const key = `relay.levels.${workspaceId ?? ''}`;
-  const [levels, setLevels] = useState<Record<string, ChannelLevel>>({});
-  useEffect(() => {
-    try {
-      setLevels(JSON.parse(localStorage.getItem(key) ?? '{}'));
-    } catch {
-      setLevels({});
-    }
-  }, [key]);
-  const setLevel = useCallback((channelId: string, level: ChannelLevel) => {
-    setLevels((prev) => {
-      const next = { ...prev, [channelId]: level };
-      try {
-        localStorage.setItem(key, JSON.stringify(next));
-      } catch {
-        /* private mode: lasts for this tab */
-      }
-      return next;
-    });
-  }, [key]);
+// Per-channel notification level, kept on the server per workspace.
+export function useChannelLevels(snap: Snapshot | null, send: (ev: ClientEvent) => void) {
+  const levels = usePrefs(snap).levels;
+  const setLevel = useCallback((channelId: string, level: ChannelLevel) => send({ t: 'setLevel', channelId, level }), [send]);
   const levelOf = useCallback((channelId: string): ChannelLevel => levels[channelId] ?? 'mentions', [levels]);
   return { levelOf, setLevel };
 }
@@ -110,6 +145,7 @@ export function useMessageAlerts(
 ) {
   const seen = useRef<Set<string> | null>(null);
   const seenWs = useRef<string | null>(null);
+  const since = useRef(0);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() =>
     notificationsSupported() ? Notification.permission : 'unsupported',
   );
@@ -120,9 +156,11 @@ export function useMessageAlerts(
     if (!seen.current || seenWs.current !== snap.workspace.id) {
       seen.current = new Set(snap.messages.map((m) => m.id));
       seenWs.current = snap.workspace.id;
+      since.current = snap.messages.reduce((t, m) => Math.max(t, m.ts), 0);
       return;
     }
-    const fresh = snap.messages.filter((m) => !seen.current!.has(m.id));
+    // Older pages loaded by scrolling up are history, not news.
+    const fresh = snap.messages.filter((m) => !seen.current!.has(m.id) && m.ts >= since.current);
     for (const m of fresh) seen.current.add(m.id);
     if (dndActive || permission !== 'granted') return;
     for (const m of fresh) {

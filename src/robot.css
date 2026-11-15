@@ -1,0 +1,40 @@
+/* The Relay mascot (Robot.tsx), drawn in CSS. Sized by --u on any ancestor. Moved out of nexus.css so
+   the robot can be used without the old hero sheet. */
+.nx-bot { position: relative; z-index: 2; width: calc(80 * var(--u)); }
+.nx-bot-inner { position: relative; display: grid; justify-items: center; perspective: 900px; }
+.nx-bot-head { position: relative; z-index: 2; width: calc(66 * var(--u)); height: calc(58 * var(--u)); border-radius: calc(24 * var(--u)); transform-style: preserve-3d;
+  background: radial-gradient(circle at 34% 22%, #ffffff 0%, #efe9f3 30%, #d7cddc 62%, #a996b2 100%);
+  box-shadow: inset calc(-4 * var(--u)) calc(-6 * var(--u)) calc(12 * var(--u)) rgba(90,55,95,.35), 0 calc(3 * var(--u)) calc(14 * var(--u)) rgba(30,10,8,.45); }
+.nx-ear { position: absolute; top: calc(19 * var(--u)); width: calc(11 * var(--u)); height: calc(20 * var(--u)); border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fff, #cfc3d4 70%); border: calc(1.6 * var(--u)) solid #b5826c; }
+.nx-ear.l { left: calc(-5 * var(--u)); }
+.nx-ear.r { right: calc(-5 * var(--u)); }
+.nx-screen { position: absolute; inset: calc(7 * var(--u)) calc(7.5 * var(--u)) calc(8 * var(--u)); border-radius: calc(17 * var(--u)); overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, #2b2a2f 0%, #0b0a0c 62%, #030303 100%);
+  box-shadow: 0 0 0 calc(1.4 * var(--u)) #ffe08f, 0 0 calc(3 * var(--u)) calc(1.4 * var(--u)) #ffcf5c, 0 0 calc(14 * var(--u)) calc(4 * var(--u)) rgba(255,185,80,.55), inset 0 0 calc(6 * var(--u)) rgba(255,205,110,.4); }
+.nx-glow { position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 calc(10 * var(--u)) calc(2 * var(--u)) rgba(255,200,100,.55); opacity: .9; }
+.nx-face { position: absolute; inset: 0; }
+.nx-eye { position: absolute; top: 36%; width: calc(10 * var(--u)); height: calc(6 * var(--u)); border: calc(1.7 * var(--u)) solid #ffe9b0; border-bottom: 0; border-radius: calc(10 * var(--u)) calc(10 * var(--u)) 0 0; transform-origin: 50% 100%; filter: drop-shadow(0 0 calc(1.5 * var(--u)) rgba(255,220,140,.9)); }
+.nx-eye.l { left: 22%; }
+.nx-eye.r { right: 22%; }
+.nx-mouth { position: absolute; top: 57%; left: 50%; width: calc(10 * var(--u)); height: calc(5.5 * var(--u)); margin-left: calc(-5 * var(--u)); background: #ffe9b0; border-radius: calc(1 * var(--u)) calc(1 * var(--u)) calc(10 * var(--u)) calc(10 * var(--u)); box-shadow: 0 0 calc(3 * var(--u)) rgba(255,220,140,.8); }
+.nx-shine { position: absolute; top: 9%; left: 14%; width: 26%; height: 14%; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,255,255,.55), transparent 70%); transform: rotate(-18deg); }
+.nx-bot-body { position: relative; z-index: 1; width: calc(46 * var(--u)); height: calc(44 * var(--u)); margin-top: calc(-3 * var(--u)); border-radius: calc(14 * var(--u)) calc(14 * var(--u)) calc(8 * var(--u)) calc(8 * var(--u));
+  background: radial-gradient(circle at 35% 15%, #fff, #e6dde9 40%, #bdaec4 100%); box-shadow: inset calc(-3 * var(--u)) calc(-4 * var(--u)) calc(10 * var(--u)) rgba(90,55,95,.35); }
+.nx-chest { position: absolute; top: calc(9 * var(--u)); left: 50%; width: calc(22 * var(--u)); height: calc(15 * var(--u)); margin-left: calc(-11 * var(--u)); border-radius: calc(3 * var(--u)); background: linear-gradient(#e9e2ec, #d3c8d8); box-shadow: inset 0 0 0 calc(.6 * var(--u)) rgba(120,90,120,.4); }
+.nx-chest span { position: absolute; top: calc(3 * var(--u)); width: calc(1.6 * var(--u)); height: calc(1.6 * var(--u)); border-radius: 50%; background: #f3e48a; box-shadow: 0 0 calc(2 * var(--u)) #f3e48a; }
+.nx-chest span:nth-child(1) { left: calc(3 * var(--u)); width: calc(6 * var(--u)); border-radius: 2px; background: #d7765a; box-shadow: none; }
+.nx-chest span:nth-child(2) { right: calc(4 * var(--u)); }
+.nx-chest span:nth-child(3) { right: calc(4 * var(--u)); top: calc(6 * var(--u)); }
+.nx-arm { position: absolute; top: calc(3 * var(--u)); width: calc(12 * var(--u)); height: calc(30 * var(--u)); border-radius: calc(7 * var(--u)); transform-origin: 50% calc(4 * var(--u));
+  background: radial-gradient(circle at 35% 20%, #fff, #ddd2e1 50%, #b3a3bb); box-shadow: inset 0 calc(-7 * var(--u)) 0 calc(-5.4 * var(--u)) #b5826c; }
+.nx-arm.l { left: calc(-9 * var(--u)); transform: rotate(14deg); }
+.nx-arm.r { right: calc(-9 * var(--u)); transform: rotate(-14deg); }
+.nx-bot-scroll, .nx-bot-inner, .nx-bot-head { will-change: transform; }
+.nx-bot-shadow { position: absolute; left: 50%; bottom: calc(-5 * var(--u)); width: calc(50 * var(--u)); height: calc(6 * var(--u)); margin-left: calc(-25 * var(--u)); border-radius: 50%; background: radial-gradient(ellipse, rgba(10,4,2,.55), transparent 70%); z-index: 0; }
+.nx-eye, .nx-mouth { transition: transform .3s cubic-bezier(.2,.8,.2,1), border-radius .3s, height .3s; }
+.mood-focus .nx-eye { border: 0; height: calc(7 * var(--u)); width: calc(7 * var(--u)); border-radius: 50%; background: #ffe9b0; }
+.mood-focus .nx-eye.l { left: 26%; } .mood-focus .nx-eye.r { right: 26%; }
+.mood-focus .nx-mouth { height: calc(2 * var(--u)); border-radius: calc(2 * var(--u)); }
+.mood-sad .nx-eye { transform: rotate(180deg); }
+.mood-sad .nx-mouth { border-radius: calc(10 * var(--u)) calc(10 * var(--u)) calc(1 * var(--u)) calc(1 * var(--u)); top: 62%; }

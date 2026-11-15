@@ -1,0 +1,231 @@
+/* The Apple look's shared shell, in two parts that apple-app.css then refines.
+   Base: one ink ramp, hairlines instead of boxes, and a sheet floating on a quiet frame. */
+[data-theme^='apple'] {
+  --font: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --display: var(--font);
+  --signal: var(--accent); --on-accent: #fff;
+  --side-text: var(--text); --side-muted: var(--muted); --side-hover: var(--t2); --side-active: var(--t3);
+  --hair: 0 0 0 1px var(--hair-c);
+  --lift: 0 0 0 1px var(--hair-c), 0 12px 32px -12px var(--shadow);
+  --ring: 0 0 0 4px rgba(0, 113, 227, .18);
+  -webkit-font-smoothing: antialiased;
+}
+/* The Apple look paints no workspace backdrop. */
+[data-theme^='apple'] .main-bg { display: none; }
+[data-theme^='apple'] h1, [data-theme^='apple'] h2, [data-theme^='apple'] h3 { font-weight: 600; letter-spacing: -.02em; }
+
+/* Controls. Element rules sit in app-base (layers.css), like the defaults in styles.css, so the Astryx
+   field styles win on the native input inside an Astryx field. */
+@layer app-base {
+  [data-theme^='apple'] input, [data-theme^='apple'] select, [data-theme^='apple'] textarea { background: var(--surface); border-color: var(--input-line); }
+  [data-theme^='apple'] input:focus, [data-theme^='apple'] select:focus, [data-theme^='apple'] textarea:focus { border-color: var(--accent); box-shadow: var(--ring); }
+}
+[data-theme^='apple'] .ghost-btn { border: 0; border-radius: 999px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--edge); }
+[data-theme^='apple'] .ghost-btn:hover:not(:disabled), [data-theme^='apple'] .ghost-btn.on { background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge); }
+[data-theme^='apple'] .send-btn { border-radius: 999px; font-weight: 500; }
+[data-theme^='apple'] .send-btn:hover:not(:disabled) { filter: none; background: #0077ed; }
+[data-theme^='apple'] .badge { background: rgba(0, 113, 227, .1); color: var(--accent-2); }
+[data-theme^='apple'] .count { color: #fff; font-weight: 600; }
+[data-theme^='apple'] .count.live { background: #34c759; color: #fff; }
+[data-theme^='apple'] .pip { box-shadow: none; }
+[data-theme^='apple'] .rail-badge { color: #fff; font-weight: 600; }
+[data-theme^='apple'] .chip-btn { background: var(--accent); color: #fff; font-weight: 500; animation: none; }
+[data-theme^='apple'] .icon-btn.lit { background: rgba(0, 113, 227, .1); color: var(--accent); }
+
+/* Frame: rail, sidebar and top bar share the grey; the conversation is a white sheet. */
+[data-theme^='apple'] .topbar { background: transparent; color: var(--text); }
+[data-theme^='apple'] .topbar .icon-btn, [data-theme^='apple'] .history-nav .icon-btn { color: var(--muted); }
+[data-theme^='apple'] .topbar .icon-btn:hover, [data-theme^='apple'] .history-nav .icon-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+[data-theme^='apple'] .omnibar { background: var(--surface); border: 0; border-radius: 999px; box-shadow: var(--hair); color: var(--muted); }
+[data-theme^='apple'] .omnibar:hover { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--edge); }
+[data-theme^='apple'] .omnibar kbd { border-color: var(--line); color: var(--muted); }
+[data-theme^='apple'] .dnd-badge { background: var(--rail-bg); }
+
+[data-theme^='apple'] .rail-btn, [data-theme^='apple'] .ws-switch { color: var(--muted); }
+[data-theme^='apple'] .rail-btn span { color: var(--muted); font-weight: 500; }
+[data-theme^='apple'] .rail-btn:hover, [data-theme^='apple'] .ws-switch:hover { background: var(--hover); color: var(--text); }
+[data-theme^='apple'] .rail-btn:hover span, [data-theme^='apple'] .rail-btn.active span { color: var(--text); }
+[data-theme^='apple'] .rail-btn.active { background: var(--t3); color: var(--text); }
+[data-theme^='apple'] .rail-btn.active::before { background: var(--accent); }
+[data-theme^='apple'] .ws-switch.on::before { background: var(--text); }
+[data-theme^='apple'] .ws-switch.add, [data-theme^='apple'] .ws-switch.find { border-color: var(--edge); }
+[data-theme^='apple'] .ws-tile { box-shadow: none; }
+[data-theme^='apple'] .ws-tile.active { box-shadow: 0 0 0 2px var(--rail-bg), 0 0 0 4px var(--text); }
+[data-theme^='apple'] .rail-divider { background: var(--line); }
+[data-theme^='apple'] .rail-create { background: var(--t2); color: var(--text); }
+[data-theme^='apple'] .rail-create:hover { background: var(--t4); }
+
+[data-theme^='apple'] .sidebar h2 { font-size: 16px; }
+[data-theme^='apple'] .ws-menu-btn { color: var(--text); }
+[data-theme^='apple'] .side-head-btn:hover { color: var(--text); }
+[data-theme^='apple'] .compose-btn { background: var(--t2); color: var(--text); }
+[data-theme^='apple'] .compose-btn:hover { background: var(--t4); color: var(--text); }
+[data-theme^='apple'] .sidebar .badge { background: var(--t2); }
+[data-theme^='apple'] .search-trigger { background: var(--t2); }
+[data-theme^='apple'] .search-trigger kbd { border-color: var(--line); }
+[data-theme^='apple'] .side-section { font-weight: 500; }
+[data-theme^='apple'] .side-item.active, [data-theme^='apple'] .side-quick button.on { background: var(--side-active) !important; color: var(--text); box-shadow: none; }
+[data-theme^='apple'] .side-item.unread { font-weight: 600; }
+[data-theme^='apple'] .side-item.add .hash { background: var(--t2); }
+
+/* Conversation */
+[data-theme^='apple'] .channel-head { border-bottom: 0; }
+[data-theme^='apple'] .channel-title h2 { font-size: 17px; }
+[data-theme^='apple'] .channel-tabs button { font-weight: 500; }
+[data-theme^='apple'] .channel-tabs button::after { background: var(--text); }
+[data-theme^='apple'] .huddle-btn, [data-theme^='apple'] .member-stack { border: 0; box-shadow: var(--hair); border-radius: 999px; background: var(--surface); }
+[data-theme^='apple'] .huddle-btn:hover, [data-theme^='apple'] .member-stack:hover { box-shadow: 0 0 0 1px var(--edge); }
+[data-theme^='apple'] .day-divider { font-weight: 500; }
+[data-theme^='apple'] .day-divider span { border: 0; background: transparent; }
+[data-theme^='apple'] .msg:hover { background: var(--t1); }
+[data-theme^='apple'] .msg.pinned { background: var(--t1); box-shadow: inset 2px 0 var(--accent); }
+[data-theme^='apple'] .meta strong { font-weight: 600; }
+[data-theme^='apple'] .mention { background: rgba(0, 113, 227, .1); color: var(--accent-2); font-weight: 500; }
+[data-theme^='apple'] .mention.group { background: rgba(0, 113, 227, .16); }
+[data-theme^='apple'] .msg .actions { background: var(--surface); border: 0; box-shadow: var(--lift); backdrop-filter: none; }
+[data-theme^='apple'] .actions button:hover { transform: none; }
+[data-theme^='apple'] .reactions button { border: 0; background: var(--raised); }
+[data-theme^='apple'] .reactions button:hover { border: 0; background: var(--t3); transform: none; }
+[data-theme^='apple'] .reactions button.mine { background: rgba(0, 113, 227, .12); box-shadow: inset 0 0 0 1px rgba(0, 113, 227, .45); }
+[data-theme^='apple'] .link-card, [data-theme^='apple'] .attach-file, [data-theme^='apple'] .pin-item { border: 0; box-shadow: var(--hair); }
+[data-theme^='apple'] .link-card { border-radius: 12px; border-left: 0; }
+[data-theme^='apple'] .link-card:hover { transform: none; box-shadow: 0 0 0 1px var(--edge); }
+[data-theme^='apple'] .attach-img:hover { transform: none; box-shadow: none; }
+[data-theme^='apple'] .composer-box { border: 0; border-radius: 16px; box-shadow: 0 0 0 1px var(--input-line); }
+[data-theme^='apple'] .composer-box:focus-within { transform: none; box-shadow: 0 0 0 1px var(--accent), var(--ring); }
+[data-theme^='apple'] .format-bar { border-bottom: 0; }
+[data-theme^='apple'] .typing-dots b { background: var(--muted); }
+
+/* Surfaces that float */
+[data-theme^='apple'] .menu, [data-theme^='apple'] .popover { background: var(--menu-bg); border: 0; box-shadow: var(--lift); }
+[data-theme^='apple'] .menu button:hover { background: var(--t2); color: var(--text); }
+[data-theme^='apple'] .menu button.danger:hover { background: rgba(215, 0, 21, .08); color: var(--danger); }
+[data-theme^='apple'] .scrim { background: var(--scrim); backdrop-filter: blur(8px); }
+[data-theme^='apple'] .modal, [data-theme^='apple'] .palette { border: 0; border-radius: 20px; box-shadow: var(--pop); }
+[data-theme^='apple'] .palette input { font-size: 17px; }
+[data-theme^='apple'] .palette-results .answer { background: rgba(0, 113, 227, .08); }
+[data-theme^='apple'] .workflow, [data-theme^='apple'] .stat, [data-theme^='apple'] .list-item, [data-theme^='apple'] .feed-item, [data-theme^='apple'] .person-card, [data-theme^='apple'] .huddle-card { border: 0; background: var(--raised); }
+[data-theme^='apple'] .feed-item:hover, [data-theme^='apple'] .person-card:hover { box-shadow: var(--hair); transform: none; }
+[data-theme^='apple'] .plan-card, [data-theme^='apple'] .alert-banner, [data-theme^='apple'] .huddle, [data-theme^='apple'] .huddle-stage { background: var(--raised); color: var(--text); box-shadow: none; }
+[data-theme^='apple'] .alert-banner { border-radius: 14px; }
+[data-theme^='apple'] .alert-banner .link-btn, [data-theme^='apple'] .link-btn { color: var(--accent-2); }
+[data-theme^='apple'] .empty-mark { background: var(--raised); color: var(--text); }
+[data-theme^='apple'] .starter-card.c1, [data-theme^='apple'] .starter-card.c2, [data-theme^='apple'] .starter-card.c3 { background: var(--raised); color: var(--text); border: 0; }
+[data-theme^='apple'] .starter-card small { color: var(--muted); opacity: 1; }
+[data-theme^='apple'] .starter-card:hover { transform: none; box-shadow: var(--hair); }
+[data-theme^='apple'] .starter-art { background: var(--surface); box-shadow: var(--hair); }
+[data-theme^='apple'] .starter-card strong { font-family: var(--font); font-weight: 600; }
+
+/* Desktop only: on a phone the sidebar is a sheet and needs its own background. */
+@media (min-width: 769px) {
+  [data-theme^='apple'] .shell > .app { margin: 0 12px 12px 0; background: transparent; }
+  [data-theme^='apple'] .shell .sidebar { background: transparent; border-radius: 0; box-shadow: none; }
+  [data-theme^='apple'] .shell .main, [data-theme^='apple'] .shell .panel { border-radius: 16px; background: var(--surface); border-left: 0; box-shadow: var(--lift); }
+  [data-theme^='apple'] .shell.has-panel .main { border-radius: 16px; }
+  [data-theme^='apple'] .shell .panel { margin-left: 12px; }
+  [data-theme^='apple'] .panel > header { border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 768px) {
+  [data-theme^='apple'] .shell .tabbar { background: var(--rail-bg); border-top: 1px solid var(--line); }
+  [data-theme^='apple'] .tabbar button { color: var(--muted); }
+  [data-theme^='apple'] .tabbar button.on { color: var(--text); }
+  [data-theme^='apple'] .tabbar button.on::before { background: var(--accent); }
+  [data-theme^='apple'] .shell .sidebar { background: var(--rail-bg); }
+}
+
+/* Shell: the sidebar runs full height on the left and the top bar floats over the page area;
+   flat surfaces, hairline borders, small radii. */
+[data-theme^='apple'] {
+  --font: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, 'Apple Color Emoji', Arial, sans-serif, 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --display: var(--font);
+  --radius: 6px;
+  --topbar: 45px;
+  --hair: 0 0 0 1px var(--hair-c);
+  --lift: 0 0 0 1px var(--hair-c), 0 4px 16px -4px var(--shadow);
+  --ring: 0 0 0 3px rgba(0, 117, 222, .22);
+}
+
+/* Shell controls (sidebar toggles, breadcrumbs, resize edge) shown only under the Apple look. */
+.apple-only { display: none; }
+[data-theme^='apple'] .apple-only { display: revert; }
+
+/* ---- Shape: flat, hairline, small radii (the base rules above round everything to pills and 16px sheets) ---- */
+[data-theme^='apple'] .ghost-btn, [data-theme^='apple'] .huddle-btn, [data-theme^='apple'] .member-stack { border-radius: 6px; }
+[data-theme^='apple'] .omnibar { border-radius: 6px; }
+[data-theme^='apple'] .composer-box { border-radius: 8px; }
+[data-theme^='apple'] .modal, [data-theme^='apple'] .palette { border-radius: 12px; }
+[data-theme^='apple'] .menu, [data-theme^='apple'] .popover { border-radius: 8px; }
+[data-theme^='apple'] .link-card { border-radius: 8px; }
+[data-theme^='apple'] .alert-banner { border-radius: 8px; }
+[data-theme^='apple'] .chip-btn, [data-theme^='apple'] .send-btn { border-radius: 6px; }
+[data-theme^='apple'] .mention { background: var(--tag-bg); color: var(--accent-2); }
+[data-theme^='apple'] .mention.group { background: var(--tag-bg); }
+[data-theme^='apple'] .badge { background: var(--tag-bg); color: var(--accent-2); }
+[data-theme^='apple'] .icon-btn.lit { background: var(--tag-bg); color: var(--accent); }
+[data-theme^='apple'] .reactions button.mine { background: var(--tag-bg); box-shadow: inset 0 0 0 1px var(--accent); }
+[data-theme^='apple'] .palette-results .answer { background: var(--tag-bg); }
+[data-theme^='apple'] .channel-head { background: var(--panel); backdrop-filter: none; }
+[data-theme^='apple'] .channel-title h2 { font-size: 16px; }
+[data-theme^='apple'] h1, [data-theme^='apple'] h2, [data-theme^='apple'] h3 { letter-spacing: -.01em; }
+[data-theme^='apple'] .count { background: var(--accent); color: #fff; }
+[data-theme^='apple'] .pip { background: var(--accent); box-shadow: none; }
+
+/* ---- Shell: sidebar full height on the left; the top bar floats over the page area ---- */
+[data-theme^='apple'] .shell { position: relative; background: var(--bg); --side-eff: var(--side); }
+[data-theme^='apple'] .shell.side-collapsed { --side-eff: 0px; }
+[data-theme^='apple'] .shell > .app { margin: 0; height: 100%; }
+[data-theme^='apple'] .rail { display: none; }
+[data-theme^='apple'] .topbar {
+  display: flex; align-items: center; gap: 4px; padding: 0 12px 0 8px; background: var(--bg); color: var(--text);
+  position: absolute; top: 0; left: var(--side-eff); right: 0; height: var(--topbar);
+}
+[data-theme^='apple'] .topbar .icon-btn { width: 28px; height: 28px; border-radius: 6px; font-size: 15px; display: grid; place-items: center; }
+[data-theme^='apple'] .topbar .nav-toggle { display: none; }
+[data-theme^='apple'] .topbar .omnibar { display: none; }
+[data-theme^='apple'] .history-nav { padding-left: 0; }
+[data-theme^='apple'] .topbar-actions { margin-left: auto; }
+[data-theme^='apple'] .crumbs { flex: 1; min-width: 0; display: flex; align-items: center; gap: 2px; font-size: 14px; color: var(--muted); }
+[data-theme^='apple'] .crumbs span { padding: 2px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-theme^='apple'] .crumbs span:last-child { color: var(--text); }
+[data-theme^='apple'] .crumbs i { font-style: normal; opacity: .5; }
+[data-theme^='apple'] .shell:not(.side-collapsed) .topbar .side-toggle-top { display: none; }
+
+[data-theme^='apple'] .sidebar { position: relative; background: var(--side-bg); border-right: 0; height: 100%; }
+[data-theme^='apple'] .shell.side-collapsed .sidebar { display: none; }
+[data-theme^='apple'] .sidebar > header { padding: 8px 8px 4px 10px; }
+[data-theme^='apple'] .sidebar h2 { font-size: 14px; font-weight: 600; }
+[data-theme^='apple'] .ws-menu-btn { padding: 4px 6px; border-radius: 6px; }
+[data-theme^='apple'] .side-head-btn, [data-theme^='apple'] .compose-btn { width: 26px; height: 26px; border-radius: 6px; background: transparent; color: var(--side-muted); }
+[data-theme^='apple'] .side-head-btn:hover, [data-theme^='apple'] .compose-btn:hover { background: var(--t3); color: var(--text); }
+[data-theme^='apple'] .side-scroll { padding: 2px 6px 12px; }
+[data-theme^='apple'] .side-top { display: grid; gap: 1px; padding: 0 6px 8px; }
+[data-theme^='apple'] .side-bottom { display: grid; gap: 1px; padding: 6px 6px 8px; border-top: 1px solid var(--hair-c); }
+[data-theme^='apple'] .side-item { padding: 3px 8px; min-height: var(--side-row); border-radius: 6px; font-size: 14px; color: var(--side-muted); font-weight: 500; }
+[data-theme^='apple'] .side-item .hash { width: 20px; opacity: 1; display: grid; place-items: center; }
+[data-theme^='apple'] .side-item:hover { background: var(--side-hover); color: var(--text); }
+[data-theme^='apple'] .side-item.active { background: var(--side-active) !important; color: var(--text); font-weight: 600; box-shadow: none; }
+[data-theme^='apple'] .side-item.unread { color: var(--text); font-weight: 600; }
+[data-theme^='apple'] .side-section { padding: 14px 6px 2px; font-size: 12px; font-weight: 600; color: var(--side-muted); }
+[data-theme^='apple'] .side-toggle { padding: 2px 4px; }
+[data-theme^='apple'] .side-hint { padding: 2px 10px; font-size: 12px; }
+[data-theme^='apple'] .side-resize { position: absolute; top: 0; right: -3px; bottom: 0; width: 6px; cursor: col-resize; z-index: 3; }
+[data-theme^='apple'] .side-resize:hover, [data-theme^='apple'] .side-resize.drag { background: linear-gradient(90deg, transparent 2px, var(--accent) 2px, var(--accent) 4px, transparent 4px); opacity: .6; }
+
+/* ---- Desktop: page area sits under the floating top bar, flat, no frame ---- */
+@media (min-width: 769px) {
+  [data-theme^='apple'] .shell > .app { background: transparent; }
+  [data-theme^='apple'] .shell .sidebar { background: var(--side-bg); border-radius: 0; box-shadow: none; }
+  [data-theme^='apple'] .shell .main, [data-theme^='apple'] .shell .panel { margin-top: var(--topbar); border-radius: 0; background: var(--surface); box-shadow: none; }
+  [data-theme^='apple'] .shell .panel { margin-left: 0; border-left: 1px solid var(--hair-c); }
+  [data-theme^='apple'] .shell.has-panel .main { border-radius: 0; }
+}
+
+/* ---- Phone: the sidebar is a sheet, the top bar is a normal bar, search lives in the sheet ---- */
+@media (max-width: 768px) {
+  [data-theme^='apple'] .shell { --side-eff: 0px; }
+  [data-theme^='apple'] .topbar { position: relative; left: 0; padding: 0 8px; }
+  [data-theme^='apple'] .topbar .nav-toggle { display: grid; }
+  [data-theme^='apple'] .topbar .side-toggle-top, [data-theme^='apple'] .history-nav, [data-theme^='apple'] .side-resize, [data-theme^='apple'] .sidebar .side-head-btn.apple-only { display: none; }
+  [data-theme^='apple'] .shell.side-collapsed .sidebar { display: flex; }
+  [data-theme^='apple'] .shell .sidebar { position: fixed; height: auto; background: var(--side-bg); width: min(320px, 86vw); }
+}
