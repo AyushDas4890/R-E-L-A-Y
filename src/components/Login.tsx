@@ -327,7 +327,7 @@ export function Login({ invite, onInvite, error, signedIn, onSignOut, onBack, in
 export function SignInStage({ onBack, children }: { onBack?: () => void; children: ReactNode }) {
   const wide = useMediaQuery('(min-width: 860px)');
   return (
-    <SiteFrame route="home" footer={false}>
+    <SiteFrame>
       <VStack hAlign="center" paddingInline={4} paddingBlockStart={wide ? 10 : 6} paddingBlockEnd={10} className="ap-si si-light">
         <Grid columns={wide ? 2 : 1} gap={wide ? 10 : 6} width="100%" maxWidth={1000} align="center">
           <VStack gap={4} hAlign={wide ? 'start' : 'center'}>

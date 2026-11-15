@@ -6,12 +6,9 @@ import { authEnabled } from './supabase.ts';
 import { Login, SignInStage } from './components/Login.tsx';
 import { ResetPassword } from './components/ResetPassword.tsx';
 import { Boot } from './components/Boot.tsx';
-import { Landing } from './components/Landing.tsx';
-import { PageIntro } from './components/PageIntro.tsx';
-import { HelpPage } from './components/Help.tsx';
 import { useRoute } from './components/Site.tsx';
+import { landingUrl } from './landing.ts';
 import { gsap } from 'gsap';
-import { pageTransition } from './transition.ts';
 import { Avatar } from './components/Avatar.tsx';
 import { Composer } from './components/Composer.tsx';
 import { HuddleBar, ScreenOverlay } from './components/Huddle.tsx';
@@ -79,10 +76,7 @@ export default function App() {
   // A dev sign-in or sign-up from auth.ts saved a new session: use it without a reload.
   useEffect(() => { if (signedInDev) setDevSession(signedInDev); }, [signedInDev]);
   const [invite, setInvite] = useState(inviteFromUrl);
-  // Show the scroll-zoom intro overlay on every page load / refresh.
-  const [showIntro, setShowIntro] = useState(true);
-  const doneIntro = () => setShowIntro(false);
-  // Help pages are public and also open for signed-in people, so they are decided before anything else.
+  // The only public route the app still owns is /reset; the rest of the public site is its own project.
   const [siteRoute, goSite] = useRoute();
   // The reset page stays up once opened, even after a successful update fires USER_UPDATED (which
   // clears `recovery`), so the "Password updated" screen is seen. Only finishing or leaving it ends it.
@@ -91,32 +85,6 @@ export default function App() {
   useEffect(() => { if (recovery) setResetting(true); }, [recovery]);
   // Leaving /reset by a nav link ends it too (the recovery effect above re-latches it only while a recovery session is live).
   useEffect(() => { setResetting(siteRoute === 'reset' ? true : (r) => (recovery ? r : false)); }, [siteRoute]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [showLogin, setShowLogin] = useState(() => !!inviteFromUrl() || window.history.state?.relay === 'signin');
-  // Sign-in is its own history entry, so the browser's Back button returns to the landing page
-  // instead of leaving the site. (`history` below is the in-app channel history, hence window.history.)
-  const showLoginRef = useRef(showLogin);
-  showLoginRef.current = showLogin;
-  const openLogin = () => {
-    if (window.history.state?.relay !== 'signin') {
-      // Coming back from sign-in should land on the top of the home page, not on whichever
-      // section (#workflows, #tour…) was last in the address bar.
-      window.history.replaceState(window.history.state, '', location.pathname + location.search);
-      window.history.pushState({ relay: 'signin' }, '', location.pathname + location.search);
-    }
-    pageTransition(() => setShowLogin(true));
-  };
-  const closeLogin = () => {
-    if (window.history.state?.relay === 'signin') window.history.back();
-    else pageTransition(() => setShowLogin(false));
-  };
-  useEffect(() => {
-    const onPop = (e: PopStateEvent) => {
-      const want = e.state?.relay === 'signin';
-      if (showLoginRef.current !== want) pageTransition(() => setShowLogin(want));
-    };
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
   // In auth mode the token comes from Supabase; in dev mode from localStorage.
   const session = authEnabled ? (token ? { token, invite } : null) : devSession && { ...devSession, invite: invite || devSession.invite };
   const { snap, typing, error, authError, analytics, workspaces, atHome, home, lastWorkspace, connected, send, listen, clearError, switchWorkspace, goHome } = useRelay(session);
@@ -291,12 +259,8 @@ export default function App() {
     const cancelReset = () => {
       if (session) leave();
       leaveReset();
-      openLogin();
     };
     return <SignInStage onBack={cancelReset}><ResetPassword onDone={leaveReset} onCancel={cancelReset} /></SignInStage>;
-  }
-  if (siteRoute === 'help') {
-    return <HelpPage go={goSite} signedIn={!!session && !authError} onGetStarted={() => (session ? goSite('home') : openLogin())} />;
   }
   // Signed in, but the server turned the person away: an unconfirmed email, a domain outside the
   // allowed list, the owner's approval pending, no invite, or removed from the organisation. These
@@ -305,16 +269,10 @@ export default function App() {
   const blocked = !!authError && authError.code !== 'auth-required';
   if (!session || blocked || (authError && authError.code === 'auth-required')) {
     if (!ready) return <Boot status="Starting Relay…" />;
-    if (!showLogin && !authError) return (
-      <>
-        {showIntro && <PageIntro onDone={doneIntro} />}
-        <Landing onGetStarted={openLogin} />
-      </>
-    );
     return (
       <Login
         key={authError?.code ?? 'signin'}
-        onBack={authError ? undefined : closeLogin}
+        onBack={authError ? undefined : () => window.location.assign(landingUrl('/'))}
         invite={invite}
         onInvite={setInvite}
         error={authError?.message}
@@ -614,7 +572,7 @@ export default function App() {
                   <button role="menuitem" onClick={() => { goHome(); setMenu(null); }}>Back to Home</button>
                   <button role="menuitem" onClick={() => { setModal('invite'); setMenu(null); }}>Invite people to {snap.workspace.name}</button>
                   <button role="menuitem" onClick={() => { setModal('profile'); setMenu(null); }}>Preferences</button>
-                  <button role="menuitem" onClick={() => { window.open('/help', '_blank', 'noopener'); setMenu(null); }}>Help center</button>
+                  <button role="menuitem" onClick={() => { window.open(landingUrl('/help'), '_blank', 'noopener'); setMenu(null); }}>Help center</button>
                   {admin && <button role="menuitem" onClick={() => { setModal('admin'); setMenu(null); }}>Admin console</button>}
                   {admin && <button role="menuitem" onClick={() => { renameWorkspace(); setMenu(null); }}>Rename workspace</button>}
                   {workspaces.mine.length > 1 && <p className="menu-title">Switch workspace</p>}

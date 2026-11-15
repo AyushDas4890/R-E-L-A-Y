@@ -278,3 +278,9 @@ The server also serves the built UI itself, so you can skip Vercel and use the s
 <sub>Built from publicly known Slack behavior only. No Slack code, assets or private APIs were inspected or copied.<br>
 Screenshots: the home and sign-in pages are from the live site; the workspace views are from a local server with demo data.</sub>
 </div>
+
+## Public site
+
+The landing page, feature pages and help center live in their own repo,
+[RELAY-Landing-page](https://github.com/AyushDas4890/RELAY-Landing-page), deployed at https://relay-landing-page-five.vercel.app.
+This app keeps only sign-in and `/reset`; their nav links point at the public site (override with `VITE_LANDING_URL`).
