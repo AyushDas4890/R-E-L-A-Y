@@ -29,7 +29,7 @@ function Blocks({ blocks }: { blocks: Block[] }) {
       {blocks.map((b, i) =>
         'p' in b ? <Text key={i} as="p" display="block">{inline(b.p)}</Text>
         : 'h' in b ? <Heading key={i} level={2}>{b.h}</Heading>
-        : 'note' in b ? <Card key={i} variant="muted" padding={4}><Text color="secondary">{inline(b.note)}</Text></Card>
+        : 'note' in b ? <Card key={i} variant="purple" padding={4}><Text color="secondary">{inline(b.note)}</Text></Card>
         : 'ul' in b ? <ul key={i}>{b.ul.map((t, j) => <li key={j}><Text>{inline(t)}</Text></li>)}</ul>
         : <ol key={i}>{b.ol.map((t, j) => <li key={j}><Text>{inline(t)}</Text></li>)}</ol>,
       )}
@@ -85,7 +85,7 @@ export function HelpPage({ onGetStarted, signedIn }: { go: (r: Route) => void; o
                 <Heading level={1} type="display-3" weight="semibold">{article.title}</Heading>
                 <Text type="large" color="secondary">{article.summary}</Text>
                 <Blocks blocks={article.body} />
-                <Card variant="muted" padding={5}>
+                <Card variant="purple" padding={5}>
                   <HStack gap={6} vAlign="center" justify="between" wrap="wrap">
                     <VStack gap={2} hAlign="start" maxWidth={420}>
                       <Text weight="semibold">Still stuck</Text>

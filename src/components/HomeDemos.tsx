@@ -16,7 +16,6 @@ import { Token } from '@astryxdesign/core/Token';
 import { Divider } from '@astryxdesign/core/Divider';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Button } from '@astryxdesign/core/Button';
-import { Slider } from '@astryxdesign/core/Slider';
 import { useMediaQuery } from '@astryxdesign/core/hooks';
 import { LogoMark } from './LogoIntro.tsx';
 import { Icon } from './Icon.tsx';
@@ -84,7 +83,8 @@ const ANSWERS: [RegExp, string][] = [
   [/^\/?remind/i, 'Done. I will remind you in 2 hours.'],
   [/recap|summar/i, 'Recap: Ken sends the Q3 deck today, and a reminder is set.'],
   [/huddle|call/i, 'Hit Huddle in any channel. When it ends I post the notes back.'],
-  [/price|cost|free|paid|plan|seat/i, 'Free. No seats, no tiers, no billing.'],
+  [/own|launch|who/i, 'Priya owns the pricing page. Ken owns the announcement post.'],
+  [/standup/i, 'Standup is a thread in #eng-standup. Three lines each, before 9:30.'],
   [/help|what can you/i, 'I run reminders, recap channels, answer from your messages and start workflows.'],
 ];
 const reply = (q: string) => ANSWERS.find(([re]) => re.test(q))?.[1] ?? 'Sign in and ask me in your workspace. I search your channels for the answer.';
@@ -279,7 +279,7 @@ export function HeroDemo() {
               {thinking && <Dots />}
             </VStack>
             <HStack gap={2} wrap="wrap" paddingInline={3} paddingBlockStart={2}>
-              {['Is it free?', 'What can you do?', '/remind me stretch in 10m'].map((q) => (
+              {['Who owns the launch?', 'What can you do?', '/remind me stretch in 10m'].map((q) => (
                 <Button key={q} label={q} size="sm" variant="secondary" onClick={() => send(q)} />
               ))}
             </HStack>
@@ -287,7 +287,7 @@ export function HeroDemo() {
               <StackItem size="fill">
                 {typing
                   ? <Card padding={3}><Text>{composer}<span className="home-caret" /></Text></Card>
-                  : <TextInput label="Ask Relay Bot" isLabelHidden placeholder="Try it: ask Relay Bot about huddles or price" value={draft} onChange={(v) => setDraft(v)}
+                  : <TextInput label="Ask Relay Bot" isLabelHidden placeholder="Try it: ask Relay Bot who owns what" value={draft} onChange={(v) => setDraft(v)}
                       onKeyDown={(e) => { if (e.key === 'Enter') send(); }} />}
               </StackItem>
             </HStack>
@@ -320,17 +320,17 @@ function Shell({ children, label }: { children: (on: boolean) => ReactNode; labe
   );
 }
 
-// Replies fold into a thread, so the channel stays short.
+// The standup runs as one thread, so the channel stays short.
 export function ThreadDemo() {
   return (
-    <Shell label="A message with replies folded into a thread, and the channel staying short">
+    <Shell label="A standup thread: three teammates post their updates under one message">
       {(on) => (
         <>
-          <Step show={on} at={0}><Msg who="Priya Nair" time="10:02 AM" extra={<Text type="supporting" color="accent" weight="semibold">3 replies · last at 10:09</Text>}>Can we cut step two from onboarding?</Msg></Step>
-          <Step show={on} at={3} className="home-indent"><Msg who="Ken Ito" time="10:04 AM">Yes. Nobody uses it.</Msg></Step>
-          <Step show={on} at={5} className="home-indent"><Msg who="Maya Chen" time="10:07 AM">Agreed. I will update the flow.</Msg></Step>
+          <Step show={on} at={0}><Msg who="Maya Chen" time="9:02 AM" extra={<Text type="supporting" color="accent" weight="semibold">3 replies · last at 9:11</Text>}>Standup thread is up. Three lines each, before 9:30.</Msg></Step>
+          <Step show={on} at={3} className="home-indent"><Msg who="Ken Ito" time="9:04 AM">Yesterday: export fix. Today: release notes. Blockers: none.</Msg></Step>
+          <Step show={on} at={5} className="home-indent"><Msg who="Priya Nair" time="9:07 AM">Yesterday: design review. Today: pricing page. Blockers: copy.</Msg></Step>
           <Divider />
-          <Step show={on} at={8}><Msg who="Ken Ito" time="10:15 AM">Release notes are up in the channel page.</Msg></Step>
+          <Step show={on} at={8}><Msg who="Maya Chen" time="9:15 AM">Thanks both. I will unblock the copy today.</Msg></Step>
         </>
       )}
     </Shell>
@@ -386,23 +386,35 @@ export function PageDemo() {
   );
 }
 
-// "Pay for seats?" The slider adds people to the team; the bill stays at $0. People pop in.
-export function SeatDemo() {
-  const [n, setN] = useState(25);
-  const shown = Math.min(n, 60);
+
+const BOARD: [string, [string, string][]][] = [
+  ['To do', [['Pricing page', 'Priya'], ['Press kit', 'Maya']]],
+  ['In progress', [['Release notes', 'Ken']]],
+  ['Done', [['Export fix', 'Ken'], ['Design review', 'Priya']]],
+];
+
+// A channel's task board: every card has an owner, and cards move across as work does.
+export function BoardDemo() {
   return (
-    <VStack gap={4} hAlign="center" width="100%">
-      <HStack gap={3} vAlign="center" justify="center" wrap="wrap">
-        <Text weight="semibold">{n} {n === 1 ? 'person' : 'people'} on Relay</Text>
-        <span className="site-bill" aria-live="polite">$0</span>
-        <Text type="supporting">per month</Text>
-      </HStack>
-      <VStack width="100%" maxWidth={520}>
-        <Slider label="Team size" value={n} onChange={(v: number) => setN(v)} min={1} max={500} step={1} />
-      </VStack>
-      <div className="site-crowd" aria-hidden>
-        {Array.from({ length: shown }, (_, i) => <i key={i} style={{ '--k': i % 12 } as CSSProperties} />)}
-      </div>
-    </VStack>
+    <Shell label="A task board with three columns, every card showing its owner">
+      {(on) => (
+        <HStack gap={3} vAlign="start">
+          {BOARD.map(([col, cards], c) => (
+            <StackItem key={col} size="fill">
+              <VStack gap={2}>
+                <Text type="supporting" weight="semibold">{col}</Text>
+                {cards.map(([task, who], k) => (
+                  <Step key={task} show={on} at={1 + c * 2 + k}>
+                    <Card padding={3} variant="muted">
+                      <VStack gap={1}><Text>{task}</Text><HStack gap={1} vAlign="center"><Person name={who} /><Text type="supporting">{who}</Text></HStack></VStack>
+                    </Card>
+                  </Step>
+                ))}
+              </VStack>
+            </StackItem>
+          ))}
+        </HStack>
+      )}
+    </Shell>
   );
 }

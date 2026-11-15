@@ -473,7 +473,7 @@ function FilmCard({ def, page }: { def: PageDef; page: FeatureRoute }) {
 function Actions({ onGetStarted, center }: { onGetStarted: () => void; center?: boolean }) {
   return (
     <HStack gap={3} wrap="wrap" justify={center ? 'center' : 'start'}>
-      <Button label="Try it free" variant="primary" size="lg" onClick={onGetStarted} />
+      <Button label="Try Relay" variant="primary" size="lg" onClick={onGetStarted} />
       <Button label="Watch how it works" variant="secondary" size="lg" onClick={() => scrollToHash('#film', true)} />
     </HStack>
   );
@@ -549,7 +549,7 @@ function Steps({ def, page, wide }: PageProps) {
               <Text color="secondary">{d.text}</Text>
               <Points points={d.points} />
             </VStack>
-            <Card variant="muted" padding={3}><StepClip def={def} page={page} d={d} /></Card>
+            <Card variant="purple" padding={3}><StepClip def={def} page={page} d={d} /></Card>
           </Grid>
         ))}
       </SiteSection>
@@ -561,7 +561,7 @@ function Steps({ def, page, wide }: PageProps) {
         {head}
         <Grid columns={wide ? 2 : 1} gap={4}>
           {def.details.map((d) => (
-            <Card key={d.title} variant="muted" padding={5}>
+            <Card key={d.title} variant="purple" padding={5}>
               <VStack gap={4}>
                 <VStack gap={1}><Text type="supporting">{d.eyebrow}</Text><Heading level={3}>{d.title}</Heading></VStack>
                 <Text color="secondary">{d.text}</Text>
@@ -604,7 +604,7 @@ function Steps({ def, page, wide }: PageProps) {
       <Grid columns={wide ? 4 : 1} gap={4}>
         {def.details.map((d) => (
           <VStack key={d.title} gap={3}>
-            <Card variant="muted" padding={2}><StepClip def={def} page={page} d={d} /></Card>
+            <Card variant="purple" padding={2}><StepClip def={def} page={page} d={d} /></Card>
             <Text weight="medium">{d.title}</Text>
             <Text type="supporting">{d.text}</Text>
           </VStack>
@@ -619,11 +619,11 @@ function Steps({ def, page, wide }: PageProps) {
 function Facts({ def, page, wide }: PageProps) {
   if (page === 'overview') {
     return (
-      <VStack as="section" id="pricing" hAlign="center" paddingInline={4} paddingBlock={10} style={{ background: 'var(--color-background-muted)' }} className="site-section">
+      <VStack as="section" id="pricing" hAlign="center" paddingInline={4} paddingBlock={10} className="site-section tint-purple">
         <Grid columns={wide ? 3 : 1} gap={wide ? 10 : 6} width="100%" maxWidth={1080}>
           <VStack gap={3} hAlign="start">
-            <Heading level={2} type="display-3" weight="semibold">One plan, all of it on</Heading>
-            <Text color="secondary">Free for your organisation. There is no tier to climb and nothing held back for later.</Text>
+            <Heading level={2} type="display-3" weight="semibold">Everything on from day one</Heading>
+            <Text color="secondary">Every feature is switched on for your organisation from day one.</Text>
           </VStack>
           {[def.facts.slice(0, 5), def.facts.slice(5)].map((col, c) => (
             <VStack key={c} gap={0}>
@@ -669,7 +669,7 @@ function Facts({ def, page, wide }: PageProps) {
         </VStack>
         <Grid columns={wide ? 3 : 1} gap={3}>
           {def.facts.map((f, k) => (
-            <Card key={f.title} padding={4} variant="muted">
+            <Card key={f.title} padding={4} variant="purple">
               <VStack gap={2} hAlign="start">
                 <Token size="sm" label={RECIPE_CODES[k] ?? f.title} />
                 <Text weight="medium">{f.title}</Text>
@@ -717,9 +717,9 @@ export function FeaturePage({ page, go, onGetStarted }: { page: FeatureRoute; go
           <HStack gap={8} vAlign="center" justify="between" wrap="wrap">
             <VStack gap={3} hAlign="start" maxWidth={520}>
               <Heading level={2} type="display-3" weight="semibold">Try it with your team</Heading>
-              <Text color="secondary">Free to start, every feature on. Or keep reading about the next part of Relay.</Text>
+              <Text color="secondary">Every feature on from day one. Or keep reading about the next part of Relay.</Text>
               <HStack gap={4} wrap="wrap" vAlign="center">
-                <Button label="Get Relay free" variant="primary" size="lg" onClick={onGetStarted} />
+                <Button label="Get started" variant="primary" size="lg" onClick={onGetStarted} />
                 <RouteLink to={def.next} go={go} className="site-next">Next: {NEXT_LABEL[def.next]} →</RouteLink>
               </HStack>
             </VStack>

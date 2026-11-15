@@ -114,14 +114,14 @@ export function SiteNav({ route, onGetStarted, signedIn }: { route: Route; onGet
       centerContent={
         <>
           <TopNavMenu label="Product" items={FEATURES.map((p) => ({ title: p.label, description: p.blurb, href: p.path, icon: <Icon n={p.icon} size={18} /> }))} />
-          <TopNavItem label="Why it is free" href="/#free" />
+          <TopNavItem label="For teams" href="/#teams" />
           <TopNavItem label="Help" href="/help" isSelected={route === 'help'} />
         </>
       }
       endContent={onGetStarted && (
         <HStack gap={2} vAlign="center">
           {!signedIn && !narrow && <Button label="Log in" variant="ghost" size="sm" onClick={onGetStarted} />}
-          <Button label={signedIn ? 'Open Relay' : 'Get Relay free'} variant="primary" size="sm" onClick={onGetStarted} />
+          <Button label={signedIn ? 'Open Relay' : 'Get started'} variant="primary" size="sm" onClick={onGetStarted} />
         </HStack>
       )}
     />
@@ -131,7 +131,7 @@ export function SiteNav({ route, onGetStarted, signedIn }: { route: Route; onGet
 const FOOTER: { title: string; links: [string, string][] }[] = [
   { title: 'Product', links: FEATURES.map((p) => [p.label, p.path]) },
   { title: 'Resources', links: [['Help center', '/help'], ['Getting started', '/help/sign-in'], ['Search tips', '/help/search'], ['Troubleshooting', '/help/slow-start']] },
-  { title: 'Company', links: [['About Relay', '/overview'], ['Why it is free', '/#free'], ['Help center', '/help']] },
+  { title: 'Company', links: [['About Relay', '/overview'], ['Team setups', '/#teams'], ['Help center', '/help']] },
   { title: 'Legal', links: [['What admins can see', '/help/what-admins-see'], ['Data retention', '/help/retention-export'], ['Delete your account', '/help/delete-account']] },
 ];
 
@@ -194,6 +194,7 @@ export function SiteFrame({ route, onGetStarted, signedIn, footer = true, childr
         onClickCapture={interceptLinks}
       >
         <VStack className="site-page">
+          <div className="site-aurora" aria-hidden><i /><i /><i /></div>
           {children}
           {footer && <SiteFooter />}
         </VStack>
