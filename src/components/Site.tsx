@@ -114,19 +114,14 @@ export function SiteNav({ route, onGetStarted, signedIn }: { route: Route; onGet
       centerContent={
         <>
           <TopNavMenu label="Product" items={FEATURES.map((p) => ({ title: p.label, description: p.blurb, href: p.path, icon: <Icon n={p.icon} size={18} /> }))} />
-          <TopNavMenu label="Resources" items={[
-            { title: 'Help center', description: 'Guides for every part of Relay', href: '/help', icon: <Icon n="bookmark" size={18} /> },
-            { title: 'Getting started', description: 'Sign in, join or create a workspace', href: '/help/sign-in', icon: <Icon n="user" size={18} /> },
-            { title: 'Search tips', description: 'Find any message with Ctrl K', href: '/help/search', icon: <Icon n="command" size={18} /> },
-          ]} />
-          <TopNavItem label="Pricing" href="/overview#pricing" />
-          <TopNavItem label="Request a demo" href="/help" isSelected={route === 'help'} />
+          <TopNavItem label="Why it is free" href="/#free" />
+          <TopNavItem label="Help" href="/help" isSelected={route === 'help'} />
         </>
       }
       endContent={onGetStarted && (
         <HStack gap={2} vAlign="center">
           {!signedIn && !narrow && <Button label="Log in" variant="ghost" size="sm" onClick={onGetStarted} />}
-          <Button label="Open Relay" variant="primary" size="sm" onClick={onGetStarted} />
+          <Button label={signedIn ? 'Open Relay' : 'Get Relay free'} variant="primary" size="sm" onClick={onGetStarted} />
         </HStack>
       )}
     />
@@ -136,7 +131,7 @@ export function SiteNav({ route, onGetStarted, signedIn }: { route: Route; onGet
 const FOOTER: { title: string; links: [string, string][] }[] = [
   { title: 'Product', links: FEATURES.map((p) => [p.label, p.path]) },
   { title: 'Resources', links: [['Help center', '/help'], ['Getting started', '/help/sign-in'], ['Search tips', '/help/search'], ['Troubleshooting', '/help/slow-start']] },
-  { title: 'Company', links: [['About Relay', '/overview'], ['Pricing', '/overview#pricing'], ['Request a demo', '/help']] },
+  { title: 'Company', links: [['About Relay', '/overview'], ['Why it is free', '/#free'], ['Help center', '/help']] },
   { title: 'Legal', links: [['What admins can see', '/help/what-admins-see'], ['Data retention', '/help/retention-export'], ['Delete your account', '/help/delete-account']] },
 ];
 
@@ -176,6 +171,19 @@ export function SiteSection({ id, gap = 6, paddingBlockStart = 10, paddingBlockE
 // The frame every public page shares: always light (whatever the app theme is), the nav on top,
 // the page in AppShell's scrolling main, and the footer under it.
 export function SiteFrame({ route, onGetStarted, signedIn, footer = true, children }: { route: Route; onGetStarted?: () => void; signedIn?: boolean; footer?: boolean; children: ReactNode }) {
+  // The nav gains a hairline and a soft shadow once the page scrolls under it (class on .site).
+  useEffect(() => {
+    const page = document.querySelector<HTMLElement>('.site-page');
+    let el: HTMLElement | null = page;
+    while (el && !/(auto|scroll)/.test(getComputedStyle(el).overflowY)) el = el.parentElement;
+    const host = document.querySelector<HTMLElement>('.site');
+    if (!el || !host) return;
+    const scroller = el;
+    const on = () => host.classList.toggle('is-scrolled', scroller.scrollTop > 8);
+    on();
+    scroller.addEventListener('scroll', on, { passive: true });
+    return () => scroller.removeEventListener('scroll', on);
+  }, []);
   return (
     <Theme theme={themes[defaultThemeSlug]} mode="light">
       <AppShell
