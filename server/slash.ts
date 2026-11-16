@@ -20,6 +20,7 @@ export function parseSlash(input: string): Slash | null {
       const m = arg.match(/^(?:me\s+)?(.+?)\s+in\s+(\d+)\s*([smhd])$/i);
       if (!m) return { kind: 'usage', text: 'Usage: /remind me <what> in <10m|2h|1d>, or /remind #channel <what> in <10m|2h|1d>' };
       const n = Number(m[2]);
+      if (n <= 0 || !Number.isSafeInteger(n) || n > 100_000) return { kind: 'usage', text: 'Duration must be a positive number up to 100000' };
       const unit = m[3].toLowerCase();
       // "/remind #launch ship notes in 2h" posts the reminder in that channel instead of a DM.
       const target = m[1].match(/^#([\w-]+)\s+(.+)$/);

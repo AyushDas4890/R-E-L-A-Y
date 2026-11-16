@@ -197,8 +197,8 @@ function PoliciesTab() {
 
 function BarrierAdder({ onAdd }: { onAdd: (pair: [string, string]) => void }) {
   const { snap } = useRelayCtx();
-  const [a, setA] = useState(snap.groups[0].id);
-  const [b, setB] = useState(snap.groups[1].id);
+  const [a, setA] = useState(snap.groups[0]?.id ?? '');
+  const [b, setB] = useState(snap.groups[1]?.id ?? '');
   return (
     <div className="row">
       <select value={a} onChange={(e) => setA(e.target.value)}>{snap.groups.map((g) => <option key={g.id} value={g.id}>@{g.handle}</option>)}</select>

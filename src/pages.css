@@ -1,17 +1,21 @@
 /* Pages: the document editor and the sidebar page tree. Uses the theme's tokens, so every look works. */
 
 /* ---- Sidebar tree ---- */
-.pt-row { padding-right: 4px; gap: 2px; cursor: pointer; }
-.pt-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; text-align: left; color: inherit; font: inherit; padding: 0; }
-.pt-icon { font-size: 14px; line-height: 1; }
-.pt-arrow { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 4px; color: var(--side-muted, var(--muted)); flex: none; }
-.pt-arrow:hover { background: var(--t3, var(--hover)); }
-.pt-arrow .icon { transition: transform .15s; }
-.pt-arrow.open .icon { transform: rotate(90deg); }
-.pt-arrow.none { opacity: .35; }
-.pt-tools { display: none; align-items: center; gap: 0; }
-.pt-row:hover .pt-tools, .pt-row:focus-within .pt-tools { display: flex; }
-.pt-tools .icon-btn { width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; }
+.pt-node { width: 100%; }
+.pt-row { width: 100%; height: 34px; min-height: 34px; display: flex; align-items: center; gap: 4px; padding-right: 8px; border-radius: 6px; cursor: pointer; box-sizing: border-box; position: relative; }
+.pt-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; text-align: left; color: inherit; font: inherit; padding: 0; background: transparent; border: none; cursor: pointer; overflow: hidden; }
+.pt-main .label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 500; line-height: 1.2; }
+.pt-icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; flex: none; font-size: 14px; line-height: 1; }
+.pt-arrow { width: 16px; height: 16px; min-width: 16px; min-height: 16px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px; color: var(--side-muted, var(--muted)); flex: none; background: transparent; border: none; padding: 0; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.pt-arrow:hover:not(.none) { background: var(--t3, var(--hover)); color: var(--text); }
+.pt-arrow .icon, .pt-arrow svg { transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
+.pt-arrow.open .icon, .pt-arrow.open svg { transform: rotate(90deg); }
+.pt-arrow.none { opacity: .35; cursor: default; }
+.pt-arrow-spacer { width: 16px; height: 16px; min-width: 16px; flex: none; display: inline-block; }
+.pt-tools { display: none; align-items: center; gap: 2px; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: var(--side-hover, rgba(255, 255, 255, 0.08)); padding-left: 6px; border-radius: 4px; }
+.pt-row:hover .pt-tools, .pt-row:focus-within .pt-tools { display: inline-flex; }
+.pt-tools .icon-btn { width: 20px; height: 20px; min-width: 20px; min-height: 20px; border-radius: 4px; display: inline-grid; place-items: center; background: transparent; border: none; color: var(--side-muted); cursor: pointer; transition: background 0.15s, color 0.15s; }
+.pt-tools .icon-btn:hover { background: var(--hover, rgba(255, 255, 255, 0.12)); color: var(--text); }
 .pt-row.drop-inside { box-shadow: inset 0 0 0 2px var(--accent); }
 .pt-row.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
 .pt-row.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }

@@ -121,7 +121,20 @@
 
 /* Board */
 .db-board { display: flex; gap: 10px; align-items: flex-start; padding-bottom: 8px; }
-.db-col { flex: 0 0 272px; padding: 6px; border-radius: 8px; background: rgba(127, 127, 127, .07); min-height: 80px; }
+.db-col {
+  flex: 0 0 272px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(127, 127, 127, .07);
+  min-height: 80px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 272px auto 400px;
+}
+@supports not (content-visibility: auto) {
+  .db-col {
+    contain: layout style paint;
+  }
+}
 .db-col.over { outline: 2px dashed var(--accent); }
 .db-col > header { display: flex; align-items: center; gap: 6px; padding: 2px 4px 8px; }
 .db-col > header small { color: var(--muted); }

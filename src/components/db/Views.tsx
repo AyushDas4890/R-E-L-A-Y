@@ -166,7 +166,7 @@ function Card({ api, db, view, row, onOpen, children, draggable, onDragStart, on
   return (
     <div className={`db-card size-${view.cardSize ?? 'medium'} ${tintOf(api, db, view, row)}`} draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <button className="db-card-main" onClick={onOpen}>
-        {img && <img src={img} alt="" loading="lazy" />}
+        {img && <img src={img} alt="" loading="lazy" decoding="async" />}
         <b>{row.icon ? `${row.icon} ` : ''}{titleOf(db, row) || 'Untitled'}</b>
       </button>
       {props.filter((p) => { const v = cellValue(db, row, p, api.ctx); return v !== null && v !== '' && !(Array.isArray(v) && v.length === 0); }).slice(0, 6).map((p) => (

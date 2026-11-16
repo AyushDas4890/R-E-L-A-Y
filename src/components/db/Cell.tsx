@@ -134,15 +134,17 @@ function TextCell({ prop, value, can, onSave, compact }: { prop: Property; value
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (e.key === 'Enter') commit();
-          else if (e.key === 'Escape') setEditing(false);
+          if (e.key === 'Enter') {
+            if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+            commit();
+          } else if (e.key === 'Escape') setEditing(false);
         }}
       />
     );
   }
   const link = (prop.type === 'url' || prop.type === 'email' || prop.type === 'phone') && shown ? safeLink(prop.type === 'email' ? `mailto:${shown}` : prop.type === 'phone' ? `tel:${shown}` : shown) : null;
   return (
-    <span className={`db-text ${prop.type === 'number' ? 'num' : ''} ${can ? 'editable' : ''}`} onDoubleClick={compact ? undefined : start} onClick={(e) => { if (can && !compact) { e.stopPropagation(); start(); } }} tabIndex={can && !compact ? 0 : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can && !compact) start(); }}>
+    <span className={`db-text ${prop.type === 'number' ? 'num' : ''} ${can ? 'editable' : ''}`} onDoubleClick={compact ? undefined : start} onClick={(e) => { if (can && !compact) { e.stopPropagation(); start(); } }} tabIndex={can && !compact ? 0 : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can && !compact) { if (e.nativeEvent.isComposing || e.keyCode === 229) return; start(); } }}>
       {link ? <a href={link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>{shown}</a> : shown || (prop.type === 'title' ? <span className="muted">Untitled</span> : '')}
     </span>
   );
@@ -187,7 +189,7 @@ function SelectCell({ api, prop, value, can, onSave }: { api: DatabaseApi; prop:
       </span>
       {pop.isOpen && (
         <Popover anchor={pop.anchor} onClose={pop.close} label={prop.name} width={240}>
-          <input className="db-search" placeholder={multi ? 'Search or create an option' : 'Select an option'} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { if (list[0] && (exact || !q.trim())) pick(list[0]); else if (q.trim() && !exact) create(); else if (list[0]) pick(list[0]); } }} />
+          <input className="db-search" placeholder={multi ? 'Search or create an option' : 'Select an option'} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { if (e.nativeEvent.isComposing || e.keyCode === 229) return; if (list[0] && (exact || !q.trim())) pick(list[0]); else if (q.trim() && !exact) create(); else if (list[0]) pick(list[0]); } }} />
           <div className="db-options">
             {prop.type === 'status' ? (['todo', 'progress', 'done'] as const).map((g) => {
               const inGroup = list.filter((o) => (o.group ?? 'todo') === g);
@@ -233,7 +235,7 @@ function DateCell({ value, can, onSave }: { value: PropValue; can: boolean; onSa
   };
   return (
     <>
-      <span className={`db-date ${can ? 'editable' : ''}`} onClick={(e) => { e.stopPropagation(); if (can) pop.toggle(e); }} tabIndex={can ? 0 : undefined} role={can ? 'button' : undefined} aria-label={can ? 'Edit date' : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can) { e.stopPropagation(); pop.toggle({ currentTarget: e.currentTarget }); } }}>
+      <span className={`db-date ${can ? 'editable' : ''}`} onClick={(e) => { e.stopPropagation(); if (can) pop.toggle(e); }} tabIndex={can ? 0 : undefined} role={can ? 'button' : undefined} aria-label={can ? 'Edit date' : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can) { if (e.nativeEvent.isComposing || e.keyCode === 229) return; e.stopPropagation(); pop.toggle({ currentTarget: e.currentTarget }); } }}>
         {d ? formatDateValue(d) : ''}
       </span>
       {pop.isOpen && (
@@ -261,7 +263,7 @@ function PersonCell({ value, can, onSave, users }: { value: PropValue; can: bool
   const people = Object.entries(users).filter(([, u]) => !u.bot && !u.inactive && u.name.toLowerCase().includes(q.toLowerCase()));
   return (
     <>
-      <span className={`db-people ${can ? 'editable' : ''}`} onClick={(e) => { e.stopPropagation(); if (can) pop.toggle(e); }} tabIndex={can ? 0 : undefined} role={can ? 'button' : undefined} aria-label={can ? 'Edit people' : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can) { e.stopPropagation(); pop.toggle({ currentTarget: e.currentTarget }); } }}>
+      <span className={`db-people ${can ? 'editable' : ''}`} onClick={(e) => { e.stopPropagation(); if (can) pop.toggle(e); }} tabIndex={can ? 0 : undefined} role={can ? 'button' : undefined} aria-label={can ? 'Edit people' : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can) { if (e.nativeEvent.isComposing || e.keyCode === 229) return; e.stopPropagation(); pop.toggle({ currentTarget: e.currentTarget }); } }}>
         {chosen.map((id) => (
           <span key={id} className="db-person"><i style={{ background: users[id]?.color }} aria-hidden>{(users[id]?.name ?? '?')[0]}</i>{users[id]?.name ?? 'Someone'}</span>
         ))}
@@ -292,7 +294,7 @@ function RelationCell({ api, prop, value, can, onSave }: { api: DatabaseApi; pro
   const rows = other ? other.rows.filter((r) => r.trashedAt === undefined && titleOf(other, r).toLowerCase().includes(q.toLowerCase())).slice(0, 50) : [];
   return (
     <>
-      <span className={`db-rel ${can ? 'editable' : ''}`} onClick={(e) => { e.stopPropagation(); if (can && other) pop.toggle(e); }} tabIndex={can && other ? 0 : undefined} role={can ? 'button' : undefined} aria-label={can ? `Edit ${prop.name}` : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can && other) { e.stopPropagation(); pop.toggle({ currentTarget: e.currentTarget }); } }}>
+      <span className={`db-rel ${can ? 'editable' : ''}`} onClick={(e) => { e.stopPropagation(); if (can && other) pop.toggle(e); }} tabIndex={can && other ? 0 : undefined} role={can ? 'button' : undefined} aria-label={can ? `Edit ${prop.name}` : undefined} onKeyDown={(e) => { if (e.key === 'Enter' && can && other) { if (e.nativeEvent.isComposing || e.keyCode === 229) return; e.stopPropagation(); pop.toggle({ currentTarget: e.currentTarget }); } }}>
         {ids.map((id) => {
           const r = other?.rows.find((x) => x.id === id);
           return <span key={id} className="db-link-chip">{other ? (r ? titleOf(other, r) || 'Untitled' : 'Deleted') : 'No access'}</span>;

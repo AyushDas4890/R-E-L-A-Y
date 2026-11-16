@@ -8,7 +8,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 export type MentionLabel = (m: NonNullable<Rich['mention']>, fallback: string) => string;
 
-export function toHtml(spans: Rich[], label?: MentionLabel): string {
+function toHtml(spans: Rich[], label?: MentionLabel): string {
   let html = '';
   for (const s of spans) {
     if (s.mention) {
@@ -64,7 +64,7 @@ function walk(node: Node, ctx: Partial<Rich>, out: Rich[]): void {
   node.childNodes.forEach((c) => walk(c, next, out));
 }
 
-export function fromDom(el: HTMLElement): Rich[] {
+function fromDom(el: HTMLElement): Rich[] {
   const out: Rich[] = [];
   el.childNodes.forEach((c) => walk(c, {}, out));
   // One trailing <br> is the browser's caret placeholder, not a typed line break.
@@ -248,6 +248,7 @@ export function Editable(p: EditableProps) {
       }
     }
     if (p.multiline && e.key === 'Enter' && !mod) {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
       document.execCommand('insertLineBreak');
       return;

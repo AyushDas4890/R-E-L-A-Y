@@ -279,7 +279,13 @@ export function useRelay(session: Session | null) {
         authenticate(ws, session.invite);
       };
       ws.onmessage = (e) => {
-        const ev = JSON.parse(e.data as string) as ServerEvent;
+        let ev: ServerEvent;
+        try {
+          ev = JSON.parse(e.data as string) as ServerEvent;
+        } catch {
+          return;
+        }
+        if (!ev || typeof ev !== 'object') return;
         if (ev.t === 'rtc' || ev.t === 'huddleCall' || PAGE_DOC_EVENTS.has(ev.t)) listeners.current.forEach((fn) => fn(ev));
         else if (ev.t === 'export') downloadJson(ev.data);
         else if (ev.t === 'error' && ev.code === 'left') {

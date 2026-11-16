@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Relay: a Slack-style team chat rebuilt from public product behavior, every premium feature unlocked.",
   "scripts": {
-    "dev": "node server/index.ts & vite",
+    "dev": "node scripts/dev.mjs",
     "dev:server": "node server/index.ts",
     "dev:web": "vite",
     "build": "tsc --noEmit && vite build",
@@ -21,7 +21,6 @@
     "@tanstack/react-virtual": "^3.14.26",
     "gsap": "^3.15.0",
     "jose": "^6.2.17",
-    "motion": "^14.7.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "ws": "^8.18.0"

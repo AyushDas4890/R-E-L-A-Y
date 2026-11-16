@@ -96,8 +96,10 @@ export function DmsView({ onNew }: { onNew: () => void }) {
   return (
     <>
       <header className="channel-head">
-        <div className="channel-title"><h2>Direct messages</h2></div>
-        <div className="head-actions"><button className="send-btn" onClick={onNew}>New message</button></div>
+        <div className="channel-head-top">
+          <div className="channel-title"><h2>Direct messages</h2></div>
+          <div className="head-actions"><button className="send-btn" onClick={onNew}>New message</button></div>
+        </div>
       </header>
       <div className="feed">
         {rows.length === 0 && <Empty mark={<Icon n="message" size={28} />} title="No conversations yet" text="Start one from the People directory." />}

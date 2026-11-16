@@ -58,7 +58,12 @@ export function NewChannelModal({ onClose }: { onClose: () => void }) {
     onClose();
   };
   // Enter in either field creates the channel, same as the button.
-  const onEnter = (e: React.KeyboardEvent) => { if (e.key === 'Enter') create(); };
+  const onEnter = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+      create();
+    }
+  };
   return (
     <Modal title="Create a channel" onClose={onClose}>
       <label>Name<input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={onEnter} placeholder="e.g. launch-plan" /></label>

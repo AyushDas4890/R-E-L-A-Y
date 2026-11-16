@@ -109,6 +109,8 @@ export default function App() {
   const [sideCollapsed, setSideCollapsed] = useState(() => recall('relay.sideCollapsed') === '1');
   const [sideW, setSideW] = useState(() => clampSide(Number(recall('relay.sideW'))));
   const [resizing, setResizing] = useState(false);
+  const [micMuted, setMicMuted] = useState(false);
+  const [deafened, setDeafened] = useState(false);
   useEffect(() => remember('relay.sideCollapsed', sideCollapsed ? '1' : '0'), [sideCollapsed]);
   useEffect(() => remember('relay.sideW', String(sideW)), [sideW]);
   const startResize = (e: ReactPointerEvent) => {
@@ -354,17 +356,26 @@ export default function App() {
     onDragLeave: (e: DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null) && dropKey === key) setDropKey(null); },
     onDrop: (e: DragEvent) => { if (!dragCh) return; e.preventDefault(); e.stopPropagation(); moveChannel(dragCh, target); setDragCh(null); setDropKey(null); },
   });
-  const section = (key: string, label: string, actions?: ReactNode) => (
-    <div
-      className={`side-section ${dragCh && dropKey === `head:${key}` ? 'dnd-over' : ''}`}
-      {...(key === 'starred' ? dropProps(`head:${key}`, { to: 'starred' }) : key === 'channels' ? dropProps(`head:${key}`, { to: 'channels' }) : snap.sections.some((sec) => sec.id === key) ? dropProps(`head:${key}`, { to: 'section', id: key }) : {})}
-    >
-      <button className={`side-toggle ${collapsed[key] ? 'closed' : ''}`} aria-expanded={!collapsed[key]} onClick={() => setCollapsed((c) => ({ ...c, [key]: !c[key] }))}>
-        <i aria-hidden>▾</i> {label}
-      </button>
-      {actions && <span>{actions}</span>}
-    </div>
-  );
+  const section = (key: string, label: string, actions?: ReactNode) => {
+    const isClosed = !!collapsed[key];
+    return (
+      <div
+        className={`side-section ${dragCh && dropKey === `head:${key}` ? 'dnd-over' : ''}`}
+        {...(key === 'starred' ? dropProps(`head:${key}`, { to: 'starred' }) : key === 'channels' ? dropProps(`head:${key}`, { to: 'channels' }) : snap.sections.some((sec) => sec.id === key) ? dropProps(`head:${key}`, { to: 'section', id: key }) : {})}
+      >
+        <button
+          type="button"
+          className={`side-toggle ${isClosed ? 'closed' : ''}`}
+          aria-expanded={!isClosed}
+          onClick={() => setCollapsed((c) => ({ ...c, [key]: !c[key] }))}
+        >
+          <span className="side-chevron"><Icon n="chevronDown" size={11} /></span>
+          <span className="side-section-label">{label}</span>
+        </button>
+        {actions && <span className="side-section-actions">{actions}</span>}
+      </div>
+    );
+  };
   const openThread = (id: string | null) => setPanel(id ? { kind: 'thread', id } : null);
   const togglePanel = (kind: 'canvas' | 'list' | 'details') => setPanel(panel?.kind === kind ? null : { kind });
 
@@ -426,7 +437,7 @@ export default function App() {
             }
           : {})}
       >
-        <span className="hash">{c.kind === 'dm' ? <Avatar user={snap.users[other]} size={18} online={snap.online.includes(other)} /> : c.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span>
+        <span className="hash">{c.kind === 'dm' ? <Avatar user={snap.users[other]} size={18} online={snap.online.includes(other)} /> : c.kind === 'private' ? <Icon n="lock" size={14} /> : <Icon n="hash" size={14} />}</span>
         <span className="label">{label}</span>
         {snap.huddles.some((h) => h.channelId === c.id) && <span title="Huddle live"><Icon n="headphones" size={14} /></span>}
         {muted && <span className="side-muted" title="Muted"><Icon n="bellOff" size={14} /></span>}
@@ -564,7 +575,8 @@ export default function App() {
           <header>
             <div className="menu-anchor ws-name">
               <button className="ws-menu-btn" aria-expanded={menu === 'workspace'} onClick={() => toggleMenu('workspace')}>
-                <h2>{snap.workspace.name}</h2><i aria-hidden>▾</i>
+                <h2>{snap.workspace.name}</h2>
+                <span className="arrow"><Icon n="chevronDown" size={11} /></span>
               </button>
               {menu === 'workspace' && (
                 <div className="menu ws-menu" role="menu">
@@ -591,18 +603,47 @@ export default function App() {
             <button className="icon-btn side-head-btn compose-btn" title="New channel" onClick={() => setModal('new')}><Icon n="pencil" /></button>
           </header>
           <div className="side-top apple-only">
-            <button className="side-item" onClick={() => setModal('search')}><span className="hash"><Icon n="search" /></span><span className="label">Search</span></button>
-            <button className={`side-item ${view === 'home' ? 'active' : ''}`} onClick={() => showView('home')}><span className="hash"><Icon n="home" /></span><span className="label">Home</span></button>
-            <button className={`side-item ${view === 'activity' ? 'active' : ''}`} onClick={() => showView('activity')}>
-              <span className="hash"><Icon n="inbox" /></span><span className="label">Inbox</span>
-              {totalUnread + snap.inbox.filter((i) => !i.read).length > 0 && <span className="count">{totalUnread + snap.inbox.filter((i) => !i.read).length}</span>}
+            <button type="button" className="arc-search" onClick={() => setModal('search')} aria-label="Search">
+              <span className="arc-search-icon"><Icon n="search" size={14} /></span>
+              <span className="arc-search-text">Search</span>
+              <kbd className="arc-search-kbd">Ctrl K</kbd>
             </button>
-            <button className={`side-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => showView('calendar')}><span className="hash"><Icon n="clock" /></span><span className="label">Calendar</span></button>
+
+            <div className="arc-fav-grid">
+              <button
+                type="button"
+                className={`arc-fav-tile ${view === 'home' ? 'active' : ''}`}
+                title="Home"
+                onClick={() => showView('home')}
+              >
+                <span className="arc-fav-icon tile-home"><Icon n="home" size={20} /></span>
+              </button>
+              <button
+                type="button"
+                className={`arc-fav-tile ${view === 'activity' ? 'active' : ''}`}
+                title="Inbox"
+                onClick={() => showView('activity')}
+              >
+                <span className="arc-fav-icon tile-inbox"><Icon n="inbox" size={20} /></span>
+                {totalUnread + snap.inbox.filter((i) => !i.read).length > 0 && (
+                  <span className="arc-fav-badge">{totalUnread + snap.inbox.filter((i) => !i.read).length}</span>
+                )}
+              </button>
+              <button
+                type="button"
+                className={`arc-fav-tile ${view === 'calendar' ? 'active' : ''}`}
+                title="Calendar"
+                onClick={() => showView('calendar')}
+              >
+                <span className="arc-fav-icon tile-calendar"><Icon n="calendar" size={20} /></span>
+              </button>
+            </div>
           </div>
           <div className="side-scroll">
-            {navItem('huddles', <Icon n="headphones" />, 'Huddles')}
-            {navItem('directory', <Icon n="users" />, 'People')}
-            {navItem('saved', <Icon n="bookmark" />, 'Later')}
+            {navItem('huddles', <Icon n="headphones" size={18} />, 'Huddles')}
+            {navItem('directory', <Icon n="users" size={18} />, 'People')}
+            {navItem('saved', <Icon n="bookmark" size={18} />, 'Later')}
+            {navItem('workflows', <Icon n="zap" size={18} />, 'Workflows')}
 
             <PageTree nodes={snap.pages} favorites={snap.pageFavorites} teamspaces={snap.teamspaces} me={snap.me} current={view === 'page' ? place.page ?? null : null} send={send} onOpen={openPage} onCreate={createPage} onLibrary={() => showView('library')} onManageSpaces={() => setModal('spaces')} />
 
@@ -621,7 +662,7 @@ export default function App() {
             {!collapsed.channels && joined.filter((c) => !sectioned.has(c.id) && !starredIds.has(c.id)).map((c) => sidebarItem(c, 'channels'))}
             {!collapsed.channels && (
               <div className="menu-anchor">
-                <button className="side-item add" onClick={() => toggleMenu('addChannel')}><span className="hash">＋</span><span className="label">Add channels</span></button>
+                <button className="side-item add" onClick={() => toggleMenu('addChannel')}><span className="hash"><Icon n="plus" size={13} /></span><span className="label">Add channels</span></button>
                 {menu === 'addChannel' && (
                   <div className="menu inline" role="menu">
                     <button role="menuitem" onClick={() => { setModal('new'); setMenu(null); }}>Create a new channel</button>
@@ -640,7 +681,7 @@ export default function App() {
                 <span className="label">{u.name}</span>
               </button>
             ))}
-            {!collapsed.dms && <button className="side-item add" onClick={() => setModal('invite')}><span className="hash">＋</span><span className="label">Invite people</span></button>}
+            {!collapsed.dms && <button className="side-item add" onClick={() => setModal('invite')}><span className="hash"><Icon n="plus" size={13} /></span><span className="label">Invite people</span></button>}
 
             {section('apps', 'Apps')}
             {!collapsed.apps && (
@@ -649,12 +690,43 @@ export default function App() {
               </button>
             )}
           </div>
-          <div className="side-bottom apple-only">
-            <button className="side-item" onClick={() => showView('workflows')}><span className="hash"><Icon n="zap" /></span><span className="label">Workflows</span></button>
-            <button className="side-item" onClick={() => setModal('scheduled')}><span className="hash"><Icon n="clock" /></span><span className="label">Scheduled messages</span>{snap.scheduled.length > 0 && <span className="count">{snap.scheduled.length}</span>}</button>
-            {admin && <button className="side-item" onClick={() => setModal('admin')}><span className="hash"><Icon n="settings" /></span><span className="label">Admin console</span>{(snap.admin?.flags.length ?? 0) > 0 && <span className="count">{snap.admin?.flags.length}</span>}</button>}
-            <button className="side-item" onClick={() => setModal('plan')}><span className="hash"><Icon n="gem" /></span><span className="label">Plan</span></button>
-            <button className="side-item" onClick={() => setModal('profile')}><span className="hash"><Icon n="user" /></span><span className="label">Preferences</span></button>
+          <div className="discord-user-bar" aria-label="User Account">
+            <button className="discord-user-info" onClick={() => setModal('profile')} title="Open profile & preferences">
+              <div className="discord-avatar-wrap">
+                <Avatar user={me} size={32} online={connected} />
+                <span className={`discord-status-dot ${dnd.active ? 'dnd' : connected ? 'online' : 'offline'}`} />
+              </div>
+              <div className="discord-user-text">
+                <span className="discord-display-name">{me?.name || 'User'}</span>
+                <span className="discord-handle">@{me?.name?.toLowerCase().replace(/\s+/g, '') || 'you'}</span>
+              </div>
+            </button>
+            <div className="discord-user-controls">
+              <button
+                className={`discord-ctrl-btn ${micMuted ? 'muted' : ''}`}
+                title={micMuted ? 'Unmute microphone' : 'Mute microphone'}
+                aria-label="Mute microphone"
+                onClick={() => setMicMuted((m) => !m)}
+              >
+                <Icon n={micMuted ? 'micOff' : 'mic'} size={18} />
+              </button>
+              <button
+                className={`discord-ctrl-btn ${deafened ? 'muted' : ''}`}
+                title={deafened ? 'Undeafen audio' : 'Deafen audio'}
+                aria-label="Deafen audio"
+                onClick={() => setDeafened((d) => !d)}
+              >
+                <Icon n={deafened ? 'volumeX' : 'headphones'} size={18} />
+              </button>
+              <button
+                className="discord-ctrl-btn"
+                title="User Settings"
+                aria-label="User Settings"
+                onClick={() => setModal('profile')}
+              >
+                <Icon n="settings" size={18} />
+              </button>
+            </div>
           </div>
           <div className={`side-resize apple-only ${resizing ? 'drag' : ''}`} role="separator" aria-orientation="vertical" aria-label="Resize sidebar" onPointerDown={startResize} onDoubleClick={() => setSideW(SIDE_DEFAULT)} />
         </aside>
@@ -677,43 +749,55 @@ export default function App() {
             : ch ? (
             <>
               <header className="channel-head">
-                <div className="channel-title">
-                  <h2>
-                    {ch.kind !== 'dm' && (
-                      <button className={`star-btn ${starredIds.has(ch.id) ? 'on' : ''}`} aria-label={starredIds.has(ch.id) ? 'Unstar channel' : 'Star channel'} aria-pressed={starredIds.has(ch.id)} onClick={() => send({ t: 'star', channelId: ch.id })}><Icon n="star" fill={starredIds.has(ch.id)} /></button>
-                    )}
-                    <button className="title-btn" onClick={() => togglePanel('details')}>{ch.kind === 'dm' ? '' : ch.kind === 'private' ? <><Icon n="lock" size={14} />{' '}</> : '# '}{channelLabel(ch, snap.users, snap.me)}</button>
-                  </h2>
-                  {ch.topic && <p className="topic">{ch.topic}</p>}
-                </div>
-                <div className="head-actions" onClick={(e) => e.stopPropagation()}>
-                  {ch.kind !== 'dm' && <button className="ghost-btn invite-btn" onClick={() => setModal('invite')}><Icon n="user" /> <span>Invite teammates</span></button>}
-                  <button className="member-stack" title="Members" onClick={() => togglePanel('details')}>
-                    {ch.members.slice(0, 3).map((id) => <Avatar key={id} user={snap.users[id]} size={22} />)}
-                    <b>{ch.members.length}</b>
-                  </button>
-                  <button className="icon-btn head-icon" title="Start a huddle" aria-label="Start a huddle" onClick={() => send({ t: 'huddle', channelId: ch.id, action: 'join' })}><Icon n="headphones" /></button>
-                  <div className="menu-anchor">
-                    <button className={`icon-btn head-icon ${level !== 'mentions' ? 'lit' : ''}`} title={`Notifications: ${LEVEL_LABEL[level]}`} aria-label="Channel notifications" aria-expanded={menu === 'bell'} onClick={() => toggleMenu('bell')}>{level === 'mute' ? <Icon n="bellOff" /> : <Icon n="bell" />}</button>
-                    {menu === 'bell' && (
-                      <div className="menu" role="menu">
-                        <p className="menu-title">Notify me about…</p>
-                        {(['all', 'mentions', 'mute'] as ChannelLevel[]).map((l) => (
-                          <button key={l} role="menuitemradio" aria-checked={level === l} className={level === l ? 'checked' : ''} onClick={() => { levels.setLevel(ch.id, l); setMenu(null); }}>{level === l && <Icon n="check" />} {LEVEL_LABEL[l]}</button>
-                        ))}
-                      </div>
+                <div className="channel-head-top">
+                  <div className="channel-title">
+                    <h2>
+                      {ch.kind !== 'dm' && (
+                        <button className={`star-btn ${starredIds.has(ch.id) ? 'on' : ''}`} aria-label={starredIds.has(ch.id) ? 'Unstar channel' : 'Star channel'} aria-pressed={starredIds.has(ch.id)} onClick={() => send({ t: 'star', channelId: ch.id })}><Icon n="star" fill={starredIds.has(ch.id)} size={15} /></button>
+                      )}
+                      <button className="title-btn" onClick={() => togglePanel('details')}>
+                        <span className="channel-prefix">{ch.kind === 'dm' ? '' : ch.kind === 'private' ? <Icon n="lock" size={14} /> : '#'}</span>
+                        <span className="channel-name">{channelLabel(ch, snap.users, snap.me)}</span>
+                      </button>
+                    </h2>
+                    {ch.topic && (
+                      <>
+                        <span className="topic-divider" aria-hidden="true" />
+                        <p className="topic" title={ch.topic}>{ch.topic}</p>
+                      </>
                     )}
                   </div>
-                  <button className="icon-btn head-icon" title="Search" aria-label="Search" onClick={() => setModal('search')}>⌕</button>
-                  <button className="icon-btn head-icon" title="Channel details" aria-label="Channel details" onClick={() => togglePanel('details')}>⋮</button>
+                  <div className="head-actions" onClick={(e) => e.stopPropagation()}>
+                    {ch.kind !== 'dm' && <button className="ghost-btn invite-btn" onClick={() => setModal('invite')} title="Invite teammates"><Icon n="user" size={13} /> <span>Invite</span></button>}
+                    <button className="member-stack" title={`Members (${ch.members.length})`} onClick={() => togglePanel('details')}>
+                      <div className="member-avatars">
+                        {ch.members.slice(0, 3).map((id) => <Avatar key={id} user={snap.users[id]} size={20} />)}
+                      </div>
+                      <b className="member-count">{ch.members.length}</b>
+                    </button>
+                    <button className="icon-btn head-icon" title="Start a huddle" aria-label="Start a huddle" onClick={() => send({ t: 'huddle', channelId: ch.id, action: 'join' })}><Icon n="headphones" size={15} /></button>
+                    <div className="menu-anchor">
+                      <button className={`icon-btn head-icon ${level !== 'mentions' ? 'lit' : ''}`} title={`Notifications: ${LEVEL_LABEL[level]}`} aria-label="Channel notifications" aria-expanded={menu === 'bell'} onClick={() => toggleMenu('bell')}>{level === 'mute' ? <Icon n="bellOff" size={15} /> : <Icon n="bell" size={15} />}</button>
+                      {menu === 'bell' && (
+                        <div className="menu" role="menu">
+                          <p className="menu-title">Notify me about…</p>
+                          {(['all', 'mentions', 'mute'] as ChannelLevel[]).map((l) => (
+                            <button key={l} role="menuitemradio" aria-checked={level === l} className={level === l ? 'checked' : ''} onClick={() => { levels.setLevel(ch.id, l); setMenu(null); }}>{level === l && <Icon n="check" size={14} />} {LEVEL_LABEL[l]}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button className="icon-btn head-icon" title="Search" aria-label="Search" onClick={() => setModal('search')}><Icon n="search" size={15} /></button>
+                    <button className="icon-btn head-icon" title="Channel details" aria-label="Channel details" onClick={() => togglePanel('details')}><Icon n="more" size={15} /></button>
+                  </div>
                 </div>
                 <nav className="channel-tabs" aria-label="Channel views" onClick={(e) => e.stopPropagation()}>
-                  <button className={!panel || panel.kind === 'thread' || panel.kind === 'details' ? 'on' : ''} onClick={() => setPanel(null)}><Icon n="message" /> Messages</button>
-                  <button className={panel?.kind === 'canvas' ? 'on' : ''} onClick={() => togglePanel('canvas')}><Icon n="file" /> Canvas</button>
-                  <button className={panel?.kind === 'list' ? 'on' : ''} onClick={() => togglePanel('list')}><Icon n="checkSquare" /> List</button>
-                  <button onClick={() => send({ t: 'send', channelId: ch.id, text: '/summarize' })}><Icon n="sparkles" /> Recap</button>
+                  <button className={!panel || panel.kind === 'thread' || panel.kind === 'details' ? 'on' : ''} onClick={() => setPanel(null)}><Icon n="message" size={14} /> Messages</button>
+                  <button className={panel?.kind === 'canvas' ? 'on' : ''} onClick={() => togglePanel('canvas')}><Icon n="file" size={14} /> Canvas</button>
+                  <button className={panel?.kind === 'list' ? 'on' : ''} onClick={() => togglePanel('list')}><Icon n="checkSquare" size={14} /> List</button>
+                  <button onClick={() => send({ t: 'send', channelId: ch.id, text: '/summarize' })}><Icon n="sparkles" size={14} /> Recap</button>
                   <div className="menu-anchor">
-                    <button className="tab-add" aria-label="Add a tab" aria-expanded={menu === 'addTab'} onClick={() => toggleMenu('addTab')}>＋</button>
+                    <button className="tab-add" aria-label="Add a tab" aria-expanded={menu === 'addTab'} onClick={() => toggleMenu('addTab')}><Icon n="plus" size={13} /></button>
                     {menu === 'addTab' && (
                       <div className="menu" role="menu">
                         <button role="menuitem" onClick={() => { setPanel({ kind: 'canvas' }); setMenu(null); }}><Icon n="file" /> Canvas</button>

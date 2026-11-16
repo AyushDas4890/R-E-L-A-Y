@@ -167,7 +167,7 @@ function ViewMenu({ anchor, onClose, view, canDelete, onRename, onDuplicate, onD
   const [name, setName] = useState(view.name);
   return (
     <Popover anchor={anchor} onClose={onClose} width={240} label="View options">
-      <label className="db-field">Name<input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== view.name && onRename(name.trim())} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { if (name.trim() && name !== view.name) onRename(name.trim()); onClose(); } }} /></label>
+      <label className="db-field">Name<input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== view.name && onRename(name.trim())} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { if (e.nativeEvent.isComposing || e.keyCode === 229) return; if (name.trim() && name !== view.name) onRename(name.trim()); onClose(); } }} /></label>
       <button className="db-opt" onClick={() => { onClose(); onDuplicate(); }}>Duplicate view</button>
       {canDelete && <button className="db-opt danger" onClick={() => { onClose(); onDelete(); }}>Delete view</button>}
     </Popover>

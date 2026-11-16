@@ -81,7 +81,7 @@ export function CommentsPanel({ pageId, comments, suggestions, blocks, level, ab
         )}
         {reply?.id === c.id && (
           <form className="cm-form" onSubmit={(e) => { e.preventDefault(); post(reply.text, c.id); setReply(null); }}>
-            <textarea autoFocus rows={2} aria-label="Reply" placeholder="Reply…" value={reply.text} onChange={(e) => setReply({ id: c.id, text: e.target.value })} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); post(reply.text, c.id); setReply(null); } }} />
+            <textarea autoFocus rows={2} aria-label="Reply" placeholder="Reply…" value={reply.text} onChange={(e) => setReply({ id: c.id, text: e.target.value })} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey) { if (e.nativeEvent.isComposing || e.keyCode === 229) return; e.preventDefault(); post(reply.text, c.id); setReply(null); } }} />
             <div className="cm-row">{mentionPicker((t) => setReply({ id: c.id, text: reply.text + t }))}<button className="primary" disabled={!reply.text.trim()}>Reply</button></div>
           </form>
         )}
@@ -95,7 +95,7 @@ export function CommentsPanel({ pageId, comments, suggestions, blocks, level, ab
       {can ? (
         <form className="cm-form" onSubmit={(e) => { e.preventDefault(); post(text, undefined, aboutBlock ?? undefined); setText(''); onClearBlock(); }}>
           {aboutBlock && <p className="cm-about">About “{blockText(blocks, aboutBlock) || 'a block'}” <button type="button" className="icon-btn" aria-label="Comment on the whole page instead" onClick={onClearBlock}>✕</button></p>}
-          <textarea rows={3} aria-label="New comment" placeholder="Add a comment…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); post(text, undefined, aboutBlock ?? undefined); setText(''); onClearBlock(); } }} />
+          <textarea rows={3} aria-label="New comment" placeholder="Add a comment…" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey) { if (e.nativeEvent.isComposing || e.keyCode === 229) return; e.preventDefault(); post(text, undefined, aboutBlock ?? undefined); setText(''); onClearBlock(); } }} />
           <div className="cm-row">{mentionPicker((t) => setText(text + t))}<button className="primary" disabled={!text.trim()}>Comment</button></div>
         </form>
       ) : <p className="muted db-note">You can read comments but not add them.</p>}

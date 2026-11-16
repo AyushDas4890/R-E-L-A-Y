@@ -77,6 +77,9 @@ export function applyListPatch(items: ListItem[], ev: ListPatch, isUser: (id: st
   if (p.status === 'todo' || p.status === 'doing' || p.status === 'done') {
     next.status = p.status;
     next.done = p.status === 'done';
+  } else if (typeof p.done === 'boolean') {
+    next.done = p.done;
+    next.status = p.done ? 'done' : (next.status === 'done' ? 'todo' : next.status);
   }
   if (typeof p.assignee === 'string') next.assignee = isUser(p.assignee) ? p.assignee : '';
   if (typeof p.due === 'string') next.due = p.due.slice(0, 10);

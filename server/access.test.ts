@@ -71,6 +71,9 @@ test('a list patch changes one item and leaves the rest alone', () => {
   const out = applyListPatch(items, { id: 'a', patch: { status: 'done', assignee: 'alice' } }, isUser)!;
   assert.deepEqual(out[0], { id: 'a', title: 'a', done: true, assignee: 'alice', due: '', status: 'done' });
   assert.deepEqual(out[1], items[1]);
+  const outDone = applyListPatch(items, { id: 'a', patch: { done: true } }, isUser)!;
+  assert.equal(outDone[0].done, true);
+  assert.equal(outDone[0].status, 'done');
 });
 
 test('a list patch can add an item, but only with a title', () => {

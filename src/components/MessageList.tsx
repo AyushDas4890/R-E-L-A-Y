@@ -60,14 +60,14 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
         {m.files?.map((f, i) => {
           const src = safeUrl(f.url ?? f.dataUrl);
           return f.type.startsWith('image/') ? (
-            <a key={i} href={src} target="_blank" rel="noreferrer"><img className="attach-img" src={src} alt={f.name} loading="lazy" /></a>
+            <a key={i} href={src} target="_blank" rel="noopener noreferrer"><img className="attach-img" src={src} alt={f.name} loading="lazy" decoding="async" /></a>
           ) : f.type.startsWith('video/') ? (
             <video key={i} className="attach-img" src={src} controls />
           ) : f.type.startsWith('audio/') ? (
             <audio key={i} className="attach-audio" src={src} controls />
           ) : (
             <div key={i} className="attach-row">
-              <a className="attach-file" href={src} download={f.name} target="_blank" rel="noreferrer">
+              <a className="attach-file" href={src} download={f.name} target="_blank" rel="noopener noreferrer">
                 <Icon n="file" /> {f.name} <small>{Math.ceil(f.size / 1024)} KB</small>
               </a>
               <button className="ghost-btn" title="Summarize this file" onClick={() => send({ t: 'fileSummary', id: m.id, index: i })}><Icon n="sparkles" /> Summarize</button>
@@ -75,13 +75,13 @@ export function MessageRow({ m, compact, inThread }: { m: Message; compact: bool
           );
         })}
         {m.preview && (
-          <a className="link-card" href={safeUrl(m.preview.url)} target="_blank" rel="noreferrer">
+          <a className="link-card" href={safeUrl(m.preview.url)} target="_blank" rel="noopener noreferrer">
             <div>
               <small>{m.preview.site}</small>
               <strong>{m.preview.title}</strong>
               {m.preview.description && <p>{m.preview.description}</p>}
             </div>
-            {safeUrl(m.preview.image) && <img src={safeUrl(m.preview.image)} alt="" loading="lazy" />}
+            {safeUrl(m.preview.image) && <img src={safeUrl(m.preview.image)} alt="" loading="lazy" decoding="async" />}
           </a>
         )}
         {Object.keys(m.reactions).length > 0 && (

@@ -57,7 +57,7 @@ function Field({ value, onCommit, multiline, label, placeholder, size }: { value
   const onBlur = () => { focused.current = false; if (latest.current !== value) onCommit(latest.current); };
   return multiline
     ? <TextArea label={label} isLabelHidden placeholder={placeholder} value={v} rows={4} onChange={type} onFocus={onFocus} onBlur={onBlur} />
-    : <TextInput label={label} isLabelHidden placeholder={placeholder} value={v} size={size} onChange={type} onFocus={onFocus} onBlur={onBlur} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />;
+    : <TextInput label={label} isLabelHidden placeholder={placeholder} value={v} size={size} onChange={type} onFocus={onFocus} onBlur={onBlur} onKeyDown={(e) => { if (e.key === 'Enter') { if (e.nativeEvent.isComposing || e.keyCode === 229) return; e.currentTarget.blur(); } }} />;
 }
 
 function HomeCard({ item, send, order }: { item: HomeItem; send: Props['send']; order: ReturnType<typeof useReorder> & { nudge: (id: string, dir: -1 | 1) => void } }) {

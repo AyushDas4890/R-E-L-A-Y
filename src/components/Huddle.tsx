@@ -43,9 +43,6 @@ export function HuddleBar({ channelId }: { channelId: string }) {
     });
   };
 
-  const screens = inCall
-    ? inCall.peers.filter((p) => p.screen).map((p) => ({ key: p.id, stream: p.screen!, label: `${name(p.userId)}’s screen` }))
-    : [];
 
   return (
     <div className="huddle-wrap">
