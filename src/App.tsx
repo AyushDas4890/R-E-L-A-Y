@@ -14,10 +14,10 @@ import { Composer } from './components/Composer.tsx';
 import { HuddleBar, ScreenOverlay } from './components/Huddle.tsx';
 import { useHuddleCalls } from './huddle-call.ts';
 import { MessageList } from './components/MessageList.tsx';
+import { UserSettings } from './components/UserSettings.tsx';
 import {
   NewChannelModal,
   PlanModal,
-  ProfileModal,
   ScheduledModal,
   SchedulePicker,
   SearchPalette,
@@ -906,7 +906,13 @@ export default function App() {
       )}
       {modal === 'spaces' && <TeamspaceModal onClose={() => setModal(null)} />}
       {modal === 'new' && <NewChannelModal onClose={() => setModal(null)} />}
-      {modal === 'profile' && <ProfileModal onClose={() => setModal(null)} appearance={appearance} />}
+      {modal === 'profile' && (
+        <UserSettings
+          onClose={() => setModal(null)}
+          appearance={appearance}
+          onSignOut={() => void signOut()}
+        />
+      )}
       {modal === 'shortcuts' && <ShortcutsModal onClose={() => setModal(null)} />}
       {modal === 'plan' && <PlanModal onClose={() => setModal(null)} />}
       {modal === 'scheduled' && <ScheduledModal onClose={() => setModal(null)} />}
