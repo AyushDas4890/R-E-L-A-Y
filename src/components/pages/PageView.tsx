@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKE, type R
 import { useRelayCtx } from '../../ctx.ts';
 import { cloneBlocks } from '../../../server/pages.ts';
 import {
-  BLOCK_CHOICES, LISTY, TEXTY, counts, dateChoices, emptyBlock, filterChoices, formatDateId, headings, joinRich, lineShortcut, parseMarkdown, plain,
+  BLOCK_CHOICES, LISTY, TEXTY, counts, dateChoices, emptyBlock, filterChoices, formatDateId, headings, joinRich, lineShortcut, plain,
   replaceRange, richLength, splitRich, toMarkdown, type BlockChoice, type Draft,
 } from '../../editor.ts';
 import { findBlock, locateBlock, usePageDoc, type PageDocApi } from '../../pages-store.ts';

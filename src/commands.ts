@@ -9,7 +9,7 @@ export interface Command {
   adminOnly?: boolean;
 }
 
-export const GROUP_ORDER: Command['group'][] = ['Navigate', 'Create', 'Preferences', 'Admin'];
+const GROUP_ORDER: Command['group'][] = ['Navigate', 'Create', 'Preferences', 'Admin'];
 
 export const COMMANDS: Command[] = [
   { id: 'go-home', label: 'Go to channels', keywords: ['home', 'channel'], group: 'Navigate' },
@@ -54,7 +54,7 @@ export function pushRecent(list: Recent[], id: string, now: number, max = 8): Re
 }
 
 // The kind of a recent entry is the part of its id before the first `:` (`p`, `ch`, `u`, `cmd`).
-export const recentKind = (id: string): string => (id.includes(':') ? id.slice(0, id.indexOf(':')) : '');
+const recentKind = (id: string): string => (id.includes(':') ? id.slice(0, id.indexOf(':')) : '');
 
 // Keeps at most `perKind` entries of each kind and `max` overall, dropping the oldest (the list is newest first),
 // so a burst of one kind never evicts another.

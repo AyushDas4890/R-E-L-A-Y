@@ -8,7 +8,7 @@ import { themes, defaultThemeSlug } from './astryx-themes.ts';
 export type AstryxMode = 'light' | 'dark';
 
 // Relative luminance of a CSS colour string (#rgb, #rrggbb or rgb()); anything unreadable counts as light.
-export function colorIsDark(value: string): boolean {
+function colorIsDark(value: string): boolean {
   const v = value.trim();
   let r = 255, g = 255, b = 255;
   const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v);
@@ -34,7 +34,7 @@ function paintedMode(): AstryxMode {
 let relayTheme = typeof document === 'undefined' ? '' : document.documentElement.dataset.theme ?? '';
 const isAstryxMode = (t: string | undefined) => t === 'light' || t === 'dark';
 
-export function useAstryxMode(): AstryxMode {
+function useAstryxMode(): AstryxMode {
   const [mode, setMode] = useState<AstryxMode>(paintedMode);
   useEffect(() => {
     const update = () => {

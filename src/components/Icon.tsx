@@ -1,5 +1,5 @@
 // One line-icon set for the whole interface: Font Awesome Classic icons with SVG path fallback.
-export const FA_CLASS_MAP = {
+const FA_CLASS_MAP = {
   lock: 'fa-solid fa-lock',
   maximize: 'fa-solid fa-expand',
   minimize: 'fa-solid fa-compress',
