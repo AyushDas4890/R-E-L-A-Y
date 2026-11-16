@@ -181,6 +181,7 @@ export function Composer({
           onPaste={onPaste}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               e.preventDefault();
               submit();
             }

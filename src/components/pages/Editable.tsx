@@ -248,6 +248,7 @@ export function Editable(p: EditableProps) {
       }
     }
     if (p.multiline && e.key === 'Enter' && !mod) {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
       document.execCommand('insertLineBreak');
       return;

@@ -74,7 +74,7 @@ export function PropEditor({ api, anchor, prop, onClose }: Props) {
 
   return (
     <Popover anchor={anchor} onClose={onClose} label={isNew ? 'New property' : `${prop.name} settings`} width={300} className="db-prop-editor">
-      <label className="db-field">Name<input value={name} autoFocus placeholder="Property name" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') save(); }} /></label>
+      <label className="db-field">Name<input value={name} autoFocus placeholder="Property name" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { if (e.nativeEvent.isComposing || e.keyCode === 229) return; save(); } }} /></label>
       {!isTitle && (
         <label className="db-field">Type
           <select value={type} onChange={(e) => setType(e.target.value as PropType)}>

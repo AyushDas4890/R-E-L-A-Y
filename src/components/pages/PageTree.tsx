@@ -174,6 +174,7 @@ export function PageTree({ nodes, favorites, teamspaces, me, current, send, onOp
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
+                    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
                     const val = e.currentTarget.value.trim();
                     send({ t: 'pageUpdate', id: n.id, patch: { title: val } });
                     setRenaming(null);

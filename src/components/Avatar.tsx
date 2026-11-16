@@ -12,7 +12,7 @@ export function Avatar({ user, size = 36, online }: { user?: User; size?: number
   return (
     <span className={`avatar ${photo ? 'has-photo' : ''}`} style={{ width: size, height: size, background: user?.color ?? '#555', fontSize: size * 0.38 }} title={name}>
       {photo ? (
-        <img src={photo} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setBroken(true)} />
+        <img src={photo} alt="" referrerPolicy="no-referrer" loading="lazy" decoding="async" onError={() => setBroken(true)} />
       ) : user?.bot ? <Icon n="zap" size={Math.round(size * 0.55)} /> : initials(name)}
       {online !== undefined && <i className={`dot ${online ? 'on' : ''}`} />}
     </span>

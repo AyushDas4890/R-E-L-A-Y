@@ -623,7 +623,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
         return <div className="pg-equation"><span className="muted">Equation</span>{textEditor(b, 'pg-code-body', 'E = mc^2')}</div>;
       case 'image':
         return b.url ? (
-          <figure className="pg-image"><img src={b.url} alt={b.name || ''} loading="lazy" />{textEditor(b, 'pg-caption', editable ? 'Write a caption' : '')}</figure>
+          <figure className="pg-image"><img src={b.url} alt={b.name || ''} loading="lazy" decoding="async" />{textEditor(b, 'pg-caption', editable ? 'Write a caption' : '')}</figure>
         ) : <UrlInput label="Embed an image" placeholder="Paste an image link…" disabled={!editable} onSubmit={(u) => doc.update(b.id, { url: u })} onFile={(f) => upload(b.id, f)} accept="image/*" busy={uploading === b.id} />;
       case 'file':
       case 'bookmark':
@@ -814,6 +814,7 @@ export function PageView({ pageId, onOpen, onGone }: { pageId: string; onOpen: (
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
               e.preventDefault();
               const first = blocks[0] ?? (() => { const nb = emptyBlock('text'); insertAfter(null, null, nb); return nb; })();
               focus(first.id, 0);
@@ -958,7 +959,7 @@ function BookmarkCard({ b, onTitle }: { b: Block; onTitle: (name: string) => voi
     <a className="pg-card" href={b.url} target="_blank" rel="noopener noreferrer">
       <Icon n={isFile ? 'paperclip' : 'file'} />
       <span><strong>{pv?.title || b.name || hostOf(b.url!)}</strong>{pv?.description && <small className="pg-desc">{pv.description}</small>}<small>{pv?.site || b.url}</small></span>
-      {image && <img className="pg-card-img" src={image} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+      {image && <img className="pg-card-img" src={image} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" />}
     </a>
   );
 }
